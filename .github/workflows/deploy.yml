@@ -24,9 +24,10 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_KEY }}
-          # Puerto opcional:
-          # port: 22
+          port: 22
+          debug: true
           script: |
+            echo "Conexión OK, ahora sí hacemos deploy"
             set -e
             cd ${{ secrets.SERVER_PATH }}
 
