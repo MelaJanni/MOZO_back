@@ -30,6 +30,7 @@ jobs:
             echo "Conexión OK, ahora sí hacemos deploy"
             set -e
             git config --global --add safe.directory ${{ secrets.SERVER_PATH }}
+            ssh-keyscan github.com >> ~/.ssh/known_hosts
             cd ${{ secrets.SERVER_PATH }}
 
             # 1) Traer el código
