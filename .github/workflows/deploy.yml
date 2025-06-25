@@ -29,6 +29,7 @@ jobs:
           script: |
             echo "Conexión OK, ahora sí hacemos deploy"
             set -e
+            git config --global --add safe.directory ${{ secrets.SERVER_PATH }}
             cd ${{ secrets.SERVER_PATH }}
 
             # 1) Traer el código
