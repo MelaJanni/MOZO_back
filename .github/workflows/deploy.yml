@@ -24,7 +24,7 @@ jobs:
           script: |
             set -e
             echo "🚀  Deploy iniciado"
-            echo "🔎  SERVER_PATH → '${{ secrets.SERVER_PATH }}'"
+            echo "🔎  PROJECT_DIR → '/var/www/vhosts/mozoqr.com/httpdocs'"
 
             # --- 0) borrar clon antiguo ----------------------------------
             if [ -d /var/www/mozo ]; then
