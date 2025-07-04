@@ -53,18 +53,18 @@ jobs:
               git reset --hard origin/main
             fi
 
-            # --- 3) dependencias -----------------------------------------
+            # --- 3) dependencias ------------------------------------------
             composer install --no-dev --prefer-dist --optimize-autoloader
-
-            # --- 4) migraciones solo 1ª vez ------------------------------
+            
+            # --- 4) refrescar cache de config (¡ANTES de migrar!) ----------
+            php artisan config:clear
+            php artisan config:cache
+            
+            # --- 5) migraciones solo 1ª vez --------------------------------
             if [ ! -f storage/app/first_deploy_done ]; then
               php artisan migrate:fresh --seed --force
               touch storage/app/first_deploy_done
             fi
-
-            # --- 5) refrescar caché --------------------------------------
-            php artisan config:clear
-            php artisan config:cache
 
             # --- 6) reiniciar serve --------------------------------------
             pkill -f "artisan serve" || true
