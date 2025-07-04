@@ -33,7 +33,7 @@ jobs:
             fi
 
             # --- 1) asegurar carpeta destino -----------------------------
-            PROJECT_DIR="${{ secrets.SERVER_PATH }}"
+            PROJECT_DIR="/var/www/vhosts/mozoqr.com/httpdocs"
             if [ ! -d "$PROJECT_DIR" ]; then
               echo "📂  Creando $PROJECT_DIR"
               mkdir -p "$PROJECT_DIR"
