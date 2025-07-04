@@ -1,15 +1,3 @@
-# ------------------------------------------------------------
-#  Deploy Laravel a tu VPS con un workflow ultraligero
-# ------------------------------------------------------------
-# 1. Se dispara cada push a main.
-# 2. Conecta vía SSH (clave privada en el secret SSH_KEY).
-# 3. Si el repo ya existe → git fetch / reset.
-#    Si NO existe → elimina todo y clona desde cero.
-# 4. Instala dependencias (composer install).
-# 5. Solo en el PRIMER deploy corre migraciones + seed.
-# 6. Reinicia un servidor php artisan serve (opcional).
-# ------------------------------------------------------------
-
 name: Deploy-Laravel-Simple
 
 on:
@@ -21,64 +9,66 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Paso vacío solo para mostrar el inicio en los logs
-      - name: 🚀  Iniciando deploy
-        run: echo "Arrancando pipeline…"
+      # 1) checkout (obligatorio si luego usás cosas del repo local)
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-      - name: 📦  Ejecutar script en el VPS
+      # 2) despliegue por SSH
+      - name: Deploy to VPS
         uses: appleboy/ssh-action@v1
         with:
           host:      ${{ secrets.SERVER_HOST }}
           username:  ${{ secrets.SERVER_USER }}
           key:       ${{ secrets.SSH_KEY }}
           port:      22
-          debug:     true
-
           script: |
-            echo "🚀  Deploy iniciado"
             set -e
-          
-            # --- 0) Variables de ruta ---
-            PROJECT_DIR="${{ secrets.SERVER_PATH }}"
-          
-            # --- 1) Asegurar que la ruta existe ---
-            if [ ! -d "$PROJECT_DIR" ]; then
-                echo "⚠️  La ruta $PROJECT_DIR no existe; creando..."
-                mkdir -p "$PROJECT_DIR"
+            echo "🚀  Deploy iniciado"
+            echo "🔎  SERVER_PATH → '${{ secrets.SERVER_PATH }}'"
+
+            # --- 0) borrar clon antiguo ----------------------------------
+            if [ -d /var/www/mozo ]; then
+              echo "🧹  Eliminando /var/www/mozo"
+              sudo rm -rf /var/www/mozo
             fi
-          
-            # --- 2) Git config seguro y known_hosts ---
+
+            # --- 1) asegurar carpeta destino -----------------------------
+            PROJECT_DIR="${{ secrets.SERVER_PATH }}"
+            if [ ! -d "$PROJECT_DIR" ]; then
+              echo "📂  Creando $PROJECT_DIR"
+              mkdir -p "$PROJECT_DIR"
+            fi
+
             git config --global --add safe.directory "$PROJECT_DIR"
             ssh-keyscan github.com >> ~/.ssh/known_hosts
-          
             cd "$PROJECT_DIR"
-          
-            # --- 3) Clonar o actualizar ---
+
+            # --- 2) clonar / actualizar ----------------------------------
             if [ ! -d .git ]; then
-                echo "📂  NO hay repo, clonando desde cero"
-                git clone --depth=1 ${{ secrets.REPO_URL }} .
+              echo "📥  Clonando repo…"
+              git clone --depth=1 "${{ secrets.REPO_URL }}" .
             else
-                echo "📂  Repo existente, actualizando"
-                git fetch origin main
-                git reset --hard origin/main
+              echo "🔄  Haciendo pull…"
+              git fetch origin main
+              git reset --hard origin/main
             fi
-          
-            # --- 4) Dependencias PHP ---
+
+            # --- 3) dependencias -----------------------------------------
             composer install --no-dev --prefer-dist --optimize-autoloader
-          
-            # --- 5) Migraciones sólo la primera vez ---
+
+            # --- 4) migraciones solo 1ª vez ------------------------------
             if [ ! -f storage/app/first_deploy_done ]; then
-                php artisan migrate:fresh --seed --force
-                touch storage/app/first_deploy_done
+              php artisan migrate:fresh --seed --force
+              touch storage/app/first_deploy_done
             fi
-          
-            # --- 6) Limpiar y cachear config .env ---
+
+            # --- 5) refrescar caché --------------------------------------
             php artisan config:clear
             php artisan config:cache
-          
-            # --- 7) Reiniciar (ejemplo simple) ---
+
+            # --- 6) reiniciar serve --------------------------------------
             pkill -f "artisan serve" || true
             nohup php artisan serve --host=0.0.0.0 --port=8000 \
-                  > storage/logs/serve.log 2>&1 &
-          
-            echo "✅  Deploy completo"
+                 > storage/logs/serve.log 2>&1 &
+
+            echo "✅  Deploy finalizado en $PROJECT_DIR"
