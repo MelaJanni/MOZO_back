@@ -1,57 +1,82 @@
-# Workflow súper simple para desplegar Laravel a tu VPS
-# ------------------------------------------------------
-# 1. Se dispara cuando hacés push a main.
-# 2. Se conecta por SSH al servidor.
-# 3. Hace pull (o clona si es la primera vez).
-# 4. Ejecuta composer install.
-# 5. Solo en el primer deploy: migrate:fresh --seed.
-# 6. Reinicia el servidor con php artisan serve.
-# ------------------------------------------------------
+# ------------------------------------------------------------
+#  Deploy Laravel a tu VPS con un workflow ultraligero
+# ------------------------------------------------------------
+# 1. Se dispara cada push a main.
+# 2. Conecta vía SSH (clave privada en el secret SSH_KEY).
+# 3. Si el repo ya existe → git fetch / reset.
+#    Si NO existe → elimina todo y clona desde cero.
+# 4. Instala dependencias (composer install).
+# 5. Solo en el PRIMER deploy corre migraciones + seed.
+# 6. Reinicia un servidor php artisan serve (opcional).
+# ------------------------------------------------------------
 
 name: Deploy-Laravel-Simple
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Deploy to VPS
+      # Paso vacío solo para mostrar el inicio en los logs
+      - name: 🚀  Iniciando deploy
+        run: echo "Arrancando pipeline…"
+
+      - name: 📦  Ejecutar script en el VPS
         uses: appleboy/ssh-action@v1
         with:
-          host:     ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key:      ${{ secrets.SSH_KEY }}
-          port:     22
+          host:      ${{ secrets.SERVER_HOST }}
+          username:  ${{ secrets.SERVER_USER }}
+          key:       ${{ secrets.SSH_KEY }}
+          port:      22
+          debug:     true
+
+          # Script remoto -----------------------------------------------------------------
           script: |
-            echo "🚀  Deploy iniciado"
-            set -e
+            set -e                                  # abortar ante el primer error
+            echo "🔐  Conexión SSH establecida"
 
-            # 1) nos movemos al doc-root real configurado en Plesk
-            cd ${{ secrets.SERVER_PATH }}
-            git config --global --add safe.directory ${{ secrets.SERVER_PATH }}
-            ssh-keyscan -H github.com >> ~/.ssh/known_hosts
+            # Aseguramos que Git no se queje de permisos
+            git config --global --add safe.directory "${{ secrets.SERVER_PATH }}"
 
-            # 2) traer el código
-            if [ ! -d .git ]; then
-              git clone --depth 1 git@github.com:${{ github.repository }} .
-            else
+            # Evitamos el warning de github.com al clonar por primera vez
+            ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null
+
+            cd "${{ secrets.SERVER_PATH }}"
+
+            echo "📂  Sincronizando código…"
+
+            # ¿Ya existe .git?
+            if git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+              echo "  ➜ Repo encontrado, haciendo fetch + reset"
               git fetch origin main
               git reset --hard origin/main
+            else
+              echo "  ➜ NO hay repo, clonando desde cero"
+              rm -rf ./* ./.??* || true           # borra todo excepto . y ..
+              git clone --depth 1 "${{ secrets.REPO_URL }}" .
             fi
 
-            # 3) dependencias
-            composer install --no-dev --prefer-dist --optimize-autoloader
+            echo "📦  Instalando dependencias Composer…"
+            composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction --ansi
 
-            # 4) cachés de Laravel
+            # Detectar primer deploy con un “flag file”
+            if [ ! -f storage/app/first_deploy_done ]; then
+              echo "🗄  Primer deploy → migraciones + seed"
+              php artisan migrate:fresh --seed --force --no-interaction
+              touch storage/app/first_deploy_done
+            fi
+
+            echo "🔄  Limpiando y cacheando configuración"
             php artisan config:clear
             php artisan config:cache
-            php artisan route:cache
-            php artisan view:cache
 
-            # 5) migraciones normales (no fresh)
-            php artisan migrate --force
+            echo "♻️  Reiniciando servidor artisan (muy básico)…"
+            pkill -f "artisan serve" || true
+            nohup php artisan serve --host=0.0.0.0 --port=8000 \
+              > storage/logs/serve.log 2>&1 &
 
-            echo "✅  Deploy finalizado"
+            echo "✅  Deploy completado con éxito"
