@@ -34,49 +34,51 @@ jobs:
           port:      22
           debug:     true
 
-          # Script remoto -----------------------------------------------------------------
           script: |
-            set -e                                  # abortar ante el primer error
-            echo "🔐  Conexión SSH establecida"
-
-            # Aseguramos que Git no se queje de permisos
-            git config --global --add safe.directory "${{ secrets.SERVER_PATH }}"
-
-            # Evitamos el warning de github.com al clonar por primera vez
-            ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null
-
-            cd "${{ secrets.SERVER_PATH }}"
-
-            echo "📂  Sincronizando código…"
-
-            # ¿Ya existe .git?
-            if git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
-              echo "  ➜ Repo encontrado, haciendo fetch + reset"
-              git fetch origin main
-              git reset --hard origin/main
+            echo "🚀  Deploy iniciado"
+            set -e
+          
+            # --- 0) Variables de ruta ---
+            PROJECT_DIR="${{ secrets.SERVER_PATH }}"
+          
+            # --- 1) Asegurar que la ruta existe ---
+            if [ ! -d "$PROJECT_DIR" ]; then
+                echo "⚠️  La ruta $PROJECT_DIR no existe; creando..."
+                mkdir -p "$PROJECT_DIR"
+            fi
+          
+            # --- 2) Git config seguro y known_hosts ---
+            git config --global --add safe.directory "$PROJECT_DIR"
+            ssh-keyscan github.com >> ~/.ssh/known_hosts
+          
+            cd "$PROJECT_DIR"
+          
+            # --- 3) Clonar o actualizar ---
+            if [ ! -d .git ]; then
+                echo "📂  NO hay repo, clonando desde cero"
+                git clone --depth=1 ${{ secrets.REPO_URL }} .
             else
-              echo "  ➜ NO hay repo, clonando desde cero"
-              rm -rf ./* ./.??* || true           # borra todo excepto . y ..
-              git clone --depth 1 "${{ secrets.REPO_URL }}" .
+                echo "📂  Repo existente, actualizando"
+                git fetch origin main
+                git reset --hard origin/main
             fi
-
-            echo "📦  Instalando dependencias Composer…"
-            composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction --ansi
-
-            # Detectar primer deploy con un “flag file”
+          
+            # --- 4) Dependencias PHP ---
+            composer install --no-dev --prefer-dist --optimize-autoloader
+          
+            # --- 5) Migraciones sólo la primera vez ---
             if [ ! -f storage/app/first_deploy_done ]; then
-              echo "🗄  Primer deploy → migraciones + seed"
-              php artisan migrate:fresh --seed --force --no-interaction
-              touch storage/app/first_deploy_done
+                php artisan migrate:fresh --seed --force
+                touch storage/app/first_deploy_done
             fi
-
-            echo "🔄  Limpiando y cacheando configuración"
+          
+            # --- 6) Limpiar y cachear config .env ---
             php artisan config:clear
             php artisan config:cache
-
-            echo "♻️  Reiniciando servidor artisan (muy básico)…"
+          
+            # --- 7) Reiniciar (ejemplo simple) ---
             pkill -f "artisan serve" || true
             nohup php artisan serve --host=0.0.0.0 --port=8000 \
-              > storage/logs/serve.log 2>&1 &
-
-            echo "✅  Deploy completado con éxito"
+                  > storage/logs/serve.log 2>&1 &
+          
+            echo "✅  Deploy completo"
