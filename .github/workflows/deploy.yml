@@ -18,38 +18,40 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Run deploy script on VPS
+      - name: Deploy to VPS
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.SERVER_HOST }}
+          host:     ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SSH_KEY }}
-          port: 22
-          debug: true
+          key:      ${{ secrets.SSH_KEY }}
+          port:     22
           script: |
-            echo "Conexión OK, ahora sí hacemos deploy"
+            echo "🚀  Deploy iniciado"
             set -e
-            git config --global --add safe.directory ${{ secrets.SERVER_PATH }}
-            ssh-keyscan github.com >> ~/.ssh/known_hosts
-            cd ${{ secrets.SERVER_PATH }}
 
-            # 1) Traer el código
+            # 1) nos movemos al doc-root real configurado en Plesk
+            cd ${{ secrets.SERVER_PATH }}
+            git config --global --add safe.directory ${{ secrets.SERVER_PATH }}
+            ssh-keyscan -H github.com >> ~/.ssh/known_hosts
+
+            # 2) traer el código
             if [ ! -d .git ]; then
-              git clone --depth=1 git@github.com:${{ github.repository }} .
+              git clone --depth 1 git@github.com:${{ github.repository }} .
             else
               git fetch origin main
               git reset --hard origin/main
             fi
 
-            # 2) Dependencias PHP
+            # 3) dependencias
             composer install --no-dev --prefer-dist --optimize-autoloader
 
-            # 3) Migraciones solo una vez
-            if [ ! -f storage/app/first_deploy_done ]; then
-              php artisan migrate:fresh --seed --force
-              touch storage/app/first_deploy_done
-            fi
+            # 4) cachés de Laravel
+            php artisan config:clear
+            php artisan config:cache
+            php artisan route:cache
+            php artisan view:cache
 
-            # 4) Reiniciar php artisan serve (muy básico)
-            pkill -f "artisan serve" || true
-            nohup php artisan serve --host=0.0.0.0 --port=8000 > storage/logs/serve.log 2>&1 &
+            # 5) migraciones normales (no fresh)
+            php artisan migrate --force
+
+            echo "✅  Deploy finalizado"
