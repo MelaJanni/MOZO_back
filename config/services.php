@@ -30,5 +30,10 @@ return [
         'secret' => env('AWS_SECRET_ACCESS_KEY'),
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
+    'fcm' => [
+        'driver'    => 'fcm',
+        'log_enabled' => false,       // opcional
+        'json_credentials' => storage_path('app/firebase/fcm-service-account.json'),
+    ],
 
 ];
