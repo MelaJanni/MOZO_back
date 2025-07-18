@@ -24,6 +24,7 @@ class AuthController extends Controller
 
         // Credenciales quemadas para testing (solo en desarrollo)
         if ($request->email === 'admin@example.com' && $request->password === 'password') {
+            // Usuario simulado exclusivamente para desarrollo
             $user = new User();
             $user->id = 1;
             $user->name = 'Admin User';
@@ -32,7 +33,8 @@ class AuthController extends Controller
             
             return response()->json([
                 'user' => $user,
-                'token' => 'test_token_for_development_only',
+                'access_token' => 'test_token_for_development_only',
+                'token_type' => 'Bearer',
             ]);
         }
 
@@ -46,7 +48,8 @@ class AuthController extends Controller
 
         return response()->json([
             'user' => $user,
-            'token' => $user->createToken('api-token')->plainTextToken,
+            'access_token' => $user->createToken('auth_token')->plainTextToken,
+            'token_type' => 'Bearer',
         ]);
     }
 
