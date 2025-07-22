@@ -690,4 +690,63 @@ class AdminController extends Controller
             'archived_staff_count' => $archivedStaffCount,
         ]);
     }
+
+    /**
+     * Envía una notificación de prueba a todos los mozos activos del negocio
+     */
+    public function sendTestNotification(Request $request)
+    {
+        $user = $request->user();
+        
+        // Verificar que el usuario es administrador
+        if (!$user->isAdmin()) {
+            return response()->json([
+                'message' => 'Solo los administradores pueden enviar notificaciones de prueba'
+            ], 403);
+        }
+
+        // Obtener todos los mozos activos del negocio
+        $waiters = User::where('business_id', $user->business_id)
+            ->where('role', 'waiter')
+            ->where('active_business_id', $user->business_id)
+            ->get();
+
+        if ($waiters->isEmpty()) {
+            return response()->json([
+                'message' => 'No hay mozos activos en este negocio para enviar la notificación de prueba'
+            ], 404);
+        }
+
+        // Obtener una mesa del negocio para la notificación de prueba
+        $table = Table::where('business_id', $user->business_id)->first();
+        
+        if (!$table) {
+            return response()->json([
+                'message' => 'No hay mesas configuradas en este negocio'
+            ], 404);
+        }
+
+        $notificationCount = 0;
+
+        // Enviar notificación de prueba a cada mozo
+        foreach ($waiters as $waiter) {
+            try {
+                $waiter->notify(new \App\Notifications\TableCalledNotification($table));
+                $notificationCount++;
+            } catch (\Exception $e) {
+                // Continuar con el siguiente mozo si hay error
+                continue;
+            }
+        }
+
+        return response()->json([
+            'message' => "Notificación de prueba enviada exitosamente a {$notificationCount} mozos",
+            'waiters_notified' => $notificationCount,
+            'total_waiters' => $waiters->count(),
+            'test_table' => [
+                'id' => $table->id,
+                'number' => $table->number
+            ]
+        ]);
+    }
 } 
