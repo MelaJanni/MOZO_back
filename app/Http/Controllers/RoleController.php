@@ -15,11 +15,8 @@ class RoleController extends Controller
 
         $user = $request->user();
 
-        if ($request->role === 'admin' && !$user->isAdmin()) {
-            throw ValidationException::withMessages([
-                'role' => ['No tienes permisos para seleccionar el rol de administrador.'],
-            ]);
-        }
+        // Eliminamos la validación de permisos - cualquier usuario puede seleccionar cualquier rol
+        // ya que solo cambia la vista del dashboard
 
         // Creamos un nuevo token con el claim de rol
         $user->tokens()->delete(); // Eliminamos tokens anteriores
