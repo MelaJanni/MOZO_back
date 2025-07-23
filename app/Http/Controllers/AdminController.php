@@ -43,11 +43,7 @@ class AdminController extends Controller
 
         $user = $request->user();
         
-        if ($request->view === 'waiter' && $user->role !== 'admin') {
-            return response()->json([
-                'message' => 'No tienes permisos para cambiar a vista de camarero',
-            ], 403);
-        }
+        // No hay validación de permisos - cualquier usuario puede cambiar de vista
         
         return response()->json([
             'message' => 'Vista cambiada exitosamente',
@@ -698,12 +694,7 @@ class AdminController extends Controller
     {
         $user = $request->user();
         
-        // Verificar que el usuario es administrador
-        if (!$user->isAdmin()) {
-            return response()->json([
-                'message' => 'Solo los administradores pueden enviar notificaciones de prueba'
-            ], 403);
-        }
+        // No hay validación de permisos - cualquier usuario puede enviar notificaciones de prueba
 
         // Obtener todos los mozos activos del negocio
         $waiters = User::where('business_id', $user->business_id)
