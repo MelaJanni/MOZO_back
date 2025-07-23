@@ -739,4 +739,47 @@ class AdminController extends Controller
             ]
         ]);
     }
+
+    /**
+     * Envía una notificación personalizada a un usuario específico.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function sendCustomNotificationToUser(Request $request)
+    {
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
+            'user_id' => 'required|exists:users,id',
+            'title' => 'required|string|max:255',
+            'body' => 'required|string|max:1000',
+            'data' => 'sometimes|array',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $targetUser = \App\Models\User::find($request->user_id);
+
+        if (!$targetUser) {
+            return response()->json(['message' => 'Usuario no encontrado'], 404);
+        }
+
+        try {
+            $targetUser->notify(new \App\Notifications\CustomUserNotification(
+                $request->title,
+                $request->body,
+                $request->data ?? []
+            ));
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error al enviar la notificación',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+
+        return response()->json([
+            'message' => 'Notificación enviada exitosamente al usuario ' . $targetUser->name,
+        ]);
+    }
 } 

@@ -62,6 +62,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // Notificaciones generales para administrador
         Route::get('/notifications', [WaiterController::class, 'listNotifications']);
         Route::post('/notifications/test', [AdminController::class, 'sendTestNotification']);
+        Route::post('/notifications/send-to-user', [AdminController::class, 'sendCustomNotificationToUser']);
 
         // Nuevas rutas de staff solicitadas
         Route::get('/staff', [AdminController::class, 'getStaff']);
