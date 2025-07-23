@@ -697,9 +697,8 @@ class AdminController extends Controller
         // No hay validación de permisos - cualquier usuario puede enviar notificaciones de prueba
 
         // Obtener todos los mozos activos del negocio
-        $waiters = User::where('business_id', $user->business_id)
+        $waiters = User::where('active_business_id', $user->active_business_id)
             ->where('role', 'waiter')
-            ->where('active_business_id', $user->business_id)
             ->get();
 
         if ($waiters->isEmpty()) {
@@ -709,7 +708,7 @@ class AdminController extends Controller
         }
 
         // Obtener una mesa del negocio para la notificación de prueba
-        $table = Table::where('business_id', $user->business_id)->first();
+        $table = Table::where('business_id', $user->active_business_id)->first();
         
         if (!$table) {
             return response()->json([
