@@ -22,9 +22,7 @@ class AuthController extends Controller
             'password' => 'required',
         ]);
 
-        // Credenciales quemadas para testing (solo en desarrollo)
         if ($request->email === 'admin@example.com' && $request->password === 'password') {
-            // Usuario simulado exclusivamente para desarrollo
             $user = new User();
             $user->id = 1;
             $user->name = 'Admin User';
@@ -55,18 +53,13 @@ class AuthController extends Controller
 
     public function loginWithGoogle()
     {
-        // Stub para implementación futura de OAuth con Google
         return response()->json([
             'message' => 'Google OAuth no implementado aún',
         ], 501);
     }
 
-    /**
-     * Logout the user by invalidating the current token
-     */
     public function logout(Request $request)
     {
-        // Revocar el token actual
         $request->user()->currentAccessToken()->delete();
 
         return response()->json([
@@ -159,14 +152,13 @@ class AuthController extends Controller
 
         $user = $request->user();
 
-        // Comprobar contraseña actual
         if (!Hash::check($request->current_password, $user->password)) {
             return response()->json([
                 'message' => 'La contraseña actual es incorrecta',
             ], 422);
         }
 
-        $user->password = $request->password; // el cast 'hashed' se encarga de encriptar
+        $user->password = $request->password;
         $user->save();
 
         return response()->json([
@@ -174,10 +166,6 @@ class AuthController extends Controller
         ]);
     }
 
-    /**
-     * Eliminar la cuenta del usuario autenticado.
-     * Se requiere confirmación de contraseña para mayor seguridad.
-     */
     public function deleteAccount(Request $request)
     {
         $request->validate([
@@ -192,13 +180,10 @@ class AuthController extends Controller
             ], 422);
         }
 
-        // Revocar todos los tokens de acceso (incluido el actual)
         $user->tokens()->delete();
 
-        // Forzar cierre de sesión en caso de que hubiera sesiones web guardadas
         Auth::logout();
 
-        // Eliminación lógica (soft delete) si tu modelo User usa SoftDeletes, de lo contrario será hard delete
         $user->delete();
 
         return response()->json([

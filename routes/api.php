@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login'])->name('login');
-Route::post('/login/google', [AuthController::class, 'loginWithGoogle']); 
+Route::post('/login/google', [AuthController::class, 'loginWithGoogle']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
@@ -34,37 +34,30 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/work-history/{workExperience}', [ProfileController::class, 'deleteWorkHistory']);
     });
 
-    // Rutas para tokens de dispositivo FCM
     Route::post('/device-token', [ProfileController::class, 'storeDeviceToken']);
     Route::delete('/device-token', [ProfileController::class, 'deleteDeviceToken']);
 
-    // --- Rutas con prefijo /admin para compatibilidad con el frontend ---
     Route::prefix('admin')->group(function () {
-        // Staff
         Route::delete('/staff/{staffId}', [AdminController::class, 'removeStaff']);
         Route::post('/staff/request/{requestId}', [AdminController::class, 'handleStaffRequest']);
         Route::get('/staff/requests', [AdminController::class, 'fetchStaffRequests']);
         Route::get('/staff/requests/archived', [AdminController::class, 'fetchArchivedRequests']);
         Route::post('/staff/onboard', [WaiterController::class, 'onboardBusiness']);
 
-        // Otros recursos (por si el frontend usa /admin/...)
         Route::get('/business', [AdminController::class, 'getBusinessInfo']);
         Route::post('/switch-view', [AdminController::class, 'switchView']);
         Route::get('/settings', [AdminController::class, 'getSettings']);
         Route::post('/settings', [AdminController::class, 'updateSettings']);
 
-        // Rutas de QR
         Route::post('/qr/generate/{tableId}', [QrCodeController::class, 'generateQRCode']);
         Route::get('/qr/preview/{tableId}', [QrCodeController::class, 'preview']);
         Route::post('/qr/export', [QrCodeController::class, 'exportQR']);
         Route::post('/qr/email', [QrCodeController::class, 'emailQR']);
 
-        // Notificaciones generales para administrador
         Route::get('/notifications', [WaiterController::class, 'listNotifications']);
         Route::post('/notifications/test', [AdminController::class, 'sendTestNotification']);
         Route::post('/notifications/send-to-user', [AdminController::class, 'sendCustomNotificationToUser']);
 
-        // Nuevas rutas de staff solicitadas
         Route::get('/staff', [AdminController::class, 'getStaff']);
         Route::get('/staff/{id}', [AdminController::class, 'getStaffMember']);
         Route::put('/staff/{id}', [AdminController::class, 'updateStaffMember']);
@@ -96,35 +89,27 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/table-profiles', [WaiterController::class, 'createProfile']);
     Route::delete('/table-profiles/{id}', [WaiterController::class, 'deleteProfile']);
 
-    // Clonar mesa
     Route::post('/tables/clone/{tableId}', [TableController::class, 'cloneTable']);
 
-    // Grupo de rutas específicas para MOZOS (alias con prefijo /waiter para compatibilidad con el frontend)
     Route::prefix('waiter')->group(function () {
-        // On-boarding a un negocio
         Route::post('/onboard', [WaiterController::class, 'onboardBusiness']);
 
-        // Mesas del mozo
         Route::get('/tables', [WaiterController::class, 'fetchWaiterTables']);
         Route::post('/tables/toggle-notifications/{tableId}', [WaiterController::class, 'toggleTableNotifications']);
-        Route::post('/tables/clone/{tableId}', [TableController::class, 'cloneTable']); // opcional
+        Route::post('/tables/clone/{tableId}', [TableController::class, 'cloneTable']);
 
-        // Notificaciones
         Route::get('/notifications', [WaiterController::class, 'fetchWaiterNotifications']);
         Route::post('/notifications/handle/{notificationId}', [WaiterController::class, 'handleNotification']);
         Route::post('/notifications/global', [WaiterController::class, 'globalNotifications']);
 
-        // Perfiles de mesas
         Route::get('/profiles', [WaiterController::class, 'listProfiles']);
         Route::post('/profiles', [WaiterController::class, 'createProfile']);
         Route::delete('/profiles/{id}', [WaiterController::class, 'deleteProfile']);
     });
 
-    // ---- Rutas para gestión de cuenta del usuario ----
     Route::post('/change-password', [AuthController::class, 'changePassword']);
     Route::delete('/delete-account', [AuthController::class, 'deleteAccount']);
 
-    // ---- Ruta de estadísticas del dashboard de administrador ----
     Route::get('/admin/statistics', [AdminController::class, 'getStatistics']);
 });
 

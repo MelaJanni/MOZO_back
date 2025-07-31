@@ -12,9 +12,6 @@ use Illuminate\Support\Str;
 
 class MenuController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index(Request $request)
     {
         $businessId = $request->query('business_id');
@@ -28,21 +25,16 @@ class MenuController extends Controller
         return response()->json($menus);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
         $request->validate([
             'business_id' => 'required|exists:businesses,id',
-            'menu_file' => 'required|file|mimes:pdf|max:10240', // 10MB max
+            'menu_file' => 'required|file|mimes:pdf|max:10240',
             'is_default' => 'boolean',
         ]);
 
-        // Manejar la subida del archivo
         $path = $request->file('menu_file')->store('menus', 'public');
 
-        // Si es default, quitar default de otros menús
         if ($request->is_default) {
             Menu::where('business_id', $request->business_id)
                 ->where('is_default', true)
@@ -58,22 +50,16 @@ class MenuController extends Controller
         return response()->json($menu, 201);
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(Menu $menu)
     {
         return response()->json($menu);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, Menu $menu)
     {
         $request->validate([
             'business_id' => 'exists:businesses,id',
-            'menu_file' => 'file|mimes:pdf|max:10240', // 10MB max
+            'menu_file' => 'file|mimes:pdf|max:10240',
             'is_default' => 'boolean',
         ]);
 
@@ -94,12 +80,10 @@ class MenuController extends Controller
         }
 
         if ($request->hasFile('menu_file')) {
-            // Borrar archivo anterior
             if (Storage::disk('public')->exists($menu->file_path)) {
                 Storage::disk('public')->delete($menu->file_path);
             }
             
-            // Guardar nuevo archivo
             $path = $request->file('menu_file')->store('menus', 'public');
             $data['file_path'] = $path;
         }
@@ -109,9 +93,6 @@ class MenuController extends Controller
         return response()->json($menu);
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(Menu $menu)
     {
         $this->authorizeBusinessOwnership($menu->business_id);
@@ -137,7 +118,6 @@ class MenuController extends Controller
             }
         }
 
-        // Borrar archivo
         if (Storage::disk('public')->exists($menu->file_path)) {
             Storage::disk('public')->delete($menu->file_path);
         }
@@ -154,9 +134,6 @@ class MenuController extends Controller
         return response()->json(['message' => 'Menú eliminado correctamente.']);
     }
 
-    /**
-     * Fetch all menus for the business
-     */
     public function fetchMenus()
     {
         $user = Auth::user();
@@ -166,7 +143,6 @@ class MenuController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
         
-        // Añadir URLs de visualización para cada menú
         $menus->transform(function ($menu) {
             $menu->view_url = url('storage/' . $menu->file_path);
             return $menu;
@@ -179,9 +155,6 @@ class MenuController extends Controller
         ]);
     }
     
-    /**
-     * Upload a new menu
-     */
     public function uploadMenu(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -198,16 +171,13 @@ class MenuController extends Controller
         
         $user = Auth::user();
         
-        // Guardar el archivo
         $path = $request->file('file')->store('menus/' . $user->business_id, 'public');
         
-        // Si se establece como predeterminado, desmarcar los demás
         if ($request->has('is_default') && $request->is_default) {
             Menu::where('business_id', $user->business_id)
                 ->update(['is_default' => false]);
         }
         
-        // Crear el menú
         $maxOrder = Menu::where('business_id', $user->business_id)->max('display_order');
         
         $menu = Menu::create([
@@ -228,9 +198,6 @@ class MenuController extends Controller
         ], 201);
     }
     
-    /**
-     * Set a menu as default
-     */
     public function setDefaultMenu(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -243,16 +210,13 @@ class MenuController extends Controller
         
         $user = Auth::user();
         
-        // Verificar que el menú pertenece al negocio
         $menu = Menu::where('id', $request->menu_id)
             ->where('business_id', $user->business_id)
             ->firstOrFail();
             
-        // Desmarcar todos los menús como predeterminados
         Menu::where('business_id', $user->business_id)
             ->update(['is_default' => false]);
             
-        // Marcar el seleccionado como predeterminado
         $menu->is_default = true;
         $menu->save();
         
@@ -262,9 +226,6 @@ class MenuController extends Controller
         ]);
     }
 
-    /**
-     * Renombrar un menú existente
-     */
     public function renameMenu(Request $request, Menu $menu)
     {
         $this->authorizeBusinessOwnership($menu->business_id);
@@ -282,10 +243,6 @@ class MenuController extends Controller
         ]);
     }
 
-    /**
-     * Reordenar menús mediante drag-and-drop
-     * Espera un array "menu_order" en el cuerpo con los IDs en el orden deseado.
-     */
     public function reorderMenus(Request $request)
     {
         $request->validate([
@@ -304,25 +261,18 @@ class MenuController extends Controller
         return response()->json(['message' => 'Orden guardado correctamente']);
     }
 
-    /**
-     * Generar una miniatura de la primera página del menú (PDF/JPG/PNG)
-     * Por simplicidad, este método devuelve directamente la URL pública si ya es imagen.
-     * Para PDF se requiere la extensión Imagick habilitada en el servidor.
-     */
     public function preview(Menu $menu)
     {
         $this->authorizeBusinessOwnership($menu->business_id);
 
         $filePath = storage_path('app/public/' . $menu->file_path);
 
-        // Verificar que el archivo exista
         if (!file_exists($filePath)) {
             abort(404, 'Archivo no encontrado');
         }
 
         $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
 
-        // Si es imagen, servirla directamente con el tipo MIME correcto
         if (in_array($extension, ['jpg', 'jpeg', 'png'])) {
             return response()->file($filePath, [
                 'Content-Type' => mime_content_type($filePath),
@@ -330,7 +280,6 @@ class MenuController extends Controller
             ]);
         }
 
-        // Si es PDF intentamos generar miniatura PNG con Imagick
         if ($extension === 'pdf') {
             if (extension_loaded('imagick')) {
                 try {
@@ -341,7 +290,6 @@ class MenuController extends Controller
 
                     $blob = $imagick->getImageBlob();
 
-                    // Liberar recursos
                     $imagick->clear();
                     $imagick->destroy();
 
@@ -351,24 +299,17 @@ class MenuController extends Controller
                     ]);
                 } catch (\ImagickException | \Exception $e) {
                     \Log::error('Error generando preview del menú ' . $menu->id . ': ' . $e->getMessage());
-                    // Si falla, devolvemos el PDF original para que al menos se visualice
                 }
             }
 
-            // En caso de no disponer de Imagick o si ocurrió un error, devolvemos el PDF para vista directa en el navegador
             return response()->file($filePath, [
                 'Content-Type' => 'application/pdf',
             ]);
         }
 
-        // Para otros formatos no soportados
         abort(415, 'Formato de archivo no soportado para preview');
     }
 
-    /**
-     * Descargar el archivo original del menú
-     * Devuelve la respuesta con cabecera Content-Disposition: attachment para forzar la descarga.
-     */
     public function download(Menu $menu)
     {
         $this->authorizeBusinessOwnership($menu->business_id);
@@ -377,16 +318,12 @@ class MenuController extends Controller
             abort(404, 'Archivo no encontrado');
         }
 
-        // Nombre sugerido para el archivo
         $extension = pathinfo($menu->file_path, PATHINFO_EXTENSION);
         $fileName  = Str::slug($menu->name ?? 'menu') . '.' . $extension;
 
         return Storage::disk('public')->download($menu->file_path, $fileName);
     }
 
-    /**
-     * Helper: verifica que el usuario autenticado sea dueño del negocio indicado
-     */
     private function authorizeBusinessOwnership(int $businessId): void
     {
         $user = Auth::user();

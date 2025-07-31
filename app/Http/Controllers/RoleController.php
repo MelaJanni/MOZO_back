@@ -15,11 +15,8 @@ class RoleController extends Controller
 
         $user = $request->user();
 
-        // Eliminamos la validación de permisos - cualquier usuario puede seleccionar cualquier rol
-        // ya que solo cambia la vista del dashboard
 
-        // Creamos un nuevo token con el claim de rol
-        $user->tokens()->delete(); // Eliminamos tokens anteriores
+        $user->tokens()->delete();
         $token = $user->createToken('api-token', ['role:' . $request->role]);
 
         return response()->json([

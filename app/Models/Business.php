@@ -62,9 +62,6 @@ class Business extends Model
         return $this->hasMany(QrCode::class);
     }
 
-    /**
-     * Obtener un slug legible a partir del nombre del negocio.
-     */
     public function getSlugAttribute(): string
     {
         return Str::slug($this->name);

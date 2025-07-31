@@ -9,11 +9,6 @@ class WorkExperience extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
     protected $fillable = [
         'user_id',
         'company',
@@ -23,19 +18,11 @@ class WorkExperience extends Model
         'end_date',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @var array<string, string>
-     */
     protected $casts = [
         'start_date' => 'date',
         'end_date' => 'date',
     ];
 
-    /**
-     * Get the user that owns the work experience.
-     */
     public function user()
     {
         return $this->belongsTo(User::class);

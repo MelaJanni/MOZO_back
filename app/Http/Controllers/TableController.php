@@ -12,9 +12,6 @@ use App\Http\Controllers\QrCodeController;
 
 class TableController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index(Request $request)
     {
         $businessId = $request->query('business_id');
@@ -28,9 +25,6 @@ class TableController extends Controller
         return response()->json($tables);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
         $request->validate([
@@ -39,7 +33,6 @@ class TableController extends Controller
             'notifications_enabled' => 'boolean',
         ]);
 
-        // Verificar que el número de mesa sea único para este negocio
         $exists = Table::where('business_id', $request->business_id)
                     ->where('number', $request->number)
                     ->exists();
@@ -57,17 +50,11 @@ class TableController extends Controller
         return response()->json($table, 201);
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(Table $table)
     {
         return response()->json($table);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, Table $table)
     {
         $request->validate([
@@ -76,7 +63,6 @@ class TableController extends Controller
             'notifications_enabled' => 'boolean',
         ]);
 
-        // Si cambia el número, verificar que sea único
         if ($request->has('number') && $request->number != $table->number) {
             $exists = Table::where('business_id', $table->business_id)
                         ->where('number', $request->number)
@@ -92,18 +78,12 @@ class TableController extends Controller
         return response()->json($table);
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(Table $table)
     {
         $table->delete();
         return response()->json(null, 204);
     }
 
-    /**
-     * Fetch all tables for the business
-     */
     public function fetchTables()
     {
         $user = Auth::user();
@@ -119,9 +99,6 @@ class TableController extends Controller
         ]);
     }
     
-    /**
-     * Create a new table
-     */
     public function createTable(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -138,7 +115,6 @@ class TableController extends Controller
         
         $user = Auth::user();
         
-        // Verificar que no exista otra mesa con el mismo número en el negocio
         $existingTable = Table::where('business_id', $user->business_id)
             ->where('number', $request->number)
             ->first();
@@ -158,8 +134,6 @@ class TableController extends Controller
             'notifications_enabled' => $request->notifications_enabled ?? true,
         ]);
 
-        // El QR se genera automáticamente a través del TableObserver.
-        // Lo cargamos para devolverlo en la respuesta.
         $table->load('qrCode');
         
         return response()->json([
@@ -168,9 +142,6 @@ class TableController extends Controller
         ], 201);
     }
     
-    /**
-     * Update an existing table
-     */
     public function updateTable(Request $request, $tableId)
     {
         $validator = Validator::make($request->all(), [
@@ -191,7 +162,6 @@ class TableController extends Controller
             ->where('business_id', $user->business_id)
             ->firstOrFail();
         
-        // Si se está cambiando el número, verificar que no exista otra mesa con ese número
         if ($request->has('number') && $request->number != $table->number) {
             $existingTable = Table::where('business_id', $user->business_id)
                 ->where('number', $request->number)
@@ -207,7 +177,6 @@ class TableController extends Controller
             $table->number = $request->number;
         }
         
-        // Actualizar los demás campos si están presentes
         if ($request->has('capacity')) {
             $table->capacity = $request->capacity;
         }
@@ -232,9 +201,6 @@ class TableController extends Controller
         ]);
     }
     
-    /**
-     * Delete a table
-     */
     public function deleteTable($tableId)
     {
         $user = Auth::user();
@@ -243,16 +209,12 @@ class TableController extends Controller
             ->where('business_id', $user->business_id)
             ->firstOrFail();
         
-        // Verificar si la mesa tiene asociaciones antes de eliminar
         if ($table->qrCodes()->count() > 0) {
-            // Eliminamos también los códigos QR asociados
             $table->qrCodes()->delete();
         }
         
-        // Eliminar las asociaciones con perfiles
         $table->profiles()->detach();
         
-        // Eliminar la mesa
         $table->delete();
         
         return response()->json([
@@ -261,10 +223,6 @@ class TableController extends Controller
         ]);
     }
 
-    /**
-     * Clonar la configuración de una mesa existente
-     * Recibe en el body "number" (requerido) y opcionalmente otros campos para sobrescribir.
-     */
     public function cloneTable(Request $request, $tableId)
     {
         $validator = Validator::make($request->all(), [
@@ -277,17 +235,14 @@ class TableController extends Controller
 
         $user = Auth::user();
 
-        // Mesa a clonar
         $sourceTable = Table::where('id', $tableId)
             ->where('business_id', $user->business_id)
             ->firstOrFail();
 
-        // Verificar que el nuevo número no exista
         if (Table::where('business_id', $user->business_id)->where('number', $request->number)->exists()) {
             return response()->json(['message' => 'Ya existe una mesa con ese número'], 422);
         }
 
-        // Crear la nueva mesa copiando los campos configurables
         $newTable = Table::create([
             'business_id' => $user->business_id,
             'number' => $request->number,
@@ -297,7 +252,6 @@ class TableController extends Controller
             'notifications_enabled' => $request->notifications_enabled ?? $sourceTable->notifications_enabled,
         ]);
 
-        // Clonar perfiles asociados si existen
         if ($sourceTable->profiles()->count() > 0) {
             $newTable->profiles()->sync($sourceTable->profiles->pluck('id')->toArray());
         }

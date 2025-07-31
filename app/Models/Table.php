@@ -32,9 +32,6 @@ class Table extends Model
         return $this->hasMany(QrCode::class);
     }
 
-    /**
-     * Obtiene el código QR más reciente asociado a la mesa.
-     */
     public function qrCode()
     {
         return $this->hasOne(QrCode::class)->latestOfMany();

@@ -15,9 +15,6 @@ use Illuminate\Validation\Rule;
 
 class ProfileController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index(Request $request)
     {
         $userId = $request->query('user_id');
@@ -31,9 +28,6 @@ class ProfileController extends Controller
         return response()->json($profiles);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
         $request->validate([
@@ -48,7 +42,6 @@ class ProfileController extends Controller
             'name' => $request->name,
         ]);
 
-        // Vincular las mesas seleccionadas
         if ($request->has('table_ids')) {
             $profile->tables()->attach($request->table_ids);
         }
@@ -56,17 +49,11 @@ class ProfileController extends Controller
         return response()->json($profile->load('tables'), 201);
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(Profile $profile)
     {
         return response()->json($profile->load('tables'));
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, Profile $profile)
     {
         $request->validate([
@@ -78,7 +65,6 @@ class ProfileController extends Controller
 
         $profile->update($request->only(['user_id', 'name']));
 
-        // Actualizar las mesas vinculadas
         if ($request->has('table_ids')) {
             $profile->tables()->sync($request->table_ids);
         }
@@ -86,9 +72,6 @@ class ProfileController extends Controller
         return response()->json($profile->load('tables'));
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(Profile $profile)
     {
         $profile->tables()->detach();
@@ -96,21 +79,16 @@ class ProfileController extends Controller
         return response()->json(null, 204);
     }
 
-    /**
-     * Update the user's profile.
-     */
     public function updateProfile(Request $request)
     {
         $user = Auth::user();
         $profile = $user->profile()->firstOrCreate([]);
 
         $validator = Validator::make($request->all(), [
-            // User fields
             'name' => 'sometimes|string|max:255',
             'email' => ['sometimes', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
             'password' => 'sometimes|string|min:8|confirmed',
             
-            // Profile fields
             'phone' => 'sometimes|string|max:20',
             'address' => 'sometimes|string|max:255',
             'bio' => 'sometimes|string',
@@ -128,14 +106,12 @@ class ProfileController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        // Update User model
         $user->fill($request->only(['name', 'email']));
         if ($request->has('password')) {
             $user->password = Hash::make($request->password);
         }
         $user->save();
 
-        // Update Profile model
         $profile->fill($request->except(['name', 'email', 'password']));
         $profile->save();
 
@@ -145,9 +121,6 @@ class ProfileController extends Controller
         ]);
     }
     
-    /**
-     * Send a WhatsApp message to staff
-     */
     public function sendWhatsAppMessage(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -161,20 +134,15 @@ class ProfileController extends Controller
         
         $user = Auth::user();
         
-        // Sanitizar el número de teléfono (eliminar espacios, paréntesis, etc.)
         $phone = preg_replace('/[^0-9]/', '', $request->phone);
         
-        // Asegurarse de que el número tenga el formato correcto para WhatsApp
         if (!preg_match('/^\d{10,15}$/', $phone)) {
             return response()->json([
                 'message' => 'El número de teléfono no tiene un formato válido para WhatsApp'
             ], 422);
         }
         
-        // En un entorno real, aquí se integraría con la API de WhatsApp Business
-        // Para este ejemplo, simulamos el envío
         
-        // Registro de la actividad
         \Log::info("Usuario {$user->id} ({$user->name}) envió un mensaje WhatsApp a {$phone}");
         
         return response()->json([
@@ -184,18 +152,12 @@ class ProfileController extends Controller
         ]);
     }
 
-    /**
-     * Get the user's work history.
-     */
     public function getWorkHistory()
     {
         $workHistory = Auth::user()->workExperiences;
         return response()->json($workHistory);
     }
 
-    /**
-     * Add a work experience entry.
-     */
     public function addWorkHistory(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -215,12 +177,8 @@ class ProfileController extends Controller
         return response()->json($workExperience, 201);
     }
 
-    /**
-     * Update a work experience entry.
-     */
     public function updateWorkHistory(Request $request, WorkExperience $workExperience)
     {
-        // Ensure the user owns the work experience
         if ($workExperience->user_id !== Auth::id()) {
             return response()->json(['error' => 'No autorizado'], 403);
         }
@@ -242,12 +200,8 @@ class ProfileController extends Controller
         return response()->json($workExperience);
     }
 
-    /**
-     * Delete a work experience entry.
-     */
     public function deleteWorkHistory(WorkExperience $workExperience)
     {
-        // Ensure the user owns the work experience
         if ($workExperience->user_id !== Auth::id()) {
             return response()->json(['error' => 'No autorizado'], 403);
         }
@@ -257,9 +211,6 @@ class ProfileController extends Controller
         return response()->json(null, 204);
     }
 
-    /**
-     * Store or update a device FCM token for the authenticated user.
-     */
     public function storeDeviceToken(Request $request)
     {
         $request->validate([
@@ -275,9 +226,6 @@ class ProfileController extends Controller
         return response()->json(['message' => 'Token guardado'], 201);
     }
 
-    /**
-     * Delete a device token for the authenticated user.
-     */
     public function deleteDeviceToken(Request $request)
     {
         $request->validate([

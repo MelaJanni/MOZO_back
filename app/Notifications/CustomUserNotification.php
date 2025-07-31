@@ -18,13 +18,6 @@ class CustomUserNotification extends Notification implements ShouldQueue
     protected $body;
     protected $data;
 
-    /**
-     * Create a new notification instance.
-     *
-     * @param string $title
-     * @param string $body
-     * @param array  $data
-     */
     public function __construct(string $title, string $body, array $data = [])
     {
         $this->title = $title;
@@ -32,23 +25,11 @@ class CustomUserNotification extends Notification implements ShouldQueue
         $this->data = $data;
     }
 
-    /**
-     * Get the notification's delivery channels.
-     *
-     * @param  mixed  $notifiable
-     * @return array
-     */
     public function via($notifiable)
     {
         return ['database', 'broadcast', FcmChannel::class];
     }
 
-    /**
-     * Get the array representation of the notification.
-     *
-     * @param  mixed  $notifiable
-     * @return array
-     */
     public function toDatabase($notifiable)
     {
         return [
@@ -59,12 +40,6 @@ class CustomUserNotification extends Notification implements ShouldQueue
         ];
     }
 
-    /**
-     * Get the broadcastable representation of the notification.
-     *
-     * @param  mixed  $notifiable
-     * @return BroadcastMessage
-     */
     public function toBroadcast($notifiable)
     {
         return new BroadcastMessage([
@@ -75,12 +50,6 @@ class CustomUserNotification extends Notification implements ShouldQueue
         ]);
     }
 
-    /**
-     * Get the FCM representation of the notification.
-     *
-     * @param  mixed  $notifiable
-     * @return \NotificationChannels\Fcm\FcmMessage
-     */
     public function toFcm($notifiable)
     {
         return FcmMessage::create()

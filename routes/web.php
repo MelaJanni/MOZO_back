@@ -2,30 +2,15 @@
 
 use Illuminate\Support\Facades\Route;
 
-/*
-|--------------------------------------------------------------------------
-| Web Routes
-|--------------------------------------------------------------------------
-|
-| Here is where you can register web routes for your application. These
-| routes are loaded by the RouteServiceProvider and all of them will
-| be assigned to the "web" middleware group. Make something great!
-|
-*/
 
 Route::get('/', function () {
     return view('welcome');
 });
 
-// Ruta para la página de reseteo de contraseña
 Route::get('/password/reset/{token}', function ($token) {
-    // Obtener el email del query string
     $email = request()->query('email');
     
-    // Esquema para deep link de la aplicación móvil
     $appScheme = env('MOBILE_APP_SCHEME', 'mozo');
-    
-    // Construir el deep link
     $deepLink = $appScheme . '://reset-password?token=' . $token . '&email=' . urlencode($email);
     
     // HTML de la página que muestra instrucciones y/o intenta abrir la app
@@ -89,11 +74,9 @@ Route::get('/password/reset/{token}', function ($token) {
             <p class="help">Si el botón no funciona, asegúrate de tener la aplicación MOZO instalada en tu dispositivo.</p>
         </div>
         <script>
-            // Intentar abrir la app automáticamente
             window.location.href = "' . $deepLink . '";
         </script>
     </body>
     </html>';
 })->name('password.reset');
 
-// Force re-save to remove BOM

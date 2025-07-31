@@ -52,9 +52,6 @@ class Staff extends Model
         return $this->avatar_path ? Storage::disk('public')->url($this->avatar_path) : null;
     }
 
-    /**
-     * Devuelve la fecha de nacimiento formateada dd-mm-YYYY.
-     */
     public function getBirthdateFormattedAttribute()
     {
         return $this->birth_date ? $this->birth_date->format('d-m-Y') : null;

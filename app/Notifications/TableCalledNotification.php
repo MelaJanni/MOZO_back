@@ -49,9 +49,6 @@ class TableCalledNotification extends Notification implements ShouldQueue
         ]);
     }
 
-    /**
-     * Get the FCM representation of the notification.
-     */
     public function toFcm($notifiable)
     {
         return FcmMessage::create()

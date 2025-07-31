@@ -16,7 +16,6 @@ class WaiterController extends Controller
 {
     public function onboardBusiness(Request $request)
     {
-        // El usuario puede enviar business_id o join_code / code
         $request->validate([
             'business_id' => 'sometimes|exists:businesses,id',
             'join_code' => 'sometimes|string|exists:businesses,join_code',
@@ -25,14 +24,12 @@ class WaiterController extends Controller
 
         $user = $request->user();
 
-        // Verificar que el usuario es un camarero
         if (!$user->isWaiter()) {
             return response()->json([
                 'message' => 'Solo los usuarios con rol de camarero pueden unirse a un negocio',
             ], 403);
         }
 
-        // Determinar el negocio
         if ($request->filled('business_id')) {
             $business = Business::findOrFail($request->business_id);
         } else {
@@ -45,7 +42,6 @@ class WaiterController extends Controller
             }
         }
 
-        // Actualizar el negocio del usuario
         $user->active_business_id = $business->id;
         $user->save();
 
@@ -81,7 +77,6 @@ class WaiterController extends Controller
             ->where('business_id', $user->business_id)
             ->firstOrFail();
             
-        // Cambiar el estado de las notificaciones
         $table->notifications_enabled = !$table->notifications_enabled;
         $table->save();
         
@@ -104,7 +99,6 @@ class WaiterController extends Controller
         
         $user = Auth::user();
         
-        // Actualizar notificaciones para todas las mesas del negocio
         Table::where('business_id', $user->business_id)
             ->update(['notifications_enabled' => $request->enabled]);
             
@@ -142,13 +136,9 @@ class WaiterController extends Controller
             ], 404);
         }
 
-        // Marcar como leída
         $notification->markAsRead();
 
-        // Procesar acción
         if ($request->action === 'spam') {
-            // Implementar lógica para reportar spam
-            // Por ejemplo, incrementar contador en la base de datos
         }
 
         return response()->json([
@@ -179,15 +169,12 @@ class WaiterController extends Controller
         
         $user = $request->user();
         
-        // Crear perfil
         $profile = Profile::create([
             'user_id' => $user->id,
             'name' => $request->name,
         ]);
         
-        // Asociar mesas si se proporcionaron
         if ($request->has('tables')) {
-            // Verificar que las mesas pertenecen al negocio del usuario
             $businessTables = Table::where('business_id', $user->business_id)
                 ->whereIn('id', $request->tables)
                 ->pluck('id');
@@ -209,10 +196,8 @@ class WaiterController extends Controller
             ->where('user_id', $user->id)
             ->firstOrFail();
         
-        // Eliminar las asociaciones con mesas
         $profile->tables()->detach();
         
-        // Eliminar el perfil
         $profile->delete();
         
         return response()->json([
@@ -220,26 +205,20 @@ class WaiterController extends Controller
         ]);
     }
     
-    /**
-     * Get tables assigned to waiter
-     */
     public function fetchWaiterTables()
     {
         $user = Auth::user();
         
-        // Obtener todas las mesas del negocio
         $tables = Table::where('business_id', $user->business_id)
             ->orderBy('number', 'asc')
             ->get();
             
-        // Obtener las mesas asignadas a los perfiles del mozo
         $profileTables = DB::table('profile_table')
             ->join('profiles', 'profiles.id', '=', 'profile_table.profile_id')
             ->where('profiles.user_id', $user->id)
             ->pluck('table_id')
             ->toArray();
             
-        // Marcar las mesas asignadas
         $tables->transform(function ($table) use ($profileTables) {
             $table->is_assigned = in_array($table->id, $profileTables);
             return $table;
@@ -251,17 +230,12 @@ class WaiterController extends Controller
         ]);
     }
     
-    /**
-     * Get notifications for waiter
-     */
     public function fetchWaiterNotifications()
     {
         $user = Auth::user();
         
-        // Obtener notificaciones no leídas
         $unreadNotifications = $user->unreadNotifications;
         
-        // Obtener notificaciones leídas (limitadas a las últimas 50)
         $readNotifications = $user->readNotifications()
             ->orderBy('created_at', 'desc')
             ->limit(50)
@@ -274,9 +248,6 @@ class WaiterController extends Controller
         ]);
     }
     
-    /**
-     * Handle notification actions
-     */
     public function handleNotification(Request $request, $notificationId)
     {
         $validator = Validator::make($request->all(), [
@@ -289,7 +260,6 @@ class WaiterController extends Controller
         
         $user = Auth::user();
         
-        // Buscar la notificación específica del usuario
         $notification = $user->notifications()->where('id', $notificationId)->first();
         
         if (!$notification) {

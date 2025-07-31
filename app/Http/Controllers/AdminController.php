@@ -43,8 +43,6 @@ class AdminController extends Controller
 
         $user = $request->user();
         
-        // No hay validación de permisos - cualquier usuario puede cambiar de vista
-        
         return response()->json([
             'message' => 'Vista cambiada exitosamente',
             'view' => $request->view,
@@ -77,7 +75,6 @@ class AdminController extends Controller
         
         $path = $request->file('file')->store('menus/' . $user->business_id, 'public');
         
-        // Si se establece como predeterminado, desmarcar los demás
         if ($request->is_default) {
             Menu::where('business_id', $user->business_id)
                 ->update(['is_default' => false]);
@@ -104,16 +101,13 @@ class AdminController extends Controller
         
         $user = $request->user();
         
-        // Verificar que el menú pertenece al negocio
         $menu = Menu::where('id', $request->menu_id)
             ->where('business_id', $user->business_id)
             ->firstOrFail();
         
-        // Desmarcar todos los menús como predeterminados
         Menu::where('business_id', $user->business_id)
             ->update(['is_default' => false]);
         
-        // Marcar el seleccionado como predeterminado
         $menu->is_default = true;
         $menu->save();
         
@@ -131,12 +125,10 @@ class AdminController extends Controller
         
         $user = $request->user();
         
-        // Verificar que la mesa pertenece al negocio
         $table = Table::where('id', $request->table_id)
             ->where('business_id', $user->business_id)
             ->firstOrFail();
         
-        // Generar QR único
         $qrCode = QrCode::create([
             'business_id' => $user->business_id,
             'table_id' => $table->id,
@@ -159,7 +151,6 @@ class AdminController extends Controller
         
         $user = $request->user();
         
-        // Verificar que los códigos QR pertenecen al negocio
         $qrCodes = QrCode::whereIn('id', $request->qr_ids)
             ->where('business_id', $user->business_id)
             ->with('table')
@@ -171,7 +162,6 @@ class AdminController extends Controller
             ], 403);
         }
         
-        // Simulación de exportación (en producción, generar archivos reales)
         return response()->json([
             'message' => 'Códigos QR exportados exitosamente',
             'format' => $request->format,
@@ -180,11 +170,7 @@ class AdminController extends Controller
         ]);
     }
 
-    // ---- Staff Management APIs ----
     
-    /**
-     * Remove a staff member from the database
-     */
     public function removeStaff($staffId)
     {
         $user = Auth::user();
@@ -193,7 +179,6 @@ class AdminController extends Controller
             ->where('business_id', $user->business_id)
             ->firstOrFail();
         
-        // Eliminamos el staff
         $staff->delete();
         
         return response()->json([
@@ -202,9 +187,6 @@ class AdminController extends Controller
         ]);
     }
     
-    /**
-     * Handle staff request (confirm/reject/archive)
-     */
     public function handleStaffRequest(Request $request, $requestId)
     {
         $validator = Validator::make($request->all(), [
@@ -225,12 +207,11 @@ class AdminController extends Controller
                 $staff->status = 'confirmed';
                 $staff->save();
                 
-                // Opcionalmente, crear un usuario para el staff si es necesario
                 if ($request->has('create_user') && $request->create_user) {
                     User::create([
                         'name' => $staff->name,
                         'email' => $staff->email,
-                        'password' => Hash::make('temporal123'), // Contraseña temporal
+                        'password' => Hash::make('temporal123'),
                         'role' => 'waiter',
                         'business_id' => $user->business_id,
                     ]);
@@ -251,7 +232,6 @@ class AdminController extends Controller
                 ]);
                 
             case 'archive':
-                // Mover a tabla de archivados
                 ArchivedStaff::create([
                     'business_id' => $staff->business_id,
                     'name' => $staff->name,
@@ -277,7 +257,6 @@ class AdminController extends Controller
                     'avatar_path' => $staff->avatar_path,
                 ]);
                 
-                // Eliminar el registro original
                 $staff->delete();
                 
                 return response()->json([
@@ -285,7 +264,6 @@ class AdminController extends Controller
                 ]);
 
             case 'archived':
-                // Alias: procesar igual que archive
                 ArchivedStaff::create([
                     'business_id' => $staff->business_id,
                     'name' => $staff->name,
@@ -311,7 +289,6 @@ class AdminController extends Controller
                     'avatar_path' => $staff->avatar_path,
                 ]);
 
-                // Eliminar registro original
                 $staff->delete();
 
                 return response()->json([
@@ -320,9 +297,6 @@ class AdminController extends Controller
         }
     }
     
-    /**
-     * Fetch pending staff requests
-     */
     public function fetchStaffRequests()
     {
         $user = Auth::user();
@@ -338,9 +312,6 @@ class AdminController extends Controller
         ]);
     }
     
-    /**
-     * Fetch archived staff requests
-     */
     public function fetchArchivedRequests()
     {
         $user = Auth::user();
@@ -355,11 +326,7 @@ class AdminController extends Controller
         ]);
     }
 
-    // ---- Nuevas APIs de gestión de personal ----
 
-    /**
-     * Obtener la lista completa de personal del negocio
-     */
     public function getStaff(Request $request)
     {
         $user = $request->user();
@@ -375,9 +342,6 @@ class AdminController extends Controller
         ]);
     }
 
-    /**
-     * Obtener un miembro del personal concreto
-     */
     public function getStaffMember(Request $request, $id)
     {
         $user = $request->user();
@@ -390,9 +354,6 @@ class AdminController extends Controller
         return response()->json(['staff' => $staff]);
     }
 
-    /**
-     * Actualizar la información de un miembro del personal
-     */
     public function updateStaffMember(Request $request, $id)
     {
         $request->validate([
@@ -422,9 +383,7 @@ class AdminController extends Controller
             ->where('business_id', $user->business_id)
             ->firstOrFail();
 
-        // Solo actualizamos los campos presentes en la petición
         $input = $request->only($staff->getFillable());
-        // Convertir cadenas vacías a null
         foreach ($input as $key => $value) {
             if ($value === '') {
                 $input[$key] = null;
@@ -432,13 +391,10 @@ class AdminController extends Controller
         }
 
         $staff->fill($input);
-        // Procesar avatar (file o base64)
         if ($request->has('avatar')) {
             if ($request->file('avatar')) {
-                // Archivo subido normalmente
                 $path = $request->file('avatar')->store('avatars/' . $user->business_id, 'public');
             } elseif (Str::startsWith($request->avatar, 'data:image')) {
-                // Cadena base64
                 $path = $this->storeBase64Image($request->avatar, $user->business_id);
             } else {
                 return response()->json(['message' => 'Formato de avatar no soportado'], 422);
@@ -453,9 +409,6 @@ class AdminController extends Controller
         ]);
     }
 
-    /**
-     * Invitar nuevo personal al negocio
-     */
     public function inviteStaff(Request $request)
     {
         $request->validate([
@@ -508,8 +461,6 @@ class AdminController extends Controller
             'avatar_path' => $avatarPath,
         ]);
 
-        // Aquí se podría enviar un correo electrónico real de invitación
-        // Mail::to($staff->email)->send(new StaffInvitationMail($staff));
 
         return response()->json([
             'message' => 'Invitación enviada exitosamente',
@@ -517,9 +468,6 @@ class AdminController extends Controller
         ], 201);
     }
 
-    /**
-     * Añadir una reseña para un miembro del personal
-     */
     public function addReview(Request $request, $staffId)
     {
         $request->validate([
@@ -529,7 +477,6 @@ class AdminController extends Controller
 
         $user = $request->user();
 
-        // Verificar pertenencia del staff
         $staff = Staff::where('id', $staffId)
             ->where('business_id', $user->business_id)
             ->firstOrFail();
@@ -547,14 +494,10 @@ class AdminController extends Controller
         ], 201);
     }
 
-    /**
-     * Eliminar una reseña de un miembro del personal
-     */
     public function deleteReview(Request $request, $staffId, $id)
     {
         $user = $request->user();
 
-        // Verificar que el staff pertenece al negocio
         $staff = Staff::where('id', $staffId)
             ->where('business_id', $user->business_id)
             ->firstOrFail();
@@ -607,7 +550,6 @@ class AdminController extends Controller
         
         $business = Business::findOrFail($user->business_id);
         
-        // Actualizar campos si están presentes
         if ($request->has('name')) {
             $business->name = $request->name;
         }
@@ -647,7 +589,6 @@ class AdminController extends Controller
 
     private function storeBase64Image(string $base64Image, int $businessId): string
     {
-        // data:image/png;base64,AAA...
         if (!preg_match('/data:image\/(\w+);base64,/', $base64Image, $matches)) {
             throw new \Exception('Formato base64 no válido');
         }
@@ -660,9 +601,6 @@ class AdminController extends Controller
         return $path;
     }
 
-    /**
-     * Devuelve estadísticas básicas para el dashboard de administrador.
-     */
     public function getStatistics(Request $request)
     {
         $user = $request->user();
@@ -687,16 +625,11 @@ class AdminController extends Controller
         ]);
     }
 
-    /**
-     * Envía una notificación de prueba a todos los mozos activos del negocio
-     */
     public function sendTestNotification(Request $request)
     {
         $user = $request->user();
         
-        // No hay validación de permisos - cualquier usuario puede enviar notificaciones de prueba
 
-        // Obtener todos los mozos activos del negocio
         $waiters = User::where('active_business_id', $user->active_business_id)
             ->where('role', 'waiter')
             ->get();
@@ -707,7 +640,6 @@ class AdminController extends Controller
             ], 404);
         }
 
-        // Obtener una mesa del negocio para la notificación de prueba
         $table = Table::where('business_id', $user->active_business_id)->first();
         
         if (!$table) {
@@ -718,13 +650,11 @@ class AdminController extends Controller
 
         $notificationCount = 0;
 
-        // Enviar notificación de prueba a cada mozo
         foreach ($waiters as $waiter) {
             try {
                 $waiter->notify(new \App\Notifications\TableCalledNotification($table));
                 $notificationCount++;
             } catch (\Exception $e) {
-                // Continuar con el siguiente mozo si hay error
                 continue;
             }
         }
@@ -740,12 +670,6 @@ class AdminController extends Controller
         ]);
     }
 
-    /**
-     * Envía una notificación personalizada a un usuario específico.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\JsonResponse
-     */
     public function sendCustomNotificationToUser(Request $request)
     {
         $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [

@@ -16,9 +16,6 @@ use Hashids\Hashids;
 
 class QrCodeController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index(Request $request)
     {
         $tableId = $request->query('table_id');
@@ -32,16 +29,12 @@ class QrCodeController extends Controller
         return response()->json($qrCodes);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
         $request->validate([
             'table_id' => 'required|exists:tables,id',
         ]);
 
-        // Generar un código único para el QR
         $codeData = $this->generateUniqueCode();
 
         $qrCode = QrCode::create([
@@ -52,17 +45,11 @@ class QrCodeController extends Controller
         return response()->json($qrCode, 201);
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(QrCode $qrCode)
     {
         return response()->json($qrCode);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, QrCode $qrCode)
     {
         $request->validate([
@@ -82,18 +69,12 @@ class QrCodeController extends Controller
         return response()->json($qrCode);
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(QrCode $qrCode)
     {
         $qrCode->delete();
         return response()->json(null, 204);
     }
 
-    /**
-     * Generar un código único para el QR
-     */
     private function generateUniqueCode()
     {
         $unique = false;
@@ -108,31 +89,19 @@ class QrCodeController extends Controller
         return $codeData;
     }
 
-    /**
-     * Genera y guarda un código QR para una mesa específica.
-     * Este método estático puede ser reutilizado por otros controladores.
-     *
-     * @param Table $table La instancia de la mesa.
-     * @return QrCode La instancia del código QR recién creado.
-     */
     public static function generateForTable(Table $table): QrCode
     {
         $business = $table->business;
 
-        // Instancia de Hashids usando APP_KEY como salt y longitud mínima 6
         $hashids = new Hashids(config('app.key'), 6);
         $hash    = $hashids->encode($table->id);
 
-        // Slug del negocio
         $slug = $business->slug;
 
-        // Base configurable del frontend
         $baseUrl = config('app.frontend_url', 'https://mozo.com.ar');
 
-        // URL final para el QR
         $qrUrl = rtrim($baseUrl, '/') . "/QR/{$slug}/{$hash}";
 
-        // Guardar/actualizar registro QR
         return QrCode::updateOrCreate(
             ['table_id' => $table->id],
             [
@@ -143,9 +112,6 @@ class QrCodeController extends Controller
         );
     }
 
-    /**
-     * Generate QR code for a table (Endpoint-specific method)
-     */
     public function generateQRCode($tableId)
     {
         $user = Auth::user();
@@ -162,9 +128,6 @@ class QrCodeController extends Controller
         ]);
     }
 
-    /**
-     * Devuelve la imagen del QR de una mesa para previsualización.
-     */
     public function preview($tableId)
     {
         $user = Auth::user();
@@ -172,13 +135,12 @@ class QrCodeController extends Controller
             ->where('business_id', $user->business_id)
             ->firstOrFail();
 
-        $qrCode = $table->qrCode; // Usa la relación que definimos
+        $qrCode = $table->qrCode;
 
         if (!$qrCode) {
             return response()->json(['message' => 'Esta mesa aún no tiene un QR generado.'], 404);
         }
 
-        // Generamos el QR en formato SVG, que es ligero y escalable
         $svg = QrCodeGenerator::format('svg')
             ->size(300)
             ->errorCorrection('H')
@@ -187,9 +149,6 @@ class QrCodeController extends Controller
         return response($svg)->header('Content-Type', 'image/svg+xml');
     }
     
-    /**
-     * Exporta uno o más códigos QR en el formato solicitado.
-     */
     public function exportQR(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -205,20 +164,18 @@ class QrCodeController extends Controller
         $user = Auth::user();
         $qrCodes = \App\Models\QrCode::whereIn('id', $request->qr_ids)
             ->where('business_id', $user->business_id)
-            ->with('table') // Cargar la info de la mesa para el nombre del archivo
+            ->with('table')
             ->get();
             
         if ($qrCodes->isEmpty() || $qrCodes->count() !== count($request->qr_ids)) {
             return response()->json(['message' => 'Uno o más códigos QR no se encontraron o no pertenecen a tu negocio.'], 403);
         }
         
-        // Caso 1: Un solo QR en formato PNG, SVG o PDF
         if ($qrCodes->count() === 1 && in_array($request->format, ['png', 'svg', 'pdf'])) {
             $qr = $qrCodes->first();
             $fileName = 'mesa-' . ($qr->table->number ?? 'desconocida') . '-qr.' . $request->format;
 
             if ($request->format === 'pdf') {
-                // Generamos el PNG internamente y lo incrustamos en un PDF
                 $pngContent = QrCodeGenerator::format('png')
                     ->size(512)
                     ->margin(2)
@@ -235,7 +192,6 @@ class QrCodeController extends Controller
                     ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
             }
 
-            // Para PNG o SVG seguimos como antes
             $fileContent = QrCodeGenerator::format($request->format)
                 ->size(512)
                 ->margin(2)
@@ -249,7 +205,6 @@ class QrCodeController extends Controller
                 ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
         }
 
-        // Caso 2: Múltiples QR en PDF
         if ($qrCodes->count() > 1 && $request->format === 'pdf') {
             $html = '<html><body style="text-align:center;">';
 
@@ -273,12 +228,10 @@ class QrCodeController extends Controller
                 ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
         }
 
-        // Caso 3: Múltiples QR o formato ZIP -> Crear un archivo ZIP
         $zip = new ZipArchive();
         $zipFileName = 'qrcodes-' . uniqid() . '.zip';
         $zipPath = storage_path('app/temp/' . $zipFileName);
 
-        // Asegurarse de que el directorio temporal exista
         if (!Storage::exists('temp')) {
             Storage::makeDirectory('temp');
         }
@@ -297,9 +250,6 @@ class QrCodeController extends Controller
         return response()->download($zipPath, $zipFileName)->deleteFileAfterSend(true);
     }
 
-    /**
-     * Envía uno o más códigos QR por correo electrónico.
-     */
     public function emailQR(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -326,10 +276,8 @@ class QrCodeController extends Controller
             return response()->json(['message' => 'No se encontraron los códigos QR solicitados o no pertenecen a tu negocio.'], 403);
         }
 
-        // Generar el/los archivos que se adjuntarán
         $attachments = [];
 
-        // Reutilizamos la lógica de exportación: si es un único QR simplemente generamos adjunto único.
         if ($qrCodes->count() === 1) {
             $qr = $qrCodes->first();
             $fileName = 'mesa-' . ($qr->table->number ?? 'desconocida') . '-qr.' . $request->format;
@@ -351,7 +299,6 @@ class QrCodeController extends Controller
                 'mime' => $mime,
             ];
         } else {
-            // Múltiples QR -> Generamos un PDF multi-página o un ZIP, dependiendo del formato
             if ($request->format === 'pdf') {
                 $html = '<html><body style="text-align:center;">';
                 foreach ($qrCodes as $qr) {
@@ -372,7 +319,6 @@ class QrCodeController extends Controller
                     'mime' => 'application/pdf',
                 ];
             } else {
-                // Formato PNG con varios -> ZIP
                 $zip = new ZipArchive();
                 $zipFileName = 'qrcodes-' . uniqid() . '.zip';
                 $zipPath = storage_path('app/temp/' . $zipFileName);
@@ -399,20 +345,16 @@ class QrCodeController extends Controller
                     'mime' => 'application/zip',
                 ];
 
-                // Limpiamos el archivo temporal
                 unlink($zipPath);
             }
         }
 
-        // Enviar correo
         $subject = $request->get('subject', 'Códigos QR');
         $body    = $request->get('body', 'Adjuntamos los códigos QR solicitados.');
 
-        // Preparar datos para la vista
         $businessName = $user->business->name ?? config('app.name', 'Mozo App');
         $introText    = $body;
 
-        // Generar un array con los códigos base64 para previsualizar dentro del correo
         $embeddedQrCodes = [];
         foreach ($qrCodes as $qr) {
             $pngContent = QrCodeGenerator::format('png')->size(220)->margin(1)->errorCorrection('H')->generate($qr->url);
