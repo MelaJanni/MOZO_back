@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\ApiDocumentationController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BusinessController;
 use App\Http\Controllers\MenuController;
@@ -17,6 +18,8 @@ Route::post('/login', [AuthController::class, 'login'])->name('login');
 Route::post('/login/google', [AuthController::class, 'loginWithGoogle']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+
+Route::get('/api-docs', [ApiDocumentationController::class, 'listAllApis']);
 
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -53,10 +56,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/qr/preview/{tableId}', [QrCodeController::class, 'preview']);
         Route::post('/qr/export', [QrCodeController::class, 'exportQR']);
         Route::post('/qr/email', [QrCodeController::class, 'emailQR']);
-
-        Route::get('/notifications', [WaiterController::class, 'listNotifications']);
-        Route::post('/notifications/test', [AdminController::class, 'sendTestNotification']);
-        Route::post('/notifications/send-to-user', [AdminController::class, 'sendCustomNotificationToUser']);
+        
+        Route::post('/send-test-notification', [AdminController::class, 'sendTestNotification']);
+        Route::post('/send-notification-to-user', [AdminController::class, 'sendNotificationToUser']);
 
         Route::get('/staff', [AdminController::class, 'getStaff']);
         Route::get('/staff/{id}', [AdminController::class, 'getStaffMember']);
@@ -113,19 +115,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/admin/statistics', [AdminController::class, 'getStatistics']);
 });
 
-    
 Route::post('/tables/{table}/call-waiter', function (App\Models\Table $table) {
     if (!$table->notifications_enabled) {
         return response()->json(['message' => 'Las notificaciones están desactivadas para esta mesa'], 400);
     }
 
-    $waiters = App\Models\User::where('business_id', $table->business_id)
-        ->where('role', 'waiter')
-        ->get();
-
-    foreach ($waiters as $waiter) {
-        $waiter->notify(new App\Notifications\TableCalledNotification($table));
-    }
-
-    return response()->json(['message' => 'Llamada al camarero enviada exitosamente']);
+    return response()->json(['message' => 'Funcionalidad de llamada al camarero pendiente de implementación']);
 });
