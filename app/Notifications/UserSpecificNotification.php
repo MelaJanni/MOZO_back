@@ -10,7 +10,7 @@ use NotificationChannels\Fcm\FcmChannel;
 use NotificationChannels\Fcm\FcmMessage;
 use NotificationChannels\Fcm\Resources\Notification as FcmNotification;
 
-class CustomUserNotification extends Notification implements ShouldQueue
+class UserSpecificNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
@@ -33,20 +33,22 @@ class CustomUserNotification extends Notification implements ShouldQueue
     public function toDatabase($notifiable)
     {
         return [
-            'title'   => $this->title,
-            'body'    => $this->body,
-            'data'    => $this->data,
-            'type'    => 'custom_user_notification',
+            'title' => $this->title,
+            'body' => $this->body,
+            'data' => $this->data,
+            'type' => 'user_specific_notification',
+            'sent_at' => now(),
         ];
     }
 
     public function toBroadcast($notifiable)
     {
         return new BroadcastMessage([
-            'title'   => $this->title,
-            'body'    => $this->body,
-            'data'    => $this->data,
-            'type'    => 'custom_user_notification',
+            'title' => $this->title,
+            'body' => $this->body,
+            'data' => $this->data,
+            'type' => 'user_specific_notification',
+            'sent_at' => now(),
         ]);
     }
 
@@ -59,7 +61,8 @@ class CustomUserNotification extends Notification implements ShouldQueue
                     ->setBody($this->body)
             )
             ->setData(array_merge($this->data, [
-                'type' => 'custom_user_notification',
+                'type' => 'user_specific_notification',
+                'sent_at' => now()->toISOString(),
             ]));
     }
-} 
+}

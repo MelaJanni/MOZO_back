@@ -627,32 +627,29 @@ class AdminController extends Controller
 
     public function sendTestNotification(Request $request)
     {
+        $request->validate([
+            'title' => 'sometimes|string|max:255',
+            'body' => 'sometimes|string|max:500',
+        ]);
+
         $user = $request->user();
         
+        $users = User::where('business_id', $user->business_id)->get();
 
-        $waiters = User::where('active_business_id', $user->active_business_id)
-            ->where('role', 'waiter')
-            ->get();
-
-        if ($waiters->isEmpty()) {
+        if ($users->isEmpty()) {
             return response()->json([
-                'message' => 'No hay mozos activos en este negocio para enviar la notificación de prueba'
+                'message' => 'No hay usuarios en este negocio para enviar la notificación de prueba'
             ], 404);
         }
 
-        $table = Table::where('business_id', $user->active_business_id)->first();
-        
-        if (!$table) {
-            return response()->json([
-                'message' => 'No hay mesas configuradas en este negocio'
-            ], 404);
-        }
+        $title = $request->title ?? 'Notificación de Prueba';
+        $body = $request->body ?? 'Esta es una notificación de prueba del sistema';
 
         $notificationCount = 0;
 
-        foreach ($waiters as $waiter) {
+        foreach ($users as $targetUser) {
             try {
-                $waiter->notify(new \App\Notifications\TableCalledNotification($table));
+                $targetUser->notify(new \App\Notifications\TestNotification($title, $body));
                 $notificationCount++;
             } catch (\Exception $e) {
                 continue;
@@ -660,37 +657,34 @@ class AdminController extends Controller
         }
 
         return response()->json([
-            'message' => "Notificación de prueba enviada exitosamente a {$notificationCount} mozos",
-            'waiters_notified' => $notificationCount,
-            'total_waiters' => $waiters->count(),
-            'test_table' => [
-                'id' => $table->id,
-                'number' => $table->number
-            ]
+            'message' => "Notificación de prueba enviada exitosamente a {$notificationCount} usuarios",
+            'users_notified' => $notificationCount,
+            'total_users' => $users->count(),
         ]);
     }
 
-    public function sendCustomNotificationToUser(Request $request)
+    public function sendNotificationToUser(Request $request)
     {
-        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
+        $request->validate([
             'user_id' => 'required|exists:users,id',
             'title' => 'required|string|max:255',
-            'body' => 'required|string|max:1000',
+            'body' => 'required|string|max:500',
             'data' => 'sometimes|array',
         ]);
 
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
-        $targetUser = \App\Models\User::find($request->user_id);
+        $currentUser = $request->user();
+        $targetUser = User::find($request->user_id);
 
         if (!$targetUser) {
             return response()->json(['message' => 'Usuario no encontrado'], 404);
         }
 
+        if ($targetUser->business_id !== $currentUser->business_id) {
+            return response()->json(['message' => 'No tienes permisos para enviar notificaciones a este usuario'], 403);
+        }
+
         try {
-            $targetUser->notify(new \App\Notifications\CustomUserNotification(
+            $targetUser->notify(new \App\Notifications\UserSpecificNotification(
                 $request->title,
                 $request->body,
                 $request->data ?? []
@@ -704,6 +698,12 @@ class AdminController extends Controller
 
         return response()->json([
             'message' => 'Notificación enviada exitosamente al usuario ' . $targetUser->name,
+            'sent_to' => [
+                'id' => $targetUser->id,
+                'name' => $targetUser->name,
+                'email' => $targetUser->email,
+            ]
         ]);
     }
+
 } 
