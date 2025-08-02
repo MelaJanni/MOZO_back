@@ -18,10 +18,10 @@ return [
         'secret' => env('AWS_SECRET_ACCESS_KEY'),
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
-    'fcm' => [
-        'driver'    => 'fcm',
-        'log_enabled' => false,
-        'json_credentials' => storage_path('app/firebase/fcm-service-account.json'),
+    'firebase' => [
+        'project_id' => env('FIREBASE_PROJECT_ID', 'mozoqr-7d32c'),
+        'server_key' => env('FIREBASE_SERVER_KEY'),
+        'service_account_path' => storage_path('app/firebase/mozoqr-7d32c-firebase-adminsdk-fbsvc-0a90bdb0a0.json'),
     ],
 
 ];

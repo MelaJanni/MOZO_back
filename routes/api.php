@@ -5,6 +5,7 @@ use App\Http\Controllers\ApiDocumentationController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BusinessController;
 use App\Http\Controllers\MenuController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\QrCodeController;
 use App\Http\Controllers\RoleController;
@@ -37,8 +38,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/work-history/{workExperience}', [ProfileController::class, 'deleteWorkHistory']);
     });
 
-    Route::post('/device-token', [ProfileController::class, 'storeDeviceToken']);
+    Route::post('/device-token', [NotificationController::class, 'storeDeviceToken']);
     Route::delete('/device-token', [ProfileController::class, 'deleteDeviceToken']);
+    Route::get('/device-tokens/{userId}', [NotificationController::class, 'getUserDeviceTokens']);
 
     Route::prefix('admin')->group(function () {
         Route::delete('/staff/{staffId}', [AdminController::class, 'removeStaff']);
@@ -59,6 +61,13 @@ Route::middleware('auth:sanctum')->group(function () {
         
         Route::post('/send-test-notification', [AdminController::class, 'sendTestNotification']);
         Route::post('/send-notification-to-user', [AdminController::class, 'sendNotificationToUser']);
+        
+        // FCM Notifications
+        Route::post('/notifications/send-to-all', [NotificationController::class, 'sendToAllUsers']);
+        Route::post('/notifications/send-to-user', [NotificationController::class, 'sendToUser']);
+        Route::post('/notifications/send-to-device', [NotificationController::class, 'sendToDevice']);
+        Route::post('/notifications/send-to-topic', [NotificationController::class, 'sendToTopic']);
+        Route::post('/notifications/subscribe-to-topic', [NotificationController::class, 'subscribeToTopic']);
 
         Route::get('/staff', [AdminController::class, 'getStaff']);
         Route::get('/staff/{id}', [AdminController::class, 'getStaffMember']);
