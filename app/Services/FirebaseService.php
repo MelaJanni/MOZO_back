@@ -18,7 +18,13 @@ class FirebaseService
     {
         $this->client = new Client();
         $this->projectId = config('services.firebase.project_id');
-        $this->accessToken = $this->getAccessToken();
+        
+        try {
+            $this->accessToken = $this->getAccessToken();
+        } catch (\Exception $e) {
+            Log::error('Failed to initialize Firebase service: ' . $e->getMessage());
+            $this->accessToken = null;
+        }
     }
 
     /**
@@ -203,6 +209,11 @@ class FirebaseService
      */
     private function sendMessage($message, $isMulticast = false)
     {
+        if (!$this->accessToken && !$isMulticast) {
+            Log::error('Firebase access token not available, cannot send message');
+            throw new \Exception('Firebase service not properly initialized');
+        }
+        
         try {
             $url = $isMulticast 
                 ? "https://fcm.googleapis.com/fcm/send"
