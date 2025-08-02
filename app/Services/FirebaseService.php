@@ -26,10 +26,16 @@ class FirebaseService
      */
     private function getAccessToken()
     {
-        $serviceAccountPath = storage_path('app/firebase/mozoqr-7d32c-firebase-adminsdk-fbsvc-0a90bdb0a0.json');
+        $serviceAccountPath = config('services.firebase.service_account_path') 
+            ?: storage_path('app/firebase/mozoqr-7d32c-firebase-adminsdk-fbsvc-0a90bdb0a0.json');
         
         if (!file_exists($serviceAccountPath)) {
-            throw new \Exception('Firebase service account file not found');
+            Log::error('Firebase service account file not found', [
+                'path' => $serviceAccountPath,
+                'storage_path' => storage_path(),
+                'app_path' => app_path(),
+            ]);
+            throw new \Exception("Firebase service account file not found at: {$serviceAccountPath}");
         }
 
         $serviceAccount = json_decode(file_get_contents($serviceAccountPath), true);

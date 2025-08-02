@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(rm:*)",
-      "Bash(composer:*)"
+      "Bash(composer:*)",
+      "Bash(ls:*)",
+      "Bash(php:*)"
     ],
     "deny": []
   }
