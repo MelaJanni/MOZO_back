@@ -123,38 +123,24 @@ class FirebaseService
     }
 
     /**
-     * Send notification to multiple device tokens
+     * Send notification to multiple device tokens using HTTP v1 API
      */
     public function sendToMultipleDevices($tokens, $title, $body, $data = [])
     {
-        $message = [
-            'registration_ids' => $tokens,
-            'notification' => [
-                'title' => $title,
-                'body' => $body,
-            ],
-            'data' => $data,
-            'android' => [
-                'notification' => [
-                    'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
-                    'sound' => 'default',
-                ],
-            ],
-            'apns' => [
-                'payload' => [
-                    'aps' => [
-                        'alert' => [
-                            'title' => $title,
-                            'body' => $body,
-                        ],
-                        'sound' => 'default',
-                        'badge' => 1,
-                    ],
-                ],
-            ],
-        ];
-
-        return $this->sendMessage($message, true);
+        $results = [];
+        
+        // HTTP v1 API no soporta envío a múltiples tokens en una sola request
+        // Necesitamos enviar individualmente o usar sendToAllUsers con topic
+        foreach ($tokens as $token) {
+            try {
+                $result = $this->sendToDevice($token, $title, $body, $data);
+                $results[] = ['token' => $token, 'success' => true, 'result' => $result];
+            } catch (\Exception $e) {
+                $results[] = ['token' => $token, 'success' => false, 'error' => $e->getMessage()];
+            }
+        }
+        
+        return $results;
     }
 
     /**
@@ -206,28 +192,22 @@ class FirebaseService
     }
 
     /**
-     * Send message to FCM API
+     * Send message to FCM HTTP v1 API
      */
-    private function sendMessage($message, $isMulticast = false)
+    private function sendMessage($message)
     {
-        if (!$this->accessToken && !$isMulticast) {
+        if (!$this->accessToken) {
             Log::error('Firebase access token not available, cannot send message');
             throw new \Exception('Firebase service not properly initialized');
         }
         
         try {
-            $url = $isMulticast 
-                ? "https://fcm.googleapis.com/fcm/send"
-                : "https://fcm.googleapis.com/v1/projects/{$this->projectId}/messages:send";
+            $url = "https://fcm.googleapis.com/v1/projects/{$this->projectId}/messages:send";
 
             $headers = [
                 'Authorization' => 'Bearer ' . $this->accessToken,
                 'Content-Type' => 'application/json',
             ];
-
-            if ($isMulticast) {
-                $headers['Authorization'] = 'key=' . config('services.firebase.server_key');
-            }
 
             $response = $this->client->post($url, [
                 'headers' => $headers,
