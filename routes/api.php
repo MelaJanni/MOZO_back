@@ -63,6 +63,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/send-notification-to-user', [AdminController::class, 'sendNotificationToUser']);
         
         // FCM Notifications
+        Route::get('/notifications', [NotificationController::class, 'index']);
         Route::post('/notifications/send-to-all', [NotificationController::class, 'sendToAllUsers']);
         Route::post('/notifications/send-to-user', [NotificationController::class, 'sendToUser']);
         Route::post('/notifications/send-to-device', [NotificationController::class, 'sendToDevice']);

@@ -90,6 +90,12 @@ class FirebaseService
      */
     public function sendToDevice($token, $title, $body, $data = [])
     {
+        // FCM HTTP v1 API requiere que todos los valores en 'data' sean strings
+        $formattedData = [];
+        foreach ($data as $key => $value) {
+            $formattedData[$key] = is_array($value) || is_object($value) ? json_encode($value) : (string)$value;
+        }
+
         $message = [
             'message' => [
                 'token' => $token,
@@ -97,7 +103,7 @@ class FirebaseService
                     'title' => $title,
                     'body' => $body,
                 ],
-                'data' => $data,
+                'data' => $formattedData,
                 'android' => [
                     'notification' => [
                         'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
@@ -260,6 +266,12 @@ class FirebaseService
      */
     public function sendToTopic($topic, $title, $body, $data = [])
     {
+        // FCM HTTP v1 API requiere que todos los valores en 'data' sean strings
+        $formattedData = [];
+        foreach ($data as $key => $value) {
+            $formattedData[$key] = is_array($value) || is_object($value) ? json_encode($value) : (string)$value;
+        }
+
         $message = [
             'message' => [
                 'topic' => $topic,
@@ -267,7 +279,7 @@ class FirebaseService
                     'title' => $title,
                     'body' => $body,
                 ],
-                'data' => $data,
+                'data' => $formattedData,
                 'android' => [
                     'notification' => [
                         'click_action' => 'FLUTTER_NOTIFICATION_CLICK',

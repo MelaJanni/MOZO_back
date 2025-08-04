@@ -19,6 +19,36 @@ class NotificationController extends Controller
     }
 
     /**
+     * Get notifications overview
+     */
+    public function index(): JsonResponse
+    {
+        try {
+            $totalTokens = DeviceToken::count();
+            $totalUsers = DeviceToken::distinct('user_id')->count();
+            $tokensByPlatform = DeviceToken::select('platform')
+                ->selectRaw('COUNT(*) as count')
+                ->groupBy('platform')
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'total_tokens' => $totalTokens,
+                    'total_users_with_tokens' => $totalUsers,
+                    'tokens_by_platform' => $tokensByPlatform,
+                    'firebase_project_id' => config('services.firebase.project_id'),
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to get notifications data: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Send notification to all users
      */
     public function sendToAllUsers(Request $request): JsonResponse
