@@ -41,6 +41,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/device-token', [NotificationController::class, 'storeDeviceToken']);
     Route::delete('/device-token', [ProfileController::class, 'deleteDeviceToken']);
     Route::get('/device-tokens/{userId}', [NotificationController::class, 'getUserDeviceTokens']);
+    
+    // Notificaciones del usuario autenticado
+    Route::get('/user/notifications', [NotificationController::class, 'getUserNotifications']);
+    Route::post('/user/notifications/{id}/read', [NotificationController::class, 'markNotificationAsRead']);
 
     Route::prefix('admin')->group(function () {
         Route::delete('/staff/{staffId}', [AdminController::class, 'removeStaff']);

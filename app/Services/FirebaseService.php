@@ -5,8 +5,10 @@ namespace App\Services;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
 use App\Models\DeviceToken;
 use App\Models\User;
+use App\Notifications\FcmDatabaseNotification;
 
 class FirebaseService
 {
@@ -166,10 +168,14 @@ class FirebaseService
             return false;
         }
 
+        // 1. Enviar FCM push notification
         $results = [];
         foreach ($deviceTokens as $token) {
             $results[] = $this->sendToDevice($token, $title, $body, $data);
         }
+
+        // 2. Guardar notificación en BD para que aparezca en el historial
+        $user->notify(new FcmDatabaseNotification($title, $body, $data));
 
         return $results;
     }
@@ -186,6 +192,7 @@ class FirebaseService
             return false;
         }
 
+        // 1. Enviar FCM push notification
         // FCM allows maximum 1000 tokens per batch
         $batches = array_chunk($deviceTokens, 1000);
         $results = [];
@@ -193,6 +200,12 @@ class FirebaseService
         foreach ($batches as $batch) {
             $results[] = $this->sendToMultipleDevices($batch, $title, $body, $data);
         }
+
+        // 2. Guardar notificación en BD para todos los usuarios que tienen tokens
+        $userIds = DeviceToken::distinct('user_id')->pluck('user_id');
+        $users = User::whereIn('id', $userIds)->get();
+        
+        Notification::send($users, new FcmDatabaseNotification($title, $body, $data));
 
         return $results;
     }

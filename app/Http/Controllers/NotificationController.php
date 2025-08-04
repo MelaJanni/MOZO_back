@@ -339,4 +339,70 @@ class NotificationController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Get notifications for authenticated user
+     */
+    public function getUserNotifications(Request $request): JsonResponse
+    {
+        try {
+            $user = $request->user();
+            
+            $unreadNotifications = $user->unreadNotifications()
+                ->orderBy('created_at', 'desc')
+                ->get();
+                
+            $readNotifications = $user->readNotifications()
+                ->orderBy('created_at', 'desc')
+                ->limit(50)
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'unread' => $unreadNotifications,
+                    'read' => $readNotifications,
+                    'unread_count' => $unreadNotifications->count(),
+                    'total_count' => $unreadNotifications->count() + $readNotifications->count()
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to get user notifications: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Mark notification as read
+     */
+    public function markNotificationAsRead(Request $request, $id): JsonResponse
+    {
+        try {
+            $user = $request->user();
+            
+            $notification = $user->notifications()->where('id', $id)->first();
+            
+            if (!$notification) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Notification not found'
+                ], 404);
+            }
+            
+            $notification->markAsRead();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Notification marked as read',
+                'data' => $notification
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to mark notification as read: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }
