@@ -21,6 +21,10 @@ class FirebaseService
         
         try {
             $this->accessToken = $this->getAccessToken();
+            Log::info('Firebase service initialized successfully', [
+                'project_id' => $this->projectId,
+                'access_token' => $this->accessToken ? 'available' : 'not available',
+            ]);
         } catch (\Exception $e) {
             Log::error('Failed to initialize Firebase service: ' . $e->getMessage());
             $this->accessToken = null;

@@ -243,7 +243,6 @@ class NotificationController extends Controller
     public function storeDeviceToken(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'user_id' => 'required|integer|exists:users,id',
             'token' => 'required|string',
             'platform' => 'required|string|in:android,ios,web',
         ]);
@@ -259,7 +258,7 @@ class NotificationController extends Controller
         try {
             $deviceToken = DeviceToken::updateOrCreate(
                 [
-                    'user_id' => $request->user_id,
+                    'user_id' => $request->user()->id,
                     'token' => $request->token,
                 ],
                 [
