@@ -36,7 +36,7 @@ class FirebaseService
      */
     private function getAccessToken()
     {
-        $serviceAccountPath = storage_path('app/firebase/firebase.json');
+        $serviceAccountPath = config('services.firebase.service_account_path');
 
         if (!file_exists($serviceAccountPath)) {
             Log::error('Firebase service account file not found', [
@@ -128,32 +128,30 @@ class FirebaseService
     public function sendToMultipleDevices($tokens, $title, $body, $data = [])
     {
         $message = [
-            'message' => [
-                'registration_ids' => $tokens,
+            'registration_ids' => $tokens,
+            'notification' => [
+                'title' => $title,
+                'body' => $body,
+            ],
+            'data' => $data,
+            'android' => [
                 'notification' => [
-                    'title' => $title,
-                    'body' => $body,
+                    'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
+                    'sound' => 'default',
                 ],
-                'data' => $data,
-                'android' => [
-                    'notification' => [
-                        'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
-                        'sound' => 'default',
-                    ],
-                ],
-                'apns' => [
-                    'payload' => [
-                        'aps' => [
-                            'alert' => [
-                                'title' => $title,
-                                'body' => $body,
-                            ],
-                            'sound' => 'default',
-                            'badge' => 1,
+            ],
+            'apns' => [
+                'payload' => [
+                    'aps' => [
+                        'alert' => [
+                            'title' => $title,
+                            'body' => $body,
                         ],
+                        'sound' => 'default',
+                        'badge' => 1,
                     ],
                 ],
-            ]
+            ],
         ];
 
         return $this->sendMessage($message, true);
@@ -241,8 +239,15 @@ class FirebaseService
             
             return $result;
         } catch (RequestException $e) {
-            Log::error('Failed to send FCM notification: ' . $e->getMessage());
-            throw new \Exception('Failed to send notification');
+            Log::error('Failed to send FCM notification', [
+                'error' => $e->getMessage(),
+                'response_body' => $e->hasResponse() ? $e->getResponse()->getBody()->getContents() : null,
+                'status_code' => $e->hasResponse() ? $e->getResponse()->getStatusCode() : null,
+                'url' => $url,
+                'headers' => $headers,
+                'message' => $message
+            ]);
+            throw new \Exception('Failed to send notification: ' . $e->getMessage());
         }
     }
 
