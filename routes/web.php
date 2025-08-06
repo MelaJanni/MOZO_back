@@ -81,6 +81,11 @@ Route::get('/password/reset/{token}', function ($token) {
     </html>';
 })->name('password.reset');
 
+// Ruta de prueba
+Route::get('/test-qr', function () {
+    return 'QR routes working!';
+});
+
 // Ruta para mostrar página de mesa desde QR
 Route::get('/QR/{businessSlug}/{tableHash}', [QrWebController::class, 'showTablePage'])
     ->name('qr.table.page');
