@@ -12,6 +12,7 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\TableController;
 use App\Http\Controllers\WaiterController;
 use App\Http\Controllers\WaiterCallController;
+use App\Http\Controllers\PublicQrController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -161,5 +162,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/admin/statistics', [AdminController::class, 'getStatistics']);
 });
 
-// Ruta pública para que las mesas llamen al mozo (sin autenticación)
+// Rutas públicas para QR codes y llamadas de mozo (sin autenticación)
 Route::post('/tables/{table}/call-waiter', [WaiterCallController::class, 'callWaiter']);
+
+// Endpoints públicos para resolver QR codes
+Route::get('/qr/{businessSlug}/{tableHash}', [PublicQrController::class, 'resolveQrCode'])->name('public.qr.resolve');
+Route::get('/menu/{menuId}/download', [PublicQrController::class, 'downloadMenu'])->name('public.menu.download');
+Route::get('/table/{tableId}/status', [PublicQrController::class, 'getTableStatus'])->name('public.table.status');

@@ -1,0 +1,324 @@
+=====================================================================
+                    APIS PÚBLICAS PARA QR CODES - FRONTEND
+=====================================================================
+
+1. RESOLVER CÓDIGO QR Y OBTENER INFORMACIÓN DE MESA
+=====================================================================
+
+GET /api/qr/{businessSlug}/{tableHash}
+- Descripción: Obtiene información de la mesa, negocio y menú desde URL de QR
+- Autenticación: NO REQUERIDA (público)
+- Parámetros de ruta:
+  * businessSlug (string): Slug del negocio (ej: "mcdonalds")
+  * tableHash (string): Hash codificado de la mesa (ej: "aVnyOv")
+
+- Ejemplo URL: https://tu-backend.com/api/qr/mcdonalds/aVnyOv
+
+- Respuesta 200 - Éxito:
+  {
+    "success": true,
+    "data": {
+      "table": {
+        "id": 5,
+        "number": 5,
+        "name": "Mesa VIP",
+        "can_call_waiter": true
+      },
+      "business": {
+        "id": 1,
+        "name": "McDonald's Centro",
+        "address": "Av. Principal 123",
+        "phone": "+1234567890",
+        "logo": "logos/mcdonalds-logo.png"
+      },
+      "menu": {
+        "id": 10,
+        "name": "Menú Principal",
+        "file_path": "menus/menu-principal.pdf",
+        "download_url": "https://tu-backend.com/api/menu/10/download"
+      },
+      "waiter": {
+        "id": 3,
+        "name": "Juan Pérez"
+      },
+      "pending_call": null
+    }
+  }
+
+- Respuesta 404 - No encontrado:
+  {
+    "success": false,
+    "message": "Negocio no encontrado"
+  }
+
+- Respuesta 404 - QR inválido:
+  {
+    "success": false,
+    "message": "Código QR inválido"
+  }
+
+=====================================================================
+2. DESCARGAR MENÚ
+=====================================================================
+
+GET /api/menu/{menuId}/download
+- Descripción: Descarga el archivo PDF del menú
+- Autenticación: NO REQUERIDA (público)
+- Parámetros de ruta:
+  * menuId (integer): ID del menú
+
+- Respuesta: Archivo PDF del menú
+- Headers:
+  * Content-Type: application/pdf
+  * Content-Disposition: inline; filename="Menú Principal.pdf"
+
+=====================================================================
+3. OBTENER ESTADO ACTUAL DE LA MESA (Para Polling)
+=====================================================================
+
+GET /api/table/{tableId}/status  
+- Descripción: Obtiene estado actual de la mesa y llamadas
+- Autenticación: NO REQUERIDA (público)
+- Parámetros de ruta:
+  * tableId (integer): ID de la mesa
+
+- Respuesta 200:
+  {
+    "success": true,
+    "data": {
+      "table_id": 5,
+      "can_call_waiter": true,
+      "active_call": {
+        "id": 123,
+        "status": "acknowledged",
+        "called_at": "2025-08-06T14:30:00Z",
+        "acknowledged_at": "2025-08-06T14:32:15Z",
+        "minutes_ago": 2
+      },
+      "waiter": {
+        "name": "Juan Pérez"
+      }
+    }
+  }
+
+- Estados de llamada posibles:
+  * null: No hay llamadas activas
+  * "pending": Llamada enviada, esperando respuesta del mozo
+  * "acknowledged": Mozo confirmó, está en camino
+
+=====================================================================
+4. LLAMAR AL MOZO (YA EXISTENTE)
+=====================================================================
+
+POST /api/tables/{table_id}/call-waiter
+- Descripción: Mesa llama al mozo asignado
+- Autenticación: NO REQUERIDA (público)
+- Parámetros de ruta:
+  * table_id (integer): ID de la mesa
+
+- Body (opcional):
+  {
+    "message": "Necesitamos ayuda por favor",
+    "urgency": "normal", // "normal" | "high"
+    "client_info": "Mesa con niños"
+  }
+
+- Ver documentación completa en waiter-notification-apis.txt
+
+=====================================================================
+5. FLUJO COMPLETO PARA EL FRONTEND
+=====================================================================
+
+PASO 1: ESCANEAR QR
+- URL QR: https://mozoqr.com/QR/mcdonalds/aVnyOv
+- Tu frontend debe extraer businessSlug y tableHash de la URL
+- Llamar: GET /api/qr/{businessSlug}/{tableHash}
+
+PASO 2: MOSTRAR INFORMACIÓN
+- Mostrar logo y nombre del negocio
+- Mostrar nombre/número de mesa
+- Mostrar menú PDF embebido o botón de descarga
+- Mostrar botón "Llamar Mozo" (si can_call_waiter = true)
+
+PASO 3: LLAMAR MOZO
+- Al presionar botón: POST /api/tables/{table_id}/call-waiter
+- Cambiar UI a "Llamando mozo..."
+- Iniciar polling: GET /api/table/{tableId}/status cada 3-5 segundos
+
+PASO 4: POLLING DE ESTADO
+- Si active_call.status = "pending": "Llamando mozo..."
+- Si active_call.status = "acknowledged": "Mozo en camino ✅"
+- Si active_call = null: Volver al estado inicial
+
+=====================================================================
+6. EJEMPLO DE IMPLEMENTACIÓN FRONTEND (Vue.js/React)
+=====================================================================
+
+// Extraer parámetros de URL QR
+const urlPath = window.location.pathname; // "/QR/mcdonalds/aVnyOv"
+const [, , businessSlug, tableHash] = urlPath.split('/');
+
+// Resolver QR
+const response = await fetch(`/api/qr/${businessSlug}/${tableHash}`);
+const data = await response.json();
+
+if (data.success) {
+  // Mostrar información de mesa y menú
+  displayTableInfo(data.data);
+  
+  // Configurar botón llamar mozo
+  if (data.data.table.can_call_waiter) {
+    setupCallWaiterButton(data.data.table.id);
+  }
+}
+
+// Función para llamar mozo
+async function callWaiter(tableId) {
+  showLoadingState("Llamando mozo...");
+  
+  const response = await fetch(`/api/tables/${tableId}/call-waiter`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      message: "Solicitud de atención",
+      urgency: "normal"
+    })
+  });
+  
+  if (response.ok) {
+    startPolling(tableId);
+  }
+}
+
+// Polling de estado
+async function startPolling(tableId) {
+  const checkStatus = async () => {
+    const response = await fetch(`/api/table/${tableId}/status`);
+    const data = await response.json();
+    
+    if (data.data.active_call) {
+      if (data.data.active_call.status === 'acknowledged') {
+        showSuccess("Mozo en camino ✅");
+        stopPolling();
+      } else {
+        showLoading("Llamando mozo...");
+      }
+    } else {
+      // Llamada completada, volver al estado inicial
+      resetToInitialState();
+      stopPolling();
+    }
+  };
+  
+  const interval = setInterval(checkStatus, 3000); // Cada 3 segundos
+}
+
+=====================================================================
+7. COMPONENTE HTML SUGERIDO
+=====================================================================
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>{{business.name}} - Mesa {{table.number}}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+  <div class="container">
+    <!-- Header del negocio -->
+    <header>
+      <img src="{{business.logo}}" alt="{{business.name}}" class="logo">
+      <h1>{{business.name}}</h1>
+      <p>Mesa {{table.number}} - {{table.name}}</p>
+    </header>
+    
+    <!-- Menú PDF embebido -->
+    <section class="menu-section">
+      <h2>Nuestro Menú</h2>
+      <iframe src="{{menu.download_url}}" 
+              width="100%" 
+              height="600px"
+              style="border: none;">
+      </iframe>
+      <br>
+      <a href="{{menu.download_url}}" target="_blank" class="download-btn">
+        📄 Descargar Menú PDF
+      </a>
+    </section>
+    
+    <!-- Botón llamar mozo -->
+    <section class="call-waiter-section">
+      <div id="call-status">
+        <button id="call-waiter-btn" class="call-btn">
+          🔔 Llamar Mozo
+        </button>
+      </div>
+    </section>
+  </div>
+</body>
+</html>
+
+=====================================================================
+8. ESTILOS CSS SUGERIDOS
+=====================================================================
+
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: Arial, sans-serif;
+}
+
+.logo {
+  width: 100px;
+  height: 100px;
+  object-fit: contain;
+}
+
+.menu-section {
+  margin: 30px 0;
+}
+
+.call-btn {
+  background: #4CAF50;
+  color: white;
+  border: none;
+  padding: 15px 30px;
+  font-size: 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  width: 100%;
+  margin: 20px 0;
+}
+
+.call-btn:disabled {
+  background: #ccc;
+}
+
+.status-loading {
+  background: #FF9800;
+  color: white;
+  padding: 15px;
+  text-align: center;
+  border-radius: 8px;
+}
+
+.status-success {
+  background: #4CAF50;
+  color: white;
+  padding: 15px;
+  text-align: center;
+  border-radius: 8px;
+}
+
+=====================================================================
+
+FLUJO COMPLETO:
+1. Cliente escanea QR → Abre https://mozoqr.com/QR/mcdonalds/aVnyOv
+2. Frontend extrae businessSlug/tableHash → Llama GET /api/qr/{businessSlug}/{tableHash}
+3. Muestra menú PDF + botón "Llamar Mozo"
+4. Cliente presiona botón → POST /api/tables/{tableId}/call-waiter
+5. Inicia polling → GET /api/table/{tableId}/status cada 3 segundos
+6. Cuando mozo confirma → Muestra "Mozo en camino ✅"
