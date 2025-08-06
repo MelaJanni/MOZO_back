@@ -16,10 +16,13 @@ class Table extends Model
         'capacity',
         'location',
         'status',
+        'active_waiter_id',
+        'waiter_assigned_at'
     ];
 
     protected $casts = [
         'notifications_enabled' => 'boolean',
+        'waiter_assigned_at' => 'datetime'
     ];
 
     public function business()
@@ -40,5 +43,59 @@ class Table extends Model
     public function profiles()
     {
         return $this->belongsToMany(Profile::class);
+    }
+
+    public function activeWaiter()
+    {
+        return $this->belongsTo(User::class, 'active_waiter_id');
+    }
+
+    public function waiterCalls()
+    {
+        return $this->hasMany(WaiterCall::class);
+    }
+
+    public function pendingCalls()
+    {
+        return $this->waiterCalls()->pending();
+    }
+
+    public function silences()
+    {
+        return $this->hasMany(TableSilence::class);
+    }
+
+    public function activeSilence()
+    {
+        return $this->silences()->active()->first();
+    }
+
+    public function isSilenced()
+    {
+        $silence = $this->activeSilence();
+        return $silence && $silence->isActive();
+    }
+
+    public function canReceiveCalls()
+    {
+        return $this->notifications_enabled && 
+               $this->active_waiter_id && 
+               !$this->isSilenced();
+    }
+
+    public function assignWaiter(User $waiter)
+    {
+        $this->update([
+            'active_waiter_id' => $waiter->id,
+            'waiter_assigned_at' => now()
+        ]);
+    }
+
+    public function unassignWaiter()
+    {
+        $this->update([
+            'active_waiter_id' => null,
+            'waiter_assigned_at' => null
+        ]);
     }
 } 

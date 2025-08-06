@@ -11,6 +11,7 @@ use App\Http\Controllers\QrCodeController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\TableController;
 use App\Http\Controllers\WaiterController;
+use App\Http\Controllers\WaiterCallController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -46,6 +47,32 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user/notifications', [NotificationController::class, 'getUserNotifications']);
     Route::post('/user/notifications/{id}/read', [NotificationController::class, 'markNotificationAsRead']);
 
+    // Llamadas de mozo - APIs para mozos autenticados
+    Route::prefix('waiter')->group(function () {
+        // Gestión de llamadas
+        Route::get('/calls/pending', [WaiterCallController::class, 'getPendingCalls']);
+        Route::get('/calls/history', [WaiterCallController::class, 'getCallHistory']);
+        Route::post('/calls/{call}/acknowledge', [WaiterCallController::class, 'acknowledgeCall']);
+        Route::post('/calls/{call}/complete', [WaiterCallController::class, 'completeCall']);
+        
+        // Gestión de mesas - Individual
+        Route::get('/tables/assigned', [WaiterCallController::class, 'getAssignedTables']);
+        Route::get('/tables/available', [WaiterCallController::class, 'getAvailableTables']);
+        Route::post('/tables/{table}/activate', [WaiterCallController::class, 'activateTable']);
+        Route::delete('/tables/{table}/activate', [WaiterCallController::class, 'deactivateTable']);
+        Route::post('/tables/{table}/silence', [WaiterCallController::class, 'silenceTable']);
+        Route::delete('/tables/{table}/silence', [WaiterCallController::class, 'unsilenceTable']);
+        
+        // Gestión de mesas - Múltiples
+        Route::post('/tables/activate/multiple', [WaiterCallController::class, 'activateMultipleTables']);
+        Route::post('/tables/deactivate/multiple', [WaiterCallController::class, 'deactivateMultipleTables']);
+        Route::post('/tables/silence/multiple', [WaiterCallController::class, 'silenceMultipleTables']);
+        Route::post('/tables/unsilence/multiple', [WaiterCallController::class, 'unsilenceMultipleTables']);
+        
+        // Estado de mesas
+        Route::get('/tables/silenced', [WaiterCallController::class, 'getSilencedTables']);
+    });
+
     Route::prefix('admin')->group(function () {
         Route::delete('/staff/{staffId}', [AdminController::class, 'removeStaff']);
         Route::post('/staff/request/{requestId}', [AdminController::class, 'handleStaffRequest']);
@@ -73,6 +100,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/notifications/send-to-device', [NotificationController::class, 'sendToDevice']);
         Route::post('/notifications/send-to-topic', [NotificationController::class, 'sendToTopic']);
         Route::post('/notifications/subscribe-to-topic', [NotificationController::class, 'subscribeToTopic']);
+
+        // Admin - Historial de llamadas y gestión
+        Route::get('/calls/history', [WaiterCallController::class, 'getCallHistory']);
+        Route::get('/tables/silenced', [WaiterCallController::class, 'getSilencedTables']);
+        Route::delete('/tables/{table}/silence', [WaiterCallController::class, 'unsilenceTable']);
 
         Route::get('/staff', [AdminController::class, 'getStaff']);
         Route::get('/staff/{id}', [AdminController::class, 'getStaffMember']);
@@ -129,10 +161,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/admin/statistics', [AdminController::class, 'getStatistics']);
 });
 
-Route::post('/tables/{table}/call-waiter', function (App\Models\Table $table) {
-    if (!$table->notifications_enabled) {
-        return response()->json(['message' => 'Las notificaciones están desactivadas para esta mesa'], 400);
-    }
-
-    return response()->json(['message' => 'Funcionalidad de llamada al camarero pendiente de implementación']);
-});
+// Ruta pública para que las mesas llamen al mozo (sin autenticación)
+Route::post('/tables/{table}/call-waiter', [WaiterCallController::class, 'callWaiter']);
