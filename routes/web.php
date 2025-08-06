@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\QrWebController;
 
 
 Route::get('/', function () {
@@ -79,4 +80,8 @@ Route::get('/password/reset/{token}', function ($token) {
     </body>
     </html>';
 })->name('password.reset');
+
+// Ruta para mostrar página de mesa desde QR
+Route::get('/QR/{businessSlug}/{tableHash}', [QrWebController::class, 'showTablePage'])
+    ->name('qr.table.page');
 
