@@ -5,7 +5,8 @@
       "Bash(composer:*)",
       "Bash(ls:*)",
       "Bash(php:*)",
-      "WebFetch(domain:firebase.google.com)"
+      "WebFetch(domain:firebase.google.com)",
+      "Bash(git add:*)"
     ],
     "deny": []
   }
