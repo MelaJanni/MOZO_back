@@ -82,6 +82,11 @@ Route::get('/password/reset/{token}', function ($token) {
     </html>';
 })->name('password.reset');
 
+// Ruta de prueba simple
+Route::get('/test-simple', function() {
+    return response()->json(['status' => 'working', 'message' => 'Routes are working!']);
+});
+
 // Ruta de prueba QR
 Route::get('/test-qr', [QrWebController::class, 'testQr'])
     ->name('qr.test');
