@@ -34,16 +34,24 @@ class RestaurantSeeder extends Seeder
         }
 
         // Crear mesa de prueba solo si no existe
-        Table::updateOrCreate(
-            ['code' => 'aVnyOv', 'restaurant_id' => $restaurant->id],
-            [
-                'name' => 'Mesa 1',
+        // Primero intentamos buscar por código QR único
+        $existingTable = Table::where('code', 'aVnyOv')->first();
+        
+        if (!$existingTable) {
+            // Buscar un número de mesa disponible para este business
+            $availableNumber = 1;
+            while (Table::where('number', $availableNumber)->where('business_id', $business->id)->exists()) {
+                $availableNumber++;
+            }
+            
+            Table::create([
+                'name' => 'Mesa QR McDonald\'s',
                 'code' => 'aVnyOv',
-                'number' => 1,
+                'number' => $availableNumber,
                 'restaurant_id' => $restaurant->id,
                 'business_id' => $business->id,
                 'notifications_enabled' => true
-            ]
-        );
+            ]);
+        }
     }
 }
