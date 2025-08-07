@@ -165,7 +165,6 @@ Route::middleware('auth:sanctum')->group(function () {
 // Rutas públicas para QR codes y llamadas de mozo (sin autenticación)
 Route::post('/tables/{table}/call-waiter', [WaiterCallController::class, 'callWaiter']);
 
-// Endpoints públicos para resolver QR codes
-Route::get('/qr/{businessSlug}/{tableHash}', [PublicQrController::class, 'resolveQrCode'])->name('public.qr.resolve');
-Route::get('/menu/{menuId}/download', [PublicQrController::class, 'downloadMenu'])->name('public.menu.download');
-Route::get('/table/{tableId}/status', [PublicQrController::class, 'getTableStatus'])->name('public.table.status');
+// API pública para información de QR codes
+Route::get('/qr/{restaurantSlug}/{tableCode}', [PublicQrController::class, 'getTableInfo'])
+    ->name('api.qr.table.info');

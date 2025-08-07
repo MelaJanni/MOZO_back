@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\QrWebController;
+use App\Http\Controllers\ApiDocumentationController;
 
 
 Route::get('/', function () {
@@ -81,12 +82,17 @@ Route::get('/password/reset/{token}', function ($token) {
     </html>';
 })->name('password.reset');
 
-// Ruta de prueba
-Route::get('/test-qr', function () {
-    return 'QR routes working!';
-});
+// Ruta de prueba QR
+Route::get('/test-qr', [QrWebController::class, 'testQr'])
+    ->name('qr.test');
 
 // Ruta para mostrar página de mesa desde QR
-Route::get('/QR/{businessSlug}/{tableHash}', [QrWebController::class, 'showTablePage'])
+Route::get('/QR/{restaurantSlug}/{tableCode}', [QrWebController::class, 'showTablePage'])
     ->name('qr.table.page');
+
+// Documentación de APIs
+Route::get('/api/docs/qr', [ApiDocumentationController::class, 'qrApis'])
+    ->name('api.docs.qr');
+Route::get('/api/docs/waiter', [ApiDocumentationController::class, 'waiterApis'])
+    ->name('api.docs.waiter');
 

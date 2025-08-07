@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ $business->name }} - Mesa {{ $table->number }}</title>
+    <title>{{ $restaurant->name }} - Mesa {{ $table->number }}</title>
     <style>
         * {
             margin: 0;
@@ -12,146 +12,183 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.6;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
             color: #333;
-            background-color: #f8f9fa;
         }
 
         .container {
             max-width: 800px;
             margin: 0 auto;
-            padding: 20px;
+            background: white;
             min-height: 100vh;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
         }
 
         .header {
-            background: white;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
+            color: white;
+            padding: 20px;
             text-align: center;
-            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
 
         .logo {
-            width: 80px;
-            height: 80px;
+            width: 60px;
+            height: 60px;
             border-radius: 50%;
-            object-fit: cover;
-            margin-bottom: 15px;
-            border: 3px solid #e9ecef;
+            margin: 0 auto 15px;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
         }
 
-        .business-name {
+        .logo img {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .restaurant-name {
             font-size: 28px;
             font-weight: bold;
-            color: #2c3e50;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
         }
 
         .table-info {
             font-size: 18px;
-            color: #6c757d;
-            background: #f8f9fa;
-            padding: 10px 20px;
+            opacity: 0.9;
+            background: rgba(255,255,255,0.2);
+            padding: 8px 16px;
             border-radius: 20px;
             display: inline-block;
         }
 
-        .menu-section {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        .content {
+            padding: 30px 20px;
+        }
+
+        .welcome-message {
+            text-align: center;
             margin-bottom: 30px;
-            overflow: hidden;
+            padding: 20px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 15px;
+            border-left: 5px solid #4a90e2;
         }
 
-        .section-header {
-            background: #495057;
-            color: white;
-            padding: 20px;
+        .welcome-title {
+            font-size: 24px;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .welcome-text {
+            color: #6c757d;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+
+        .menu-section {
+            margin-bottom: 30px;
+        }
+
+        .section-title {
             font-size: 22px;
-            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #4a90e2;
+            display: flex;
+            align-items: center;
         }
 
-        .menu-content {
-            padding: 20px;
+        .section-title::before {
+            content: "📋";
+            margin-right: 10px;
+            font-size: 24px;
         }
 
-        .menu-iframe {
+        .menu-container {
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            background: white;
+            border: 1px solid #e9ecef;
+        }
+
+        .menu-pdf {
             width: 100%;
             height: 600px;
             border: none;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
 
-        .download-btn {
-            display: inline-block;
-            background: #17a2b8;
-            color: white;
-            padding: 12px 24px;
-            text-decoration: none;
-            border-radius: 8px;
-            margin-top: 15px;
-            font-weight: bold;
-            transition: background 0.3s;
-        }
-
-        .download-btn:hover {
-            background: #138496;
-        }
-
-        .call-section {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            padding: 30px;
+        .call-waiter-section {
             text-align: center;
+            margin: 40px 0;
+            padding: 30px 20px;
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+            border-radius: 15px;
+            border: 1px solid #f39c12;
         }
 
-        .call-btn {
-            background: #28a745;
+        .call-button {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
             color: white;
             border: none;
             padding: 18px 40px;
             font-size: 20px;
-            border-radius: 10px;
-            cursor: pointer;
-            width: 100%;
-            max-width: 300px;
             font-weight: bold;
-            transition: all 0.3s;
-            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 6px 20px rgba(231, 76, 60, 0.3);
+            position: relative;
+            overflow: hidden;
         }
 
-        .call-btn:hover:not(:disabled) {
-            background: #218838;
+        .call-button:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(40, 167, 69, 0.4);
+            box-shadow: 0 8px 25px rgba(231, 76, 60, 0.4);
         }
 
-        .call-btn:disabled {
-            background: #6c757d;
+        .call-button:active {
+            transform: translateY(0);
+        }
+
+        .call-button:disabled {
+            background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
             cursor: not-allowed;
             transform: none;
-            box-shadow: none;
+            box-shadow: 0 4px 15px rgba(149, 165, 166, 0.3);
+        }
+
+        .call-button::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .call-button:hover::before {
+            left: 100%;
         }
 
         .status-message {
-            padding: 20px;
-            border-radius: 10px;
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 20px;
-            display: none;
-        }
-
-        .status-loading {
-            background: #fff3cd;
-            color: #856404;
-            border: 1px solid #ffeaa7;
+            margin-top: 15px;
+            padding: 12px 20px;
+            border-radius: 25px;
+            font-weight: 600;
+            font-size: 16px;
+            transition: all 0.3s ease;
         }
 
         .status-success {
@@ -160,215 +197,207 @@
             border: 1px solid #c3e6cb;
         }
 
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+            animation: pulse 2s infinite;
+        }
+
         .status-error {
             background: #f8d7da;
             color: #721c24;
             border: 1px solid #f5c6cb;
         }
 
-        .no-menu-message {
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+
+        .footer {
             text-align: center;
+            padding: 20px;
             color: #6c757d;
-            font-style: italic;
-            padding: 40px;
+            border-top: 1px solid #e9ecef;
+            background: #f8f9fa;
         }
 
         @media (max-width: 768px) {
             .container {
-                padding: 15px;
+                margin: 0;
+                border-radius: 0;
             }
             
             .header {
-                padding: 20px;
+                padding: 15px;
             }
             
-            .business-name {
+            .restaurant-name {
                 font-size: 24px;
             }
             
-            .menu-iframe {
-                height: 400px;
+            .content {
+                padding: 20px 15px;
             }
             
-            .call-btn {
+            .call-button {
+                width: 100%;
+                max-width: 300px;
                 padding: 16px 30px;
                 font-size: 18px;
+            }
+            
+            .menu-pdf {
+                height: 500px;
             }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- Header del negocio -->
         <header class="header">
-            @if($business->logo)
-                <img src="{{ asset('storage/' . $business->logo) }}" alt="{{ $business->name }}" class="logo">
-            @endif
-            <h1 class="business-name">{{ $business->name }}</h1>
-            <div class="table-info">
-                📍 Mesa {{ $table->number }}@if($table->name) - {{ $table->name }}@endif
-            </div>
-        </header>
-
-        <!-- Menú PDF -->
-        @if($menu)
-        <section class="menu-section">
-            <div class="section-header">
-                🍽️ {{ $menu->name }}
-            </div>
-            <div class="menu-content">
-                <iframe src="{{ route('public.menu.download', $menu->id) }}" class="menu-iframe"></iframe>
-                <a href="{{ route('public.menu.download', $menu->id) }}" target="_blank" class="download-btn">
-                    📄 Descargar Menú PDF
-                </a>
-            </div>
-        </section>
-        @else
-        <section class="menu-section">
-            <div class="section-header">
-                🍽️ Nuestro Menú
-            </div>
-            <div class="no-menu-message">
-                El menú no está disponible en este momento. Por favor, consulte con nuestro personal.
-            </div>
-        </section>
-        @endif
-
-        <!-- Botón llamar mozo -->
-        <section class="call-section">
-            <div id="status-message" class="status-message"></div>
-            
-            <div id="call-controls">
-                @if($canCallWaiter)
-                    <button id="call-waiter-btn" class="call-btn">
-                        🔔 Llamar Mozo
-                    </button>
-                    <p style="margin-top: 15px; color: #6c757d; font-size: 14px;">
-                        @if($table->activeWaiter)
-                            Mozo asignado: <strong>{{ $table->activeWaiter->name }}</strong>
-                        @endif
-                    </p>
+            <div class="logo">
+                @if($restaurant->logo)
+                    <img src="{{ asset('storage/' . $restaurant->logo) }}" alt="{{ $restaurant->name }} Logo">
                 @else
-                    <div class="status-message status-error" style="display: block;">
-                        ❌ Esta mesa no tiene un mozo asignado actualmente.<br>
-                        Por favor, llame manualmente al personal.
-                    </div>
+                    🍴
                 @endif
             </div>
-        </section>
+            <h1 class="restaurant-name">{{ $restaurant->name }}</h1>
+            <div class="table-info">Mesa {{ $table->number }} - {{ $table->name }}</div>
+        </header>
+
+        <main class="content">
+            <div class="welcome-message">
+                <h2 class="welcome-title">¡Bienvenido!</h2>
+                <p class="welcome-text">
+                    Estás en {{ $restaurant->name }}, Mesa {{ $table->number }}. 
+                    Revisa nuestro menú y no dudes en llamar a nuestro mozo cuando estés listo para ordenar.
+                </p>
+            </div>
+
+            <section class="menu-section">
+                <h2 class="section-title">Nuestro Menú</h2>
+                <div class="menu-container">
+                    @if($restaurant->menu_pdf)
+                        <iframe 
+                            src="{{ asset('storage/' . $restaurant->menu_pdf) }}" 
+                            class="menu-pdf"
+                            title="Menú de {{ $restaurant->name }}">
+                            <p>Tu navegador no puede mostrar PDFs. 
+                            <a href="{{ asset('storage/' . $restaurant->menu_pdf) }}" target="_blank">
+                                Haz clic aquí para ver el menú
+                            </a></p>
+                        </iframe>
+                    @else
+                        <div style="padding: 40px; text-align: center; color: #6c757d;">
+                            <h3>Menú no disponible</h3>
+                            <p>Por favor solicita el menú físico a nuestro personal</p>
+                        </div>
+                    @endif
+                </div>
+            </section>
+
+            <section class="call-waiter-section">
+                <button id="callWaiterBtn" class="call-button" onclick="callWaiter()">
+                    🔔 Llamar Mozo
+                </button>
+                <div id="statusMessage" class="status-message" style="display: none;"></div>
+            </section>
+        </main>
+
+        <footer class="footer">
+            <p>© {{ date('Y') }} {{ $restaurant->name }}. Sistema de llamado QR activo.</p>
+        </footer>
     </div>
 
     <script>
-        const API_BASE = '{{ $apiBaseUrl }}';
+        const FRONTEND_URL = '{{ $frontendUrl }}';
+        const RESTAURANT_ID = {{ $restaurant->id }};
         const TABLE_ID = {{ $table->id }};
-        let pollingInterval;
+        
+        let currentNotificationId = null;
+        let pollingInterval = null;
 
-        const statusMessage = document.getElementById('status-message');
-        const callBtn = document.getElementById('call-waiter-btn');
-
-        // Verificar estado inicial
-        @if($pendingCall)
-            @if($pendingCall->status === 'pending')
-                showStatus('loading', '⏳ Llamando mozo... Aguarde por favor');
-                startPolling();
-            @elseif($pendingCall->status === 'acknowledged')
-                showStatus('success', '✅ Mozo en camino - Tiempo de respuesta: {{ $pendingCall->called_at->diffForHumans() }}');
-            @endif
-        @endif
-
-        if (callBtn) {
-            callBtn.addEventListener('click', async function() {
-                try {
-                    showStatus('loading', '⏳ Enviando llamada...');
-                    callBtn.disabled = true;
-
-                    const response = await fetch(`${API_BASE}/api/tables/${TABLE_ID}/call-waiter`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            message: 'Solicitud de atención desde mesa {{ $table->number }}',
-                            urgency: 'normal'
-                        })
-                    });
-
-                    const data = await response.json();
-
-                    if (data.success) {
-                        showStatus('loading', '⏳ Llamando mozo... Aguarde por favor');
-                        startPolling();
-                    } else {
-                        showStatus('error', '❌ ' + data.message);
-                        callBtn.disabled = false;
-                    }
-                } catch (error) {
-                    console.error('Error calling waiter:', error);
-                    showStatus('error', '❌ Error de conexión. Intente nuevamente.');
-                    callBtn.disabled = false;
-                }
-            });
-        }
-
-        function showStatus(type, message) {
-            statusMessage.className = `status-message status-${type}`;
-            statusMessage.textContent = message;
+        function callWaiter() {
+            const button = document.getElementById('callWaiterBtn');
+            const statusMessage = document.getElementById('statusMessage');
+            
+            button.disabled = true;
+            button.textContent = '📞 Llamando...';
+            
             statusMessage.style.display = 'block';
-        }
+            statusMessage.className = 'status-message status-pending';
+            statusMessage.textContent = 'Enviando solicitud al mozo...';
 
-        function hideStatus() {
-            statusMessage.style.display = 'none';
+            fetch(`${FRONTEND_URL}/api/waiter-notifications`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    restaurant_id: RESTAURANT_ID,
+                    table_id: TABLE_ID,
+                    message: 'Cliente solicita atención',
+                    urgency: 'normal'
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    currentNotificationId = data.data.id;
+                    statusMessage.className = 'status-message status-pending';
+                    statusMessage.textContent = 'Solicitud enviada. El mozo ha sido notificado...';
+                    
+                    startPolling();
+                } else {
+                    throw new Error(data.message || 'Error al enviar la solicitud');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                statusMessage.className = 'status-message status-error';
+                statusMessage.textContent = 'Error al contactar al mozo. Inténtalo nuevamente.';
+                
+                button.disabled = false;
+                button.textContent = '🔔 Llamar Mozo';
+            });
         }
 
         function startPolling() {
             if (pollingInterval) clearInterval(pollingInterval);
             
-            pollingInterval = setInterval(async () => {
-                try {
-                    const response = await fetch(`${API_BASE}/api/table/${TABLE_ID}/status`);
-                    const data = await response.json();
-
-                    if (data.success && data.data.active_call) {
-                        const call = data.data.active_call;
+            pollingInterval = setInterval(() => {
+                if (!currentNotificationId) return;
+                
+                fetch(`${FRONTEND_URL}/api/waiter-notifications/${currentNotificationId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.data.status === 'acknowledged') {
+                        clearInterval(pollingInterval);
                         
-                        if (call.status === 'acknowledged') {
-                            showStatus('success', '✅ Mozo en camino - Confirmado hace ' + call.minutes_ago + ' minutos');
-                            stopPolling();
-                            setTimeout(() => {
-                                resetToInitialState();
-                            }, 30000); // Reset after 30 seconds
-                        } else if (call.status === 'pending') {
-                            showStatus('loading', '⏳ Llamando mozo... Aguarde por favor');
-                        }
-                    } else {
-                        // No active call - probably completed
-                        resetToInitialState();
+                        const statusMessage = document.getElementById('statusMessage');
+                        const button = document.getElementById('callWaiterBtn');
+                        
+                        statusMessage.className = 'status-message status-success';
+                        statusMessage.textContent = '✅ ¡El mozo confirmó tu solicitud! Llegará en breve.';
+                        
+                        setTimeout(() => {
+                            button.disabled = false;
+                            button.textContent = '🔔 Llamar Mozo';
+                            statusMessage.style.display = 'none';
+                            currentNotificationId = null;
+                        }, 5000);
                     }
-                } catch (error) {
+                })
+                .catch(error => {
                     console.error('Polling error:', error);
-                }
-            }, 3000); // Poll every 3 seconds
+                });
+            }, 3000);
         }
-
-        function stopPolling() {
-            if (pollingInterval) {
-                clearInterval(pollingInterval);
-                pollingInterval = null;
-            }
-        }
-
-        function resetToInitialState() {
-            hideStatus();
-            if (callBtn) {
-                callBtn.disabled = false;
-            }
-            stopPolling();
-        }
-
-        // Cleanup on page unload
-        window.addEventListener('beforeunload', () => {
-            stopPolling();
-        });
     </script>
 </body>
 </html>

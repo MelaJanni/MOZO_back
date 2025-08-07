@@ -2,77 +2,42 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Table;
-use App\Models\Business;
 use Illuminate\Http\Request;
-use Hashids\Hashids;
+use App\Models\Restaurant;
+use App\Models\Table;
 
 class QrWebController extends Controller
 {
-    /**
-     * Mostrar página de mesa con menú y botón llamar mozo
-     */
-    public function showTablePage(string $businessSlug, string $tableHash)
+    public function showTablePage($restaurantSlug, $tableCode)
     {
-        try {
-            // Encontrar business por slug
-            $business = Business::whereRaw('LOWER(REPLACE(name, " ", "-")) = ?', [strtolower($businessSlug)])->first();
-            
-            if (!$business) {
-                abort(404, 'Negocio no encontrado');
-            }
-
-            // Decodificar hash de mesa
-            $hashids = new Hashids(config('app.key'), 6);
-            $decodedIds = $hashids->decode($tableHash);
-            
-            if (empty($decodedIds)) {
-                abort(404, 'Código QR inválido');
-            }
-
-            $tableId = $decodedIds[0];
-
-            // Buscar la mesa
-            $table = Table::with(['business', 'activeWaiter'])
-                ->where('id', $tableId)
-                ->where('business_id', $business->id)
-                ->first();
-
-            if (!$table) {
-                abort(404, 'Mesa no encontrada');
-            }
-
-            // Obtener menú por defecto del negocio
-            $defaultMenu = $business->menus()
-                ->where('is_default', true)
-                ->first();
-
-            // Si no hay menú por defecto, tomar el primero ordenado
-            if (!$defaultMenu) {
-                $defaultMenu = $business->menus()
-                    ->orderBy('display_order')
-                    ->first();
-            }
-
-            // Verificar si la mesa puede recibir llamadas
-            $canCallWaiter = $table->canReceiveCalls();
-            
-            // Verificar si hay llamadas pendientes
-            $pendingCall = $table->pendingCalls()
-                ->latest('called_at')
-                ->first();
-
-            return view('qr.table-page', [
-                'table' => $table,
-                'business' => $business,
-                'menu' => $defaultMenu,
-                'canCallWaiter' => $canCallWaiter,
-                'pendingCall' => $pendingCall,
-                'apiBaseUrl' => config('app.url')
-            ]);
-
-        } catch (\Exception $e) {
-            abort(500, 'Error procesando el código QR');
+        // Buscar restaurante por slug
+        $restaurant = Restaurant::where('slug', $restaurantSlug)->first();
+        
+        if (!$restaurant) {
+            abort(404, 'Restaurant not found');
         }
+
+        // Buscar mesa por código
+        $table = Table::where('code', $tableCode)
+                     ->where('restaurant_id', $restaurant->id)
+                     ->first();
+        
+        if (!$table) {
+            abort(404, 'Table not found');
+        }
+
+        // Obtener URL del frontend desde configuración
+        $frontendUrl = config('app.frontend_url', 'https://mozoqr.com');
+        
+        return view('qr.table-page', compact('restaurant', 'table', 'frontendUrl'));
+    }
+
+    public function testQr()
+    {
+        return response()->json([
+            'status' => 'success',
+            'message' => 'QR System is working!',
+            'timestamp' => now()->toISOString()
+        ]);
     }
 }
