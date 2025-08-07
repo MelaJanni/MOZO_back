@@ -13,13 +13,18 @@ return new class extends Migration
     {
         Schema::create('tables', function (Blueprint $table) {
             $table->id();
+            $table->string('name')->nullable();
+            $table->string('code')->nullable();
             $table->integer('number');
             $table->foreignId('business_id')->constrained()->onDelete('cascade');
+            $table->foreignId('restaurant_id')->nullable()->constrained()->onDelete('cascade');
             $table->boolean('notifications_enabled')->default(false);
             $table->timestamps();
             
             // Número de mesa único por negocio
             $table->unique(['number', 'business_id']);
+            // Código QR único por restaurante
+            $table->unique(['code', 'restaurant_id']);
         });
     }
 

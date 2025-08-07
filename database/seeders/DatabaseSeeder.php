@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             ArchivedStaffSeeder::class,
             TableSeeder::class,
             MenuSeeder::class,
+            RestaurantSeeder::class,  // QR System data
             // QrCodeSeeder::class, // Obsoleto
             ProfileSeeder::class,
             NotificationSeeder::class,
