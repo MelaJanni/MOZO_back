@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Primero eliminar la tabla si existe (por si hay una mal estructurada)
+        Schema::dropIfExists('restaurants');
+        
+        // Crear la tabla con la estructura correcta
         Schema::create('restaurants', function (Blueprint $table) {
             $table->id();
             $table->string('name');
