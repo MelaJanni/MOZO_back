@@ -10,8 +10,11 @@ class Table extends Model
     use HasFactory;
 
     protected $fillable = [
+        'name',
+        'code', 
         'number',
         'business_id',
+        'restaurant_id',
         'notifications_enabled',
         'capacity',
         'location',
@@ -28,6 +31,11 @@ class Table extends Model
     public function business()
     {
         return $this->belongsTo(Business::class);
+    }
+
+    public function restaurant()
+    {
+        return $this->belongsTo(Restaurant::class);
     }
 
     public function qrCodes()
