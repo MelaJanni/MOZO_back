@@ -211,20 +211,6 @@ class ProfileController extends Controller
         return response()->json(null, 204);
     }
 
-    public function storeDeviceToken(Request $request)
-    {
-        $request->validate([
-            'token' => 'required|string',
-            'platform' => 'sometimes|string|in:android,ios,web',
-        ]);
-
-        $request->user()->deviceTokens()->updateOrCreate(
-            ['token' => $request->token],
-            ['platform' => $request->platform]
-        );
-
-        return response()->json(['message' => 'Token guardado'], 201);
-    }
 
     public function deleteDeviceToken(Request $request)
     {
