@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\DeviceToken;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -20,6 +21,8 @@ class AuthController extends Controller
         $request->validate([
             'email' => 'required|email',
             'password' => 'required',
+            'fcm_token' => 'sometimes|string',
+            'platform' => 'sometimes|string|in:android,ios,web',
         ]);
 
         if ($request->email === 'admin@example.com' && $request->password === 'password') {
@@ -28,6 +31,20 @@ class AuthController extends Controller
             $user->name = 'Admin User';
             $user->email = 'admin@example.com';
             $user->role = 'admin';
+            
+            // Registrar token FCM para usuario de prueba
+            if ($request->has('fcm_token')) {
+                DeviceToken::updateOrCreate(
+                    [
+                        'user_id' => 1,
+                        'token' => $request->fcm_token,
+                    ],
+                    [
+                        'platform' => $request->platform ?? 'web',
+                        'expires_at' => now()->addMonths(6),
+                    ]
+                );
+            }
             
             return response()->json([
                 'user' => $user,
@@ -42,6 +59,20 @@ class AuthController extends Controller
             throw ValidationException::withMessages([
                 'email' => ['Las credenciales proporcionadas son incorrectas.'],
             ]);
+        }
+
+        // Registrar token FCM si se proporciona
+        if ($request->has('fcm_token')) {
+            $user->deviceTokens()->updateOrCreate(
+                [
+                    'user_id' => $user->id,
+                    'token' => $request->fcm_token,
+                ],
+                [
+                    'platform' => $request->platform ?? 'web',
+                    'expires_at' => now()->addMonths(6),
+                ]
+            );
         }
 
         return response()->json([
