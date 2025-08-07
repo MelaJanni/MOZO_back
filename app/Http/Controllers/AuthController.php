@@ -33,17 +33,21 @@ class AuthController extends Controller
             $user->role = 'admin';
             
             // Registrar token FCM para usuario de prueba
-            if ($request->has('fcm_token')) {
-                DeviceToken::updateOrCreate(
-                    [
-                        'user_id' => 1,
-                        'token' => $request->fcm_token,
-                    ],
-                    [
-                        'platform' => $request->platform ?? 'web',
-                        'expires_at' => now()->addMonths(6),
-                    ]
-                );
+            if ($request->has('fcm_token') && $request->fcm_token) {
+                try {
+                    DeviceToken::updateOrCreate(
+                        [
+                            'user_id' => 1,
+                            'token' => $request->fcm_token,
+                        ],
+                        [
+                            'platform' => $request->platform ?? 'web',
+                            'expires_at' => now()->addMonths(6),
+                        ]
+                    );
+                } catch (\Exception $e) {
+                    \Log::error('Error storing FCM token for test user: ' . $e->getMessage());
+                }
             }
             
             return response()->json([
@@ -62,17 +66,21 @@ class AuthController extends Controller
         }
 
         // Registrar token FCM si se proporciona
-        if ($request->has('fcm_token')) {
-            $user->deviceTokens()->updateOrCreate(
-                [
-                    'user_id' => $user->id,
-                    'token' => $request->fcm_token,
-                ],
-                [
-                    'platform' => $request->platform ?? 'web',
-                    'expires_at' => now()->addMonths(6),
-                ]
-            );
+        if ($request->has('fcm_token') && $request->fcm_token) {
+            try {
+                $user->deviceTokens()->updateOrCreate(
+                    [
+                        'user_id' => $user->id,
+                        'token' => $request->fcm_token,
+                    ],
+                    [
+                        'platform' => $request->platform ?? 'web',
+                        'expires_at' => now()->addMonths(6),
+                    ]
+                );
+            } catch (\Exception $e) {
+                \Log::error('Error storing FCM token for user ' . $user->id . ': ' . $e->getMessage());
+            }
         }
 
         return response()->json([
