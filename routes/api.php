@@ -15,6 +15,7 @@ use App\Http\Controllers\WaiterCallController;
 use App\Http\Controllers\PublicQrController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Broadcast;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login'])->name('login');
@@ -23,6 +24,9 @@ Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
 Route::get('/api-docs', [ApiDocumentationController::class, 'listAllApis']);
+
+// Broadcasting Auth route for real-time features
+Broadcast::routes(['middleware' => ['auth:sanctum']]);
 
 
 Route::middleware('auth:sanctum')->group(function () {
