@@ -7,6 +7,10 @@ use App\Models\Table;
 use App\Models\TableSilence;
 use App\Services\FirebaseService;
 use App\Notifications\FcmDatabaseNotification;
+use App\Events\WaiterCallCreated;
+use App\Events\WaiterCallAcknowledged;
+use App\Events\WaiterCallCompleted;
+use App\Events\TableStatusChanged;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -113,6 +117,9 @@ class WaiterCallController extends Controller
             // Enviar notificación FCM al mozo
             $this->sendNotificationToWaiter($call);
 
+            // 🔥 DISPARAR EVENTO EN TIEMPO REAL
+            broadcast(new WaiterCallCreated($call));
+
             return response()->json([
                 'success' => true,
                 'message' => 'Mozo llamado exitosamente. Aguarde por favor.',
@@ -166,7 +173,8 @@ class WaiterCallController extends Controller
         // Marcar como reconocida
         $call->acknowledge();
 
-        // Enviar actualización a la mesa (opcional - podrías usar WebSockets aquí)
+        // 🔥 DISPARAR EVENTO EN TIEMPO REAL - Mesa verá "mozo llamado"
+        broadcast(new WaiterCallAcknowledged($call));
         
         return response()->json([
             'success' => true,
@@ -210,6 +218,9 @@ class WaiterCallController extends Controller
 
         // Marcar como completada
         $call->complete();
+
+        // 🔥 DISPARAR EVENTO EN TIEMPO REAL - Atención completada
+        broadcast(new WaiterCallCompleted($call));
 
         return response()->json([
             'success' => true,
@@ -369,6 +380,13 @@ class WaiterCallController extends Controller
             'notes' => $request->input('notes')
         ]);
 
+        // 🔥 DISPARAR EVENTO EN TIEMPO REAL - Mesa silenciada
+        broadcast(new TableStatusChanged($table, 'silenced', [
+            'silenced_by' => $waiter->name,
+            'duration_minutes' => $durationMinutes,
+            'notes' => $request->input('notes')
+        ]));
+
         return response()->json([
             'success' => true,
             'message' => 'Mesa silenciada correctamente',
@@ -398,6 +416,11 @@ class WaiterCallController extends Controller
         }
 
         $silence->unsilence();
+
+        // 🔥 DISPARAR EVENTO EN TIEMPO REAL - Mesa des-silenciada
+        broadcast(new TableStatusChanged($table, 'unsilenced', [
+            'unsilenced_by' => Auth::user()->name
+        ]));
 
         return response()->json([
             'success' => true,
