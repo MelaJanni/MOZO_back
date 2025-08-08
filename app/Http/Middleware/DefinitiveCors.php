@@ -39,7 +39,7 @@ class DefinitiveCors
     }
 
     /**
-     * Añade headers CORS de forma ULTRA AGRESIVA
+     * Añade headers CORS SOLO a la respuesta (sin duplicar)
      */
     private function addCorsHeaders(Request $request, Response $response = null)
     {
@@ -52,17 +52,11 @@ class DefinitiveCors
             'Access-Control-Max-Age' => '86400',
         ];
 
-        // Si tenemos una respuesta, añadir a ella
+        // Solo añadir a la respuesta (evitar duplicación)
         if ($response) {
             foreach ($headers as $key => $value) {
-                $response->headers->set($key, $value);
-            }
-        }
-
-        // TAMBIÉN añadir a PHP headers directamente (por si acaso)
-        foreach ($headers as $key => $value) {
-            if (!headers_sent()) {
-                header("$key: $value");
+                // Usar replace en lugar de set para evitar duplicados
+                $response->headers->set($key, $value, true);
             }
         }
     }
