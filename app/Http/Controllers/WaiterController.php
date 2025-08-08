@@ -10,6 +10,7 @@ use App\Notifications\TableCalledNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
 class WaiterController extends Controller
@@ -203,6 +204,147 @@ class WaiterController extends Controller
         return response()->json([
             'message' => 'Perfil eliminado exitosamente',
         ]);
+    }
+
+    public function updateProfile($id, Request $request)
+    {
+        $request->validate([
+            'name' => 'sometimes|string|max:255',
+            'table_ids' => 'sometimes|array',
+            'table_ids.*' => 'integer|exists:tables,id',
+            'notes' => 'sometimes|string|max:500'
+        ]);
+
+        $user = $request->user();
+        
+        $profile = Profile::where('id', $id)
+            ->where('user_id', $user->id)
+            ->firstOrFail();
+
+        // Actualizar campos básicos
+        if ($request->has('name')) {
+            $profile->name = $request->name;
+        }
+        
+        if ($request->has('notes')) {
+            $profile->notes = $request->notes;
+        }
+
+        $profile->save();
+
+        // Actualizar mesas si se proporcionan
+        if ($request->has('table_ids')) {
+            // Verificar que las mesas pertenezcan al negocio del usuario
+            $businessTables = Table::where('business_id', $user->business_id)
+                ->whereIn('id', $request->table_ids)
+                ->pluck('id');
+
+            // Sincronizar las mesas (reemplazar las existentes)
+            $profile->tables()->sync($businessTables);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Perfil actualizado exitosamente',
+            'profile' => $profile->load('tables')
+        ]);
+    }
+
+    public function activateProfile($id, Request $request)
+    {
+        $user = $request->user();
+        
+        $profile = Profile::where('id', $id)
+            ->where('user_id', $user->id)
+            ->with('tables')
+            ->firstOrFail();
+
+        if ($profile->tables->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Este perfil no tiene mesas asignadas'
+            ], 400);
+        }
+
+        $results = [];
+        $successful = 0;
+        $errors = 0;
+        $alreadyAssigned = 0;
+
+        DB::beginTransaction();
+
+        try {
+            foreach ($profile->tables as $table) {
+                // Verificar si la mesa ya está asignada
+                if ($table->active_waiter_id) {
+                    if ($table->active_waiter_id === $user->id) {
+                        $results[] = [
+                            'table_id' => $table->id,
+                            'table_number' => $table->number,
+                            'success' => true,
+                            'message' => 'Ya estás asignado a esta mesa',
+                            'status' => 'already_assigned'
+                        ];
+                        $alreadyAssigned++;
+                    } else {
+                        $results[] = [
+                            'table_id' => $table->id,
+                            'table_number' => $table->number,
+                            'success' => false,
+                            'message' => 'Mesa ocupada por: ' . $table->activeWaiter->name,
+                            'status' => 'occupied'
+                        ];
+                        $errors++;
+                    }
+                } else {
+                    // Asignar mozo a la mesa
+                    $table->assignWaiter($user);
+                    $results[] = [
+                        'table_id' => $table->id,
+                        'table_number' => $table->number,
+                        'success' => true,
+                        'message' => 'Mesa activada correctamente',
+                        'status' => 'activated'
+                    ];
+                    $successful++;
+                }
+            }
+
+            DB::commit();
+
+            // Marcar el perfil como último utilizado
+            $profile->update(['last_used_at' => now()]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Perfil '{$profile->name}' activado. {$successful} mesas activadas, {$alreadyAssigned} ya asignadas, {$errors} ocupadas.",
+                'profile' => [
+                    'id' => $profile->id,
+                    'name' => $profile->name,
+                    'activated_at' => now()
+                ],
+                'summary' => [
+                    'total_tables' => $profile->tables->count(),
+                    'successful' => $successful,
+                    'already_assigned' => $alreadyAssigned,
+                    'errors' => $errors
+                ],
+                'results' => $results
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error activating profile', [
+                'profile_id' => $id,
+                'user_id' => $user->id,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error activando el perfil'
+            ], 500);
+        }
     }
     
     public function fetchWaiterTables()

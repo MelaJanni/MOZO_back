@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\WaiterCall;
 use App\Models\Table;
 use App\Models\TableSilence;
+use App\Models\Business;
 use App\Services\FirebaseService;
 use App\Services\FirebaseRealtimeService;
 use App\Notifications\FcmDatabaseNotification;
@@ -284,9 +285,9 @@ class WaiterCallController extends Controller
         if ($user->role === 'waiter') {
             $query->forWaiter($user->id);
         } elseif ($user->role === 'admin') {
-            // Los admins ven todas las llamadas de su business
+            // Los admins ven todas las llamadas de su business activo
             $query->whereHas('table', function ($q) use ($user) {
-                $q->where('business_id', $user->business_id);
+                $q->where('business_id', $user->active_business_id);
             });
         }
 
@@ -438,7 +439,7 @@ class WaiterCallController extends Controller
         $query = TableSilence::with(['table', 'silencedBy'])
             ->active()
             ->whereHas('table', function ($q) use ($user) {
-                $q->where('business_id', $user->business_id);
+                $q->where('business_id', $user->active_business_id);
             });
 
         $silences = $query->get()->map(function ($silence) {
@@ -528,8 +529,8 @@ class WaiterCallController extends Controller
     {
         $waiter = Auth::user();
 
-        // Verificar que la mesa pertenezca al mismo negocio
-        if ($table->business_id !== $waiter->business_id) {
+        // Verificar que la mesa pertenezca al negocio activo del mozo
+        if ($table->business_id !== $waiter->active_business_id) {
             return response()->json([
                 'success' => false,
                 'message' => 'No tienes acceso a esta mesa'
@@ -626,7 +627,7 @@ class WaiterCallController extends Controller
         
         // Obtener mesas y verificar permisos
         $tables = Table::whereIn('id', $tableIds)
-            ->where('business_id', $waiter->business_id)
+            ->where('business_id', $waiter->active_business_id)
             ->get();
 
         if ($tables->count() !== count($tableIds)) {
@@ -709,7 +710,7 @@ class WaiterCallController extends Controller
         // Obtener solo las mesas donde este mozo está asignado
         $tables = Table::whereIn('id', $tableIds)
             ->where('active_waiter_id', $waiter->id)
-            ->where('business_id', $waiter->business_id)
+            ->where('business_id', $waiter->active_business_id)
             ->get();
 
         $results = [];
@@ -800,7 +801,7 @@ class WaiterCallController extends Controller
         
         // Obtener mesas del mismo negocio
         $tables = Table::whereIn('id', $tableIds)
-            ->where('business_id', $waiter->business_id)
+            ->where('business_id', $waiter->active_business_id)
             ->get();
 
         if ($tables->count() !== count($tableIds)) {
@@ -896,7 +897,7 @@ class WaiterCallController extends Controller
         // Obtener mesas silenciadas del mismo negocio
         $silences = TableSilence::whereIn('table_id', $tableIds)
             ->whereHas('table', function ($q) use ($waiter) {
-                $q->where('business_id', $waiter->business_id);
+                $q->where('business_id', $waiter->active_business_id);
             })
             ->active()
             ->get();
@@ -970,7 +971,7 @@ class WaiterCallController extends Controller
         $waiter = Auth::user();
         
         $tables = Table::where('active_waiter_id', $waiter->id)
-            ->where('business_id', $waiter->business_id)
+            ->where('business_id', $waiter->active_business_id)
             ->with(['pendingCalls', 'activeSilence'])
             ->get()
             ->map(function ($table) {
@@ -1004,7 +1005,7 @@ class WaiterCallController extends Controller
     {
         $waiter = Auth::user();
         
-        $tables = Table::where('business_id', $waiter->business_id)
+        $tables = Table::where('business_id', $waiter->active_business_id)
             ->whereNull('active_waiter_id')
             ->get()
             ->map(function ($table) {
@@ -1152,6 +1153,682 @@ class WaiterCallController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error obteniendo el estado de la notificación'
+            ], 500);
+        }
+    }
+
+    /**
+     * Dashboard completo del mozo con estadísticas y estado actual
+     */
+    public function getDashboard(Request $request): JsonResponse
+    {
+        $waiter = Auth::user();
+        
+        try {
+            // Si no tiene negocio activo, obtener el primer negocio disponible
+            if (!$waiter->active_business_id && $waiter->businesses()->exists()) {
+                $firstBusiness = $waiter->businesses()->first();
+                $waiter->update(['active_business_id' => $firstBusiness->id]);
+                $waiter->refresh();
+            }
+
+            // Si aún no tiene negocio activo, devolver dashboard vacío
+            if (!$waiter->active_business_id) {
+                return response()->json([
+                    'success' => true,
+                    'dashboard' => [
+                        'waiter_info' => [
+                            'id' => $waiter->id,
+                            'name' => $waiter->name,
+                            'email' => $waiter->email,
+                            'business_name' => null
+                        ],
+                        'message' => 'No estás registrado en ningún negocio. Usa un código de invitación para unirte a uno.',
+                        'needs_business' => true,
+                        'statistics' => [
+                            'today' => ['total_calls' => 0, 'completed_calls' => 0, 'pending_calls' => 0, 'average_response_time' => null],
+                            'last_hour' => ['calls_last_hour' => 0, 'completed_last_hour' => 0],
+                            'tables' => ['total_assigned' => 0, 'with_pending_calls' => 0, 'silenced' => 0, 'available_to_assign' => 0]
+                        ]
+                    ]
+                ]);
+            }
+
+            // Obtener mesas asignadas con información relevante del negocio activo
+            $assignedTables = Table::where('active_waiter_id', $waiter->id)
+                ->where('business_id', $waiter->active_business_id)
+                ->with(['pendingCalls', 'activeSilence'])
+                ->get();
+
+            // Estadísticas del día actual
+            $today = Carbon::today();
+            $todayStats = [
+                'total_calls' => WaiterCall::forWaiter($waiter->id)
+                    ->whereDate('called_at', $today)
+                    ->count(),
+                'completed_calls' => WaiterCall::forWaiter($waiter->id)
+                    ->whereDate('called_at', $today)
+                    ->where('status', 'completed')
+                    ->count(),
+                'pending_calls' => WaiterCall::forWaiter($waiter->id)
+                    ->where('status', 'pending')
+                    ->count(),
+                'average_response_time' => $this->getAverageResponseTime($waiter->id, $today)
+            ];
+
+            // Estadísticas de la última hora
+            $lastHour = Carbon::now()->subHour();
+            $hourlyStats = [
+                'calls_last_hour' => WaiterCall::forWaiter($waiter->id)
+                    ->where('called_at', '>=', $lastHour)
+                    ->count(),
+                'completed_last_hour' => WaiterCall::forWaiter($waiter->id)
+                    ->where('called_at', '>=', $lastHour)
+                    ->where('status', 'completed')
+                    ->count()
+            ];
+
+            // Información de mesas
+            $tablesInfo = [
+                'total_assigned' => $assignedTables->count(),
+                'with_pending_calls' => $assignedTables->filter(fn($t) => $t->pendingCalls->count() > 0)->count(),
+                'silenced' => $assignedTables->filter(fn($t) => $t->activeSilence() && $t->activeSilence()->isActive())->count(),
+                'available_to_assign' => Table::where('business_id', $waiter->active_business_id)
+                    ->whereNull('active_waiter_id')
+                    ->count()
+            ];
+
+            // Llamadas pendientes con detalles
+            $pendingCalls = WaiterCall::with(['table'])
+                ->forWaiter($waiter->id)
+                ->pending()
+                ->orderBy('called_at', 'asc')
+                ->take(10)
+                ->get()
+                ->map(function ($call) {
+                    return [
+                        'id' => $call->id,
+                        'table' => [
+                            'id' => $call->table->id,
+                            'number' => $call->table->number,
+                            'name' => $call->table->name
+                        ],
+                        'message' => $call->message,
+                        'called_at' => $call->called_at,
+                        'minutes_ago' => $call->called_at->diffInMinutes(now()),
+                        'urgency' => $call->metadata['urgency'] ?? 'normal'
+                    ];
+                });
+
+            // Mesas asignadas con estado actual
+            $tablesStatus = $assignedTables->map(function ($table) {
+                return [
+                    'id' => $table->id,
+                    'number' => $table->number,
+                    'name' => $table->name,
+                    'notifications_enabled' => $table->notifications_enabled,
+                    'assigned_at' => $table->waiter_assigned_at,
+                    'pending_calls_count' => $table->pendingCalls->count(),
+                    'is_silenced' => $table->isSilenced(),
+                    'silence_info' => $table->activeSilence() && $table->activeSilence()->isActive() ? [
+                        'reason' => $table->activeSilence()->reason,
+                        'remaining_time' => $table->activeSilence()->formatted_remaining_time,
+                        'notes' => $table->activeSilence()->notes
+                    ] : null
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'dashboard' => [
+                    'waiter_info' => [
+                        'id' => $waiter->id,
+                        'name' => $waiter->name,
+                        'email' => $waiter->email,
+                        'business_name' => $waiter->activeBusiness->name ?? 'N/A'
+                    ],
+                    'statistics' => [
+                        'today' => $todayStats,
+                        'last_hour' => $hourlyStats,
+                        'tables' => $tablesInfo
+                    ],
+                    'pending_calls' => $pendingCalls,
+                    'assigned_tables' => $tablesStatus,
+                    'performance' => [
+                        'efficiency_score' => $this->calculateEfficiencyScore($todayStats),
+                        'response_grade' => $this->getResponseGrade($todayStats['average_response_time'])
+                    ]
+                ],
+                'last_updated' => now()
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error getting waiter dashboard', [
+                'waiter_id' => $waiter->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error cargando el dashboard'
+            ], 500);
+        }
+    }
+
+    /**
+     * Estado actual de las mesas del mozo
+     */
+    public function getTablesStatus(Request $request): JsonResponse
+    {
+        $waiter = Auth::user();
+        
+        try {
+            // Si no tiene negocio activo, devolver error
+            if (!$waiter->active_business_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No tienes un negocio activo seleccionado',
+                    'needs_business_selection' => true
+                ], 400);
+            }
+
+            // Obtener todas las mesas asignadas con información completa del negocio activo
+            $assignedTables = Table::where('active_waiter_id', $waiter->id)
+                ->where('business_id', $waiter->active_business_id)
+                ->with(['pendingCalls', 'activeSilence', 'business'])
+                ->get();
+
+            // Obtener también mesas disponibles si se solicita
+            $includeAvailable = $request->boolean('include_available', false);
+            $availableTables = collect();
+            
+            if ($includeAvailable) {
+                $availableTables = Table::where('business_id', $waiter->active_business_id)
+                    ->whereNull('active_waiter_id')
+                    ->get();
+            }
+
+            $tablesStatus = $assignedTables->map(function ($table) {
+                $pendingCalls = $table->pendingCalls;
+                $activeSilence = $table->activeSilence();
+                
+                return [
+                    'id' => $table->id,
+                    'number' => $table->number,
+                    'name' => $table->name,
+                    'capacity' => $table->capacity,
+                    'location' => $table->location,
+                    'notifications_enabled' => $table->notifications_enabled,
+                    'status' => [
+                        'assigned_to_me' => true,
+                        'assigned_at' => $table->waiter_assigned_at,
+                        'hours_assigned' => $table->waiter_assigned_at ? 
+                            $table->waiter_assigned_at->diffInHours(now()) : 0
+                    ],
+                    'calls' => [
+                        'pending_count' => $pendingCalls->count(),
+                        'total_today' => WaiterCall::where('table_id', $table->id)
+                            ->whereDate('called_at', Carbon::today())
+                            ->count(),
+                        'latest_call' => $pendingCalls->first() ? [
+                            'id' => $pendingCalls->first()->id,
+                            'called_at' => $pendingCalls->first()->called_at,
+                            'minutes_ago' => $pendingCalls->first()->called_at->diffInMinutes(now()),
+                            'message' => $pendingCalls->first()->message,
+                            'urgency' => $pendingCalls->first()->metadata['urgency'] ?? 'normal'
+                        ] : null
+                    ],
+                    'silence' => [
+                        'is_silenced' => $activeSilence && $activeSilence->isActive(),
+                        'silence_info' => $activeSilence && $activeSilence->isActive() ? [
+                            'reason' => $activeSilence->reason,
+                            'silenced_by' => $activeSilence->silencedBy->name ?? 'Sistema',
+                            'silenced_at' => $activeSilence->silenced_at,
+                            'remaining_time' => $activeSilence->formatted_remaining_time,
+                            'notes' => $activeSilence->notes,
+                            'can_unsilence' => $activeSilence->reason === 'manual'
+                        ] : null
+                    ],
+                    'priority' => $this->calculateTablePriority($table, $pendingCalls)
+                ];
+            });
+
+            // Ordenar por prioridad (más urgente primero)
+            $tablesStatus = $tablesStatus->sortByDesc('priority');
+
+            $availableStatus = $availableTables->map(function ($table) {
+                return [
+                    'id' => $table->id,
+                    'number' => $table->number,
+                    'name' => $table->name,
+                    'capacity' => $table->capacity,
+                    'location' => $table->location,
+                    'notifications_enabled' => $table->notifications_enabled,
+                    'status' => [
+                        'assigned_to_me' => false,
+                        'available_for_assignment' => true
+                    ]
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'tables_status' => [
+                    'assigned' => $tablesStatus->values(),
+                    'available' => $includeAvailable ? $availableStatus : null,
+                    'summary' => [
+                        'total_assigned' => $assignedTables->count(),
+                        'with_pending_calls' => $tablesStatus->where('calls.pending_count', '>', 0)->count(),
+                        'silenced' => $tablesStatus->where('silence.is_silenced', true)->count(),
+                        'available' => $includeAvailable ? $availableTables->count() : null,
+                        'high_priority' => $tablesStatus->where('priority', '>=', 8)->count()
+                    ]
+                ],
+                'last_updated' => now()
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error getting tables status', [
+                'waiter_id' => $waiter->id,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error obteniendo el estado de las mesas'
+            ], 500);
+        }
+    }
+
+    /**
+     * Métodos auxiliares para cálculos del dashboard
+     */
+    private function getAverageResponseTime(int $waiterId, Carbon $date): ?float
+    {
+        $completedCalls = WaiterCall::forWaiter($waiterId)
+            ->whereDate('called_at', $date)
+            ->whereNotNull('acknowledged_at')
+            ->get();
+
+        if ($completedCalls->isEmpty()) {
+            return null;
+        }
+
+        $totalMinutes = $completedCalls->sum(function ($call) {
+            return $call->called_at->diffInMinutes($call->acknowledged_at);
+        });
+
+        return round($totalMinutes / $completedCalls->count(), 1);
+    }
+
+    private function calculateEfficiencyScore(array $stats): int
+    {
+        if ($stats['total_calls'] === 0) return 100;
+        
+        $completionRate = ($stats['completed_calls'] / $stats['total_calls']) * 100;
+        $pendingPenalty = min($stats['pending_calls'] * 5, 30); // Penalizar llamadas pendientes
+        
+        return max(0, min(100, round($completionRate - $pendingPenalty)));
+    }
+
+    private function getResponseGrade(?float $avgResponseTime): string
+    {
+        if ($avgResponseTime === null) return 'N/A';
+        
+        if ($avgResponseTime <= 2) return 'Excelente';
+        if ($avgResponseTime <= 5) return 'Bueno';
+        if ($avgResponseTime <= 10) return 'Regular';
+        return 'Necesita mejorar';
+    }
+
+    private function calculateTablePriority(Table $table, $pendingCalls): int
+    {
+        $priority = 0;
+        
+        // Llamadas pendientes (más llamadas = mayor prioridad)
+        $priority += $pendingCalls->count() * 3;
+        
+        // Urgencia de la llamada más antigua
+        if ($pendingCalls->isNotEmpty()) {
+            $oldestCall = $pendingCalls->first();
+            $minutesWaiting = $oldestCall->called_at->diffInMinutes(now());
+            
+            // Más tiempo esperando = mayor prioridad
+            $priority += min($minutesWaiting / 2, 10);
+            
+            // Urgencia explícita
+            $urgency = $oldestCall->metadata['urgency'] ?? 'normal';
+            if ($urgency === 'high') $priority += 5;
+            elseif ($urgency === 'low') $priority -= 2;
+        }
+        
+        return min(10, max(0, round($priority)));
+    }
+
+    /**
+     * Obtener todos los negocios donde el mozo puede trabajar
+     */
+    public function getWaiterBusinesses(Request $request): JsonResponse
+    {
+        $waiter = Auth::user();
+        
+        try {
+            // Obtener todos los negocios donde el mozo está registrado
+            $businesses = $waiter->businesses()
+                ->withPivot('joined_at', 'status', 'role')
+                ->with(['tables' => function ($query) use ($waiter) {
+                    // Contar mesas asignadas a este mozo y disponibles
+                    $query->selectRaw('business_id, COUNT(*) as total_tables')
+                        ->selectRaw('SUM(CASE WHEN active_waiter_id = ? THEN 1 ELSE 0 END) as assigned_to_me', [$waiter->id])
+                        ->selectRaw('SUM(CASE WHEN active_waiter_id IS NULL THEN 1 ELSE 0 END) as available')
+                        ->groupBy('business_id');
+                }])
+                ->get()
+                ->map(function ($business) use ($waiter) {
+                    // Obtener estadísticas de este negocio
+                    $tablesStats = $business->tables()
+                        ->selectRaw('COUNT(*) as total_tables')
+                        ->selectRaw('SUM(CASE WHEN active_waiter_id = ? THEN 1 ELSE 0 END) as assigned_to_me', [$waiter->id])
+                        ->selectRaw('SUM(CASE WHEN active_waiter_id IS NULL THEN 1 ELSE 0 END) as available')
+                        ->selectRaw('SUM(CASE WHEN active_waiter_id IS NOT NULL AND active_waiter_id != ? THEN 1 ELSE 0 END) as occupied_by_others', [$waiter->id])
+                        ->first();
+
+                    // Llamadas pendientes de este mozo en este negocio
+                    $pendingCalls = WaiterCall::where('waiter_id', $waiter->id)
+                        ->where('status', 'pending')
+                        ->whereHas('table', function ($query) use ($business) {
+                            $query->where('business_id', $business->id);
+                        })
+                        ->count();
+
+                    return [
+                        'id' => $business->id,
+                        'name' => $business->name,
+                        'slug' => $business->slug,
+                        'address' => $business->address,
+                        'phone' => $business->phone,
+                        'logo' => $business->logo ? asset('storage/' . $business->logo) : null,
+                        'is_active' => $business->id === $waiter->active_business_id,
+                        'membership' => [
+                            'joined_at' => $business->pivot->joined_at ?? null,
+                            'status' => $business->pivot->status ?? 'active',
+                            'role' => $business->pivot->role ?? 'waiter'
+                        ],
+                        'tables_stats' => [
+                            'total' => (int)$tablesStats->total_tables,
+                            'assigned_to_me' => (int)$tablesStats->assigned_to_me,
+                            'available' => (int)$tablesStats->available,
+                            'occupied_by_others' => (int)$tablesStats->occupied_by_others
+                        ],
+                        'pending_calls' => $pendingCalls,
+                        'can_work' => $business->pivot->status === 'active'
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'businesses' => $businesses,
+                'active_business_id' => $waiter->active_business_id,
+                'total_businesses' => $businesses->count()
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error getting waiter businesses', [
+                'waiter_id' => $waiter->id,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error obteniendo los negocios'
+            ], 500);
+        }
+    }
+
+    /**
+     * Obtener mesas disponibles de un negocio específico
+     */
+    public function getBusinessTables(Request $request, $businessId): JsonResponse
+    {
+        $waiter = Auth::user();
+        
+        try {
+            // Verificar que el mozo tenga acceso a este negocio
+            $business = $waiter->businesses()->where('businesses.id', $businessId)->first();
+            
+            if (!$business) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No tienes acceso a este negocio'
+                ], 403);
+            }
+
+            // Obtener todas las mesas del negocio con información completa
+            $tables = Table::where('business_id', $businessId)
+                ->with(['activeWaiter', 'pendingCalls', 'activeSilence'])
+                ->orderBy('number', 'asc')
+                ->get()
+                ->map(function ($table) use ($waiter) {
+                    $isAssignedToMe = $table->active_waiter_id === $waiter->id;
+                    $pendingCalls = $table->pendingCalls;
+                    $activeSilence = $table->activeSilence();
+
+                    return [
+                        'id' => $table->id,
+                        'number' => $table->number,
+                        'name' => $table->name,
+                        'capacity' => $table->capacity,
+                        'location' => $table->location,
+                        'notifications_enabled' => $table->notifications_enabled,
+                        'status' => [
+                            'assignment' => $table->active_waiter_id ? 
+                                ($isAssignedToMe ? 'assigned_to_me' : 'occupied') : 'available',
+                            'assigned_waiter' => $table->activeWaiter ? [
+                                'id' => $table->activeWaiter->id,
+                                'name' => $table->activeWaiter->name,
+                                'is_me' => $isAssignedToMe
+                            ] : null,
+                            'assigned_at' => $table->waiter_assigned_at
+                        ],
+                        'calls' => [
+                            'pending_count' => $pendingCalls->count(),
+                            'latest_call' => $pendingCalls->first() ? [
+                                'id' => $pendingCalls->first()->id,
+                                'called_at' => $pendingCalls->first()->called_at,
+                                'minutes_ago' => $pendingCalls->first()->called_at->diffInMinutes(now()),
+                                'message' => $pendingCalls->first()->message
+                            ] : null
+                        ],
+                        'silence' => [
+                            'is_silenced' => $activeSilence && $activeSilence->isActive(),
+                            'remaining_time' => $activeSilence && $activeSilence->isActive() ? 
+                                $activeSilence->formatted_remaining_time : null,
+                            'reason' => $activeSilence && $activeSilence->isActive() ? 
+                                $activeSilence->reason : null
+                        ],
+                        'actions_available' => [
+                            'can_activate' => !$table->active_waiter_id,
+                            'can_deactivate' => $isAssignedToMe,
+                            'can_silence' => $isAssignedToMe && (!$activeSilence || !$activeSilence->isActive()),
+                            'can_unsilence' => $isAssignedToMe && $activeSilence && $activeSilence->isActive()
+                        ]
+                    ];
+                });
+
+            // Estadísticas del negocio
+            $stats = [
+                'total_tables' => $tables->count(),
+                'available' => $tables->where('status.assignment', 'available')->count(),
+                'assigned_to_me' => $tables->where('status.assignment', 'assigned_to_me')->count(),
+                'occupied_by_others' => $tables->where('status.assignment', 'occupied')->count(),
+                'with_pending_calls' => $tables->where('calls.pending_count', '>', 0)->count(),
+                'silenced' => $tables->where('silence.is_silenced', true)->count()
+            ];
+
+            return response()->json([
+                'success' => true,
+                'business' => [
+                    'id' => $business->id,
+                    'name' => $business->name,
+                    'slug' => $business->slug
+                ],
+                'tables' => $tables,
+                'statistics' => $stats,
+                'last_updated' => now()
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error getting business tables', [
+                'waiter_id' => $waiter->id,
+                'business_id' => $businessId,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error obteniendo las mesas del negocio'
+            ], 500);
+        }
+    }
+
+    /**
+     * Unirse a un nuevo negocio con código
+     */
+    public function joinBusiness(Request $request): JsonResponse
+    {
+        $request->validate([
+            'business_code' => 'required|string|max:50'
+        ]);
+
+        $waiter = Auth::user();
+        $businessCode = strtoupper(trim($request->business_code));
+
+        try {
+            // Buscar el negocio por código
+            $business = Business::where('invitation_code', $businessCode)
+                ->orWhere('slug', $businessCode)
+                ->first();
+
+            if (!$business) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Código de negocio no válido'
+                ], 404);
+            }
+
+            // Verificar si ya está registrado en este negocio
+            if ($waiter->businesses()->where('businesses.id', $business->id)->exists()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ya estás registrado en este negocio',
+                    'business' => [
+                        'id' => $business->id,
+                        'name' => $business->name,
+                        'slug' => $business->slug
+                    ]
+                ], 409);
+            }
+
+            // Registrar al mozo en el negocio
+            $waiter->businesses()->attach($business->id, [
+                'joined_at' => now(),
+                'status' => 'active',
+                'role' => 'waiter'
+            ]);
+
+            // Si es su primer negocio, hacerlo activo
+            if (!$waiter->active_business_id) {
+                $waiter->update(['active_business_id' => $business->id]);
+            }
+
+            Log::info('Waiter joined new business', [
+                'waiter_id' => $waiter->id,
+                'waiter_name' => $waiter->name,
+                'business_id' => $business->id,
+                'business_name' => $business->name,
+                'code_used' => $businessCode
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Te has unido exitosamente a {$business->name}",
+                'business' => [
+                    'id' => $business->id,
+                    'name' => $business->name,
+                    'slug' => $business->slug,
+                    'address' => $business->address,
+                    'phone' => $business->phone,
+                    'logo' => $business->logo ? asset('storage/' . $business->logo) : null,
+                    'is_active' => $business->id === $waiter->active_business_id
+                ],
+                'membership' => [
+                    'joined_at' => now(),
+                    'status' => 'active',
+                    'role' => 'waiter'
+                ]
+            ], 201);
+
+        } catch (\Exception $e) {
+            Log::error('Error joining business', [
+                'waiter_id' => $waiter->id,
+                'business_code' => $businessCode,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al unirse al negocio'
+            ], 500);
+        }
+    }
+
+    /**
+     * Cambiar negocio activo
+     */
+    public function setActiveBusiness(Request $request): JsonResponse
+    {
+        $request->validate([
+            'business_id' => 'required|integer'
+        ]);
+
+        $waiter = Auth::user();
+        $businessId = $request->business_id;
+
+        try {
+            // Verificar que el mozo tenga acceso a este negocio
+            $business = $waiter->businesses()->where('businesses.id', $businessId)->first();
+            
+            if (!$business) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No tienes acceso a este negocio'
+                ], 403);
+            }
+
+            // Actualizar negocio activo
+            $waiter->update(['active_business_id' => $businessId]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Cambiado a {$business->name}",
+                'active_business' => [
+                    'id' => $business->id,
+                    'name' => $business->name,
+                    'slug' => $business->slug
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error setting active business', [
+                'waiter_id' => $waiter->id,
+                'business_id' => $businessId,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error cambiando de negocio'
             ], 500);
         }
     }

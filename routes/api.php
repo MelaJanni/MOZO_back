@@ -69,6 +69,16 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/calls/{call}/acknowledge', [WaiterCallController::class, 'acknowledgeCall']);
         Route::post('/calls/{call}/complete', [WaiterCallController::class, 'completeCall']);
         
+        // Dashboard y estado
+        Route::get('/dashboard', [WaiterCallController::class, 'getDashboard']);
+        Route::get('/tables/status', [WaiterCallController::class, 'getTablesStatus']);
+
+        // Gestión de negocios múltiples
+        Route::get('/businesses', [WaiterCallController::class, 'getWaiterBusinesses']);
+        Route::get('/businesses/{id}/tables', [WaiterCallController::class, 'getBusinessTables']);
+        Route::post('/join-business', [WaiterCallController::class, 'joinBusiness']);
+        Route::post('/set-active-business', [WaiterCallController::class, 'setActiveBusiness']);
+        
         // Gestión de mesas - Individual
         Route::get('/tables/assigned', [WaiterCallController::class, 'getAssignedTables']);
         Route::get('/tables/available', [WaiterCallController::class, 'getAvailableTables']);
@@ -85,6 +95,13 @@ Route::middleware('auth:sanctum')->group(function () {
         
         // Estado de mesas
         Route::get('/tables/silenced', [WaiterCallController::class, 'getSilencedTables']);
+
+        // Perfiles de mesa
+        Route::get('/table-profiles', [WaiterController::class, 'listProfiles']);
+        Route::post('/table-profiles', [WaiterController::class, 'createProfile']);
+        Route::put('/table-profiles/{id}', [WaiterController::class, 'updateProfile']);
+        Route::delete('/table-profiles/{id}', [WaiterController::class, 'deleteProfile']);
+        Route::post('/table-profiles/{id}/activate', [WaiterController::class, 'activateProfile']);
     });
 
     Route::prefix('admin')->group(function () {
@@ -166,7 +183,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('/profiles', [WaiterController::class, 'listProfiles']);
         Route::post('/profiles', [WaiterController::class, 'createProfile']);
+        Route::put('/profiles/{id}', [WaiterController::class, 'updateProfile']);
         Route::delete('/profiles/{id}', [WaiterController::class, 'deleteProfile']);
+        Route::post('/profiles/{id}/activate', [WaiterController::class, 'activateProfile']);
     });
 
     Route::post('/change-password', [AuthController::class, 'changePassword']);
