@@ -179,3 +179,7 @@ Route::post('/tables/{table}/call-waiter', [WaiterCallController::class, 'callWa
 // API pública para información de QR codes
 Route::get('/qr/{restaurantSlug}/{tableCode}', [PublicQrController::class, 'getTableInfo'])
     ->name('api.qr.table.info');
+
+// API pública para obtener estado de mesa (polling fallback)
+Route::get('/table/{tableId}/status', [PublicQrController::class, 'getTableStatus'])
+    ->name('api.table.status');
