@@ -6,11 +6,8 @@ use App\Models\WaiterCall;
 use App\Models\Table;
 use App\Models\TableSilence;
 use App\Services\FirebaseService;
+use App\Services\FirebaseRealtimeService;
 use App\Notifications\FcmDatabaseNotification;
-use App\Events\WaiterCallCreated;
-use App\Events\WaiterCallAcknowledged;
-use App\Events\WaiterCallCompleted;
-use App\Events\TableStatusChanged;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -21,10 +18,12 @@ use Carbon\Carbon;
 class WaiterCallController extends Controller
 {
     private $firebaseService;
+    private $firebaseRealtimeService;
 
-    public function __construct(FirebaseService $firebaseService)
+    public function __construct(FirebaseService $firebaseService, FirebaseRealtimeService $firebaseRealtimeService)
     {
         $this->firebaseService = $firebaseService;
+        $this->firebaseRealtimeService = $firebaseRealtimeService;
     }
 
     /**
@@ -117,8 +116,8 @@ class WaiterCallController extends Controller
             // Enviar notificación FCM al mozo
             $this->sendNotificationToWaiter($call);
 
-            // 🔥 DISPARAR EVENTO EN TIEMPO REAL
-            broadcast(new WaiterCallCreated($call));
+            // 🔥 ESCRIBIR EN FIRESTORE PARA TIEMPO REAL
+            $this->firebaseRealtimeService->writeWaiterCall($call, 'created');
 
             return response()->json([
                 'success' => true,
@@ -173,8 +172,8 @@ class WaiterCallController extends Controller
         // Marcar como reconocida
         $call->acknowledge();
 
-        // 🔥 DISPARAR EVENTO EN TIEMPO REAL - Mesa verá "mozo llamado"
-        broadcast(new WaiterCallAcknowledged($call));
+        // 🔥 ESCRIBIR EN FIRESTORE - Mesa verá "mozo llamado"
+        $this->firebaseRealtimeService->writeWaiterCall($call, 'acknowledged');
         
         return response()->json([
             'success' => true,
@@ -219,8 +218,8 @@ class WaiterCallController extends Controller
         // Marcar como completada
         $call->complete();
 
-        // 🔥 DISPARAR EVENTO EN TIEMPO REAL - Atención completada
-        broadcast(new WaiterCallCompleted($call));
+        // 🔥 ESCRIBIR EN FIRESTORE - Atención completada
+        $this->firebaseRealtimeService->completeWaiterCall($call);
 
         return response()->json([
             'success' => true,
@@ -380,12 +379,12 @@ class WaiterCallController extends Controller
             'notes' => $request->input('notes')
         ]);
 
-        // 🔥 DISPARAR EVENTO EN TIEMPO REAL - Mesa silenciada
-        broadcast(new TableStatusChanged($table, 'silenced', [
+        // 🔥 ESCRIBIR EN FIRESTORE - Mesa silenciada
+        $this->firebaseRealtimeService->writeTableStatus($table, 'silenced', [
             'silenced_by' => $waiter->name,
             'duration_minutes' => $durationMinutes,
             'notes' => $request->input('notes')
-        ]));
+        ]);
 
         return response()->json([
             'success' => true,
@@ -417,10 +416,10 @@ class WaiterCallController extends Controller
 
         $silence->unsilence();
 
-        // 🔥 DISPARAR EVENTO EN TIEMPO REAL - Mesa des-silenciada
-        broadcast(new TableStatusChanged($table, 'unsilenced', [
+        // 🔥 ESCRIBIR EN FIRESTORE - Mesa des-silenciada
+        $this->firebaseRealtimeService->writeTableStatus($table, 'unsilenced', [
             'unsilenced_by' => Auth::user()->name
-        ]));
+        ]);
 
         return response()->json([
             'success' => true,

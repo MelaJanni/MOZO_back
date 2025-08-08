@@ -13,6 +13,7 @@ use App\Http\Controllers\TableController;
 use App\Http\Controllers\WaiterController;
 use App\Http\Controllers\WaiterCallController;
 use App\Http\Controllers\PublicQrController;
+use App\Http\Controllers\FirebaseConfigController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Broadcast;
@@ -30,6 +31,10 @@ Broadcast::routes(['middleware' => ['auth:sanctum']]);
 
 // Endpoint temporal para registrar tokens FCM de prueba
 Route::post('/test/register-fcm-token', [NotificationController::class, 'registerTestToken']);
+
+// Firebase configuration endpoints (public for mozoqr.com)
+Route::get('/firebase/config', [FirebaseConfigController::class, 'getConfig']);
+Route::get('/firebase/table/{table}/config', [FirebaseConfigController::class, 'getQrTableConfig']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', fn (Request $request) => $request->user());

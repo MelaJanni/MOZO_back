@@ -1,0 +1,404 @@
+# 🔥 DOCUMENTACIÓN FIREBASE TIEMPO REAL - SISTEMA MOZO
+
+## 📋 RESUMEN
+El sistema MOZO usa Firebase para dos funcionalidades:
+1. **FCM (Firebase Cloud Messaging)** - Notificaciones push cuando app cerrada/background
+2. **Firestore Real-time Database** - Actualizaciones en tiempo real cuando app abierta
+
+## 🚀 CONFIGURACIÓN INICIAL
+
+### 1. Instalar Firebase SDK
+```bash
+npm install firebase
+```
+
+### 2. Configuración Firebase (firebase-config.js)
+```javascript
+import { initializeApp } from 'firebase/app';
+import { getFirestore } from 'firebase/firestore';
+import { getMessaging } from 'firebase/messaging';
+
+const firebaseConfig = {
+  apiKey: "tu-api-key",
+  authDomain: "tu-project.firebaseapp.com", 
+  projectId: "tu-project-id",
+  storageBucket: "tu-project.appspot.com",
+  messagingSenderId: "123456789",
+  appId: "tu-app-id"
+};
+
+const app = initializeApp(firebaseConfig);
+export const db = getFirestore(app);
+export const messaging = getMessaging(app);
+```
+
+## 📊 ESTRUCTURA DE DOCUMENTOS FIRESTORE
+
+### Colecciones principales:
+```
+/tables/{table_id}/waiter_calls/{call_id}     - Llamadas por mesa
+/waiters/{waiter_id}/calls/{call_id}          - Llamadas por mozo
+/businesses/{business_id}/waiter_calls/{call_id} - Todas las llamadas del negocio
+/tables/{table_id}/status/current             - Estado actual de la mesa
+/businesses/{business_id}/table_status/{table_id} - Estados de mesas por negocio
+/users/{user_id}/notifications/{notification_id} - Notificaciones por usuario
+```
+
+## 🎯 EVENTOS DISPONIBLES Y ESTRUCTURA
+
+### 1. LLAMADA DE MOZO CREADA
+**Documento:** `/tables/{table_id}/waiter_calls/{call_id}`
+**Cuándo:** Mesa llama al mozo (botón "Llamar Mozo")
+
+```json
+{
+  "id": "123",
+  "table_id": "5",
+  "table_number": "5",
+  "waiter_id": "10",
+  "waiter_name": "Juan Pérez",
+  "status": "pending",
+  "message": "Llamada desde mesa 5",
+  "event_type": "created",
+  "called_at": "2025-01-08T14:30:00.000Z",
+  "acknowledged_at": null,
+  "completed_at": null,
+  "timestamp": "2025-01-08T14:30:00.000Z"
+}
+```
+
+### 2. LLAMADA RECONOCIDA POR MOZO
+**Documento:** `/tables/{table_id}/waiter_calls/{call_id}` (actualizado)
+**Cuándo:** Mozo confirma que vio la llamada
+
+```json
+{
+  "id": "123",
+  "status": "acknowledged", 
+  "event_type": "acknowledged",
+  "acknowledged_at": "2025-01-08T14:32:00.000Z",
+  "timestamp": "2025-01-08T14:32:00.000Z"
+  // ... resto de campos
+}
+```
+
+### 3. LLAMADA COMPLETADA
+**Documento:** `/tables/{table_id}/waiter_calls/{call_id}` (actualizado)
+**Cuándo:** Mozo marca la atención como completada
+
+```json
+{
+  "id": "123",
+  "status": "completed",
+  "event_type": "completed", 
+  "completed_at": "2025-01-08T14:35:00.000Z",
+  "timestamp": "2025-01-08T14:35:00.000Z"
+  // ... resto de campos
+}
+```
+
+### 4. CAMBIO DE ESTADO DE MESA
+**Documento:** `/tables/{table_id}/status/current`
+**Cuándo:** Mesa silenciada, des-silenciada, mozo asignado/desasignado
+
+```json
+{
+  "table_id": "5",
+  "table_number": "5", 
+  "table_name": "Mesa Principal",
+  "status_type": "silenced", // "silenced"|"unsilenced"|"waiter_assigned"|"waiter_unassigned"
+  "status_data": {
+    "silenced_by": "Juan Pérez",
+    "duration_minutes": 30,
+    "notes": "Clientes problemáticos"
+  },
+  "notifications_enabled": true,
+  "active_waiter_id": "10",
+  "active_waiter_name": "Juan Pérez",
+  "is_silenced": true,
+  "timestamp": "2025-01-08T14:30:00.000Z"
+}
+```
+
+## 💻 CÓDIGO FRONTEND - LISTENERS EN TIEMPO REAL
+
+### 1. Listener para QR de Mesa (Página Pública)
+```javascript
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from './firebase-config';
+
+// Escuchar llamadas de una mesa específica
+function listenToTableCalls(tableId) {
+  const callsRef = collection(db, `tables/${tableId}/waiter_calls`);
+  
+  return onSnapshot(callsRef, (snapshot) => {
+    snapshot.docChanges().forEach((change) => {
+      const callData = change.doc.data();
+      
+      if (change.type === 'added' || change.type === 'modified') {
+        handleWaiterCallUpdate(callData);
+      }
+    });
+  });
+}
+
+function handleWaiterCallUpdate(callData) {
+  switch(callData.event_type) {
+    case 'created':
+      showModal('Llamando mozo...', 'Su mozo llegará en breve');
+      break;
+      
+    case 'acknowledged':
+      updateModal('¡Mozo llamado!', 'Su mozo confirmó la llamada');
+      break;
+      
+    case 'completed':
+      showSuccessModal('Atención completada', '¡Gracias por su paciencia!');
+      setTimeout(() => hideModal(), 3000);
+      break;
+  }
+}
+```
+
+### 2. Listener para App de Mozo
+```javascript
+// Escuchar llamadas pendientes del mozo
+function listenToWaiterCalls(waiterId) {
+  const callsRef = collection(db, `waiters/${waiterId}/calls`);
+  
+  return onSnapshot(callsRef, (snapshot) => {
+    const pendingCalls = [];
+    
+    snapshot.forEach((doc) => {
+      const callData = doc.data();
+      if (callData.status === 'pending') {
+        pendingCalls.push(callData);
+      }
+    });
+    
+    updateWaiterCallsList(pendingCalls);
+  });
+}
+
+// Escuchar cambios en una llamada específica
+function listenToSpecificCall(tableId, callId) {
+  const callRef = doc(db, `tables/${tableId}/waiter_calls/${callId}`);
+  
+  return onSnapshot(callRef, (doc) => {
+    if (doc.exists()) {
+      const callData = doc.data();
+      updateCallStatus(callData);
+    }
+  });
+}
+```
+
+### 3. Listener para Admins (Dashboard)
+```javascript
+// Escuchar todas las llamadas del negocio
+function listenToBusinessCalls(businessId) {
+  const callsRef = collection(db, `businesses/${businessId}/waiter_calls`);
+  
+  return onSnapshot(callsRef, (snapshot) => {
+    const allCalls = [];
+    
+    snapshot.forEach((doc) => {
+      allCalls.push(doc.data());
+    });
+    
+    updateDashboard(allCalls);
+  });
+}
+
+// Escuchar estados de mesas
+function listenToTableStatuses(businessId) {
+  const statusRef = collection(db, `businesses/${businessId}/table_status`);
+  
+  return onSnapshot(statusRef, (snapshot) => {
+    const tableStatuses = [];
+    
+    snapshot.forEach((doc) => {
+      tableStatuses.push(doc.data());
+    });
+    
+    updateTableStatusDashboard(tableStatuses);
+  });
+}
+```
+
+## 🔔 INTEGRACIÓN CON FCM (Notificaciones Push)
+
+### 1. Configurar Service Worker (firebase-messaging-sw.js)
+```javascript
+importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js');
+
+firebase.initializeApp({
+  // tu config
+});
+
+const messaging = firebase.messaging();
+
+messaging.onBackgroundMessage((payload) => {
+  const notificationTitle = payload.notification.title;
+  const notificationOptions = {
+    body: payload.notification.body,
+    icon: '/icon-192x192.png',
+    data: payload.data
+  };
+
+  self.registration.showNotification(notificationTitle, notificationOptions);
+});
+```
+
+### 2. Solicitar Permisos y Obtener Token
+```javascript
+import { getMessaging, getToken, onMessage } from 'firebase/messaging';
+
+// Solicitar permisos y obtener token
+async function initializeFCM() {
+  try {
+    const permission = await Notification.requestPermission();
+    
+    if (permission === 'granted') {
+      const token = await getToken(messaging, {
+        vapidKey: 'tu-vapid-key'
+      });
+      
+      // Enviar token al backend
+      await sendTokenToServer(token);
+      
+      // Escuchar mensajes en foreground
+      onMessage(messaging, (payload) => {
+        showInAppNotification(payload.notification);
+      });
+    }
+  } catch (error) {
+    console.error('Error inicializando FCM:', error);
+  }
+}
+
+async function sendTokenToServer(token) {
+  await fetch('/api/fcm/register', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${userToken}`
+    },
+    body: JSON.stringify({ token })
+  });
+}
+```
+
+## 🎨 EJEMPLOS DE USO ESPECÍFICOS
+
+### Flujo Completo QR Mesa:
+```javascript
+// QrMesaPage.vue
+export default {
+  data() {
+    return {
+      tableId: null,
+      showModal: false,
+      modalTitle: '',
+      modalMessage: '',
+      unsubscribe: null
+    }
+  },
+  
+  mounted() {
+    this.tableId = this.$route.params.tableId;
+    this.startListening();
+  },
+  
+  methods: {
+    startListening() {
+      const callsRef = collection(db, `tables/${this.tableId}/waiter_calls`);
+      
+      this.unsubscribe = onSnapshot(callsRef, (snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+          if (change.type === 'added' || change.type === 'modified') {
+            this.handleCallUpdate(change.doc.data());
+          }
+        });
+      });
+    },
+    
+    handleCallUpdate(callData) {
+      switch(callData.event_type) {
+        case 'created':
+          this.showWaiterModal('Llamando mozo...', 'Aguarde por favor');
+          break;
+        case 'acknowledged':
+          this.updateWaiterModal('¡Mozo llamado!', 'Su mozo viene en camino');
+          break;
+        case 'completed':
+          this.showSuccessModal('¡Atención completada!', 'Gracias por elegirnos');
+          break;
+      }
+    },
+    
+    async callWaiter() {
+      try {
+        await fetch(`/api/tables/${this.tableId}/call-waiter`, {
+          method: 'POST'
+        });
+      } catch (error) {
+        console.error('Error llamando mozo:', error);
+      }
+    }
+  },
+  
+  beforeUnmount() {
+    if (this.unsubscribe) this.unsubscribe();
+  }
+}
+```
+
+## ⚠️ CONSIDERACIONES IMPORTANTES
+
+### 1. Manejo de Errores
+- Siempre incluir try/catch en listeners
+- Manejar casos cuando documentos no existen
+- Implementar reconexión automática
+
+### 2. Optimización
+- Usar `limit()` en queries grandes
+- Desuscribirse de listeners al desmontar componentes
+- Cachear datos cuando sea posible
+
+### 3. Seguridad
+- Rules de Firestore para proteger datos
+- Validar permisos en cada listener
+- No exponer datos sensibles
+
+## 🔧 HERRAMIENTAS DE DEBUG
+
+```javascript
+// Habilitar logs de Firebase
+import { connectFirestoreEmulator } from 'firebase/firestore';
+
+if (process.env.NODE_ENV === 'development') {
+  connectFirestoreEmulator(db, 'localhost', 8080);
+}
+
+// Log de cambios
+onSnapshot(collection(db, 'path'), (snapshot) => {
+  snapshot.docChanges().forEach((change) => {
+    console.log(`${change.type}:`, change.doc.data());
+  });
+});
+```
+
+## 📞 SOPORTE
+Para dudas sobre esta implementación, contactar al equipo backend o revisar logs en Firebase Console.
+
+## 🚀 ESTADO ACTUAL
+✅ FCM Push Notifications implementado
+✅ Firestore Real-time listeners implementado  
+✅ WaiterCall events migrados a Firebase
+✅ TableStatus events migrados a Firebase
+✅ Broadcasting/Pusher removido completamente
+
+---
+*Documentación generada para el sistema MOZO - v2.0 Firebase Real-time*
