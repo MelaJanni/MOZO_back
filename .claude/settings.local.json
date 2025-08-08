@@ -14,7 +14,10 @@
       "Bash(cat:*)",
       "Bash(find:*)",
       "Bash(mysql:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(git pull:*)",
+      "Bash(timeout 10 php artisan:*)",
+      "Bash(curl:*)"
     ],
     "deny": []
   }
