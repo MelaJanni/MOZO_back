@@ -33,8 +33,10 @@ Broadcast::routes(['middleware' => ['auth:sanctum']]);
 Route::post('/test/register-fcm-token', [NotificationController::class, 'registerTestToken']);
 
 // Firebase configuration endpoints (public for mozoqr.com)
-Route::get('/firebase/config', [FirebaseConfigController::class, 'getConfig']);
-Route::get('/firebase/table/{table}/config', [FirebaseConfigController::class, 'getQrTableConfig']);
+Route::middleware('public_api')->group(function () {
+    Route::get('/firebase/config', [FirebaseConfigController::class, 'getConfig']);
+    Route::get('/firebase/table/{table}/config', [FirebaseConfigController::class, 'getQrTableConfig']);
+});
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', fn (Request $request) => $request->user());
@@ -174,12 +176,14 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 // Rutas públicas para QR codes y llamadas de mozo (sin autenticación)
-Route::post('/tables/{table}/call-waiter', [WaiterCallController::class, 'callWaiter']);
+Route::middleware('public_api')->group(function () {
+    Route::post('/tables/{table}/call-waiter', [WaiterCallController::class, 'callWaiter']);
+    
+    // API pública para información de QR codes
+    Route::get('/qr/{restaurantSlug}/{tableCode}', [PublicQrController::class, 'getTableInfo'])
+        ->name('api.qr.table.info');
 
-// API pública para información de QR codes
-Route::get('/qr/{restaurantSlug}/{tableCode}', [PublicQrController::class, 'getTableInfo'])
-    ->name('api.qr.table.info');
-
-// API pública para obtener estado de mesa (polling fallback)
-Route::get('/table/{tableId}/status', [PublicQrController::class, 'getTableStatus'])
-    ->name('api.table.status');
+    // API pública para obtener estado de mesa (polling fallback)
+    Route::get('/table/{tableId}/status', [PublicQrController::class, 'getTableStatus'])
+        ->name('api.table.status');
+});

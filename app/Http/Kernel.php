@@ -14,6 +14,7 @@ class Kernel extends HttpKernel
      * @var array<int, class-string|string>
      */
     protected $middleware = [
+        // CORS debe ser lo primero para manejar preflight requests
         \Illuminate\Http\Middleware\HandleCors::class,
         \App\Http\Middleware\TrustProxies::class,
         \App\Http\Middleware\PreventRequestsDuringMaintenance::class,
@@ -40,6 +41,13 @@ class Kernel extends HttpKernel
         'api' => [
             \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
             \App\Http\Middleware\DevAuthMiddleware::class,
+            \Illuminate\Routing\Middleware\ThrottleRequests::class.':api',
+            \Illuminate\Routing\Middleware\SubstituteBindings::class,
+        ],
+
+        // Nuevo grupo para APIs públicas sin autenticación
+        'public_api' => [
+            \App\Http\Middleware\PublicApiCors::class,
             \Illuminate\Routing\Middleware\ThrottleRequests::class.':api',
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
         ],
