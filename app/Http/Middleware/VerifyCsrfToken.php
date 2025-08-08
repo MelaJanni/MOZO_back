@@ -12,14 +12,6 @@ class VerifyCsrfToken extends Middleware
      * @var array<int, string>
      */
     protected $except = [
-        'api/login',
-        'api/register',
-        'api/forgot-password',
-        'api/reset-password',
-        'api/admin/notifications/*',
-        'api/notifications/*',
-        'api/tables/*/call-waiter',
-        'api/waiter/*',
-        'api/device-token',
+        'api/*',  // Excluir todas las rutas API del CSRF
     ];
 }
