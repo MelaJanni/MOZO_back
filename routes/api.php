@@ -186,4 +186,8 @@ Route::middleware('public_api')->group(function () {
     // API pública para obtener estado de mesa (polling fallback)
     Route::get('/table/{tableId}/status', [PublicQrController::class, 'getTableStatus'])
         ->name('api.table.status');
+
+    // Compatibility route for existing frontend (waiter-notifications)
+    Route::post('/waiter-notifications', [WaiterCallController::class, 'createNotification']);
+    Route::get('/waiter-notifications/{id}', [WaiterCallController::class, 'getNotificationStatus']);
 });

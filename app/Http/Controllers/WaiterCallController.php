@@ -1024,4 +1024,135 @@ class WaiterCallController extends Controller
             'count' => $tables->count()
         ]);
     }
+
+    /**
+     * Crear notificación de mozo (compatibilidad con frontend existente)
+     */
+    public function createNotification(Request $request): JsonResponse
+    {
+        try {
+            $request->validate([
+                'restaurant_id' => 'required|integer',
+                'table_id' => 'required|integer',
+                'message' => 'sometimes|string|max:500',
+                'urgency' => 'sometimes|in:low,normal,high'
+            ]);
+
+            // Buscar la mesa
+            $table = Table::find($request->table_id);
+            
+            if (!$table) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Mesa no encontrada'
+                ], 404);
+            }
+
+            // Verificar si la mesa tiene notificaciones habilitadas
+            if (!$table->notifications_enabled) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Las notificaciones están desactivadas para esta mesa'
+                ], 400);
+            }
+
+            // Verificar si la mesa tiene un mozo activo asignado
+            if (!$table->active_waiter_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Esta mesa no tiene un mozo asignado actualmente'
+                ], 422);
+            }
+
+            // Crear la llamada usando el método existente
+            $call = WaiterCall::create([
+                'table_id' => $table->id,
+                'waiter_id' => $table->active_waiter_id,
+                'status' => 'pending',
+                'message' => $request->input('message', 'Llamada desde mesa ' . $table->number),
+                'called_at' => now(),
+                'metadata' => [
+                    'urgency' => $request->input('urgency', 'normal'),
+                    'restaurant_id' => $request->input('restaurant_id'),
+                    'source' => 'legacy_frontend'
+                ]
+            ]);
+
+            // Enviar notificación FCM al mozo
+            $this->sendNotificationToWaiter($call);
+
+            // Escribir en Firestore para tiempo real
+            $this->firebaseRealtimeService->writeWaiterCall($call, 'created');
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Notificación enviada al mozo exitosamente',
+                'data' => [
+                    'id' => $call->id,
+                    'table_number' => $table->number,
+                    'waiter_name' => $table->activeWaiter->name ?? 'Mozo',
+                    'status' => 'pending',
+                    'called_at' => $call->called_at,
+                    'message' => $call->message
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error creating waiter notification', [
+                'request_data' => $request->all(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error procesando la solicitud. Intente nuevamente.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Obtener estado de notificación de mozo (compatibilidad con frontend existente)
+     */
+    public function getNotificationStatus($id): JsonResponse
+    {
+        try {
+            $call = WaiterCall::with(['table', 'waiter'])->find($id);
+            
+            if (!$call) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Notificación no encontrada'
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'id' => $call->id,
+                    'table_id' => $call->table_id,
+                    'table_number' => $call->table->number,
+                    'waiter_name' => $call->waiter->name ?? 'Mozo',
+                    'status' => $call->status,
+                    'message' => $call->message,
+                    'called_at' => $call->called_at,
+                    'acknowledged_at' => $call->acknowledged_at,
+                    'completed_at' => $call->completed_at,
+                    'response_time_minutes' => $call->acknowledged_at ? 
+                        $call->called_at->diffInMinutes($call->acknowledged_at) : null
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error getting notification status', [
+                'notification_id' => $id,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error obteniendo el estado de la notificación'
+            ], 500);
+        }
+    }
 }
