@@ -93,9 +93,11 @@ class FirebaseService
     public function sendToDevice($token, $title, $body, $data = [])
     {
         // FCM HTTP v1 API requiere que todos los valores en 'data' sean strings
-        $formattedData = [];
-        foreach ($data as $key => $value) {
-            $formattedData[$key] = is_array($value) || is_object($value) ? json_encode($value) : (string)$value;
+        $formattedData = (object)[];  // Siempre debe ser un objeto, nunca array
+        if (!empty($data) && is_array($data)) {
+            foreach ($data as $key => $value) {
+                $formattedData->{$key} = is_array($value) || is_object($value) ? json_encode($value) : (string)$value;
+            }
         }
 
         $message = [
@@ -280,9 +282,11 @@ class FirebaseService
     public function sendToTopic($topic, $title, $body, $data = [])
     {
         // FCM HTTP v1 API requiere que todos los valores en 'data' sean strings
-        $formattedData = [];
-        foreach ($data as $key => $value) {
-            $formattedData[$key] = is_array($value) || is_object($value) ? json_encode($value) : (string)$value;
+        $formattedData = (object)[];  // Siempre debe ser un objeto, nunca array
+        if (!empty($data) && is_array($data)) {
+            foreach ($data as $key => $value) {
+                $formattedData->{$key} = is_array($value) || is_object($value) ? json_encode($value) : (string)$value;
+            }
         }
 
         $message = [

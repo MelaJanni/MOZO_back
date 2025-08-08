@@ -6,6 +6,7 @@ use App\Services\FirebaseService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Hash;
 use App\Models\User;
 use App\Models\DeviceToken;
 
@@ -402,6 +403,70 @@ class NotificationController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to mark notification as read: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Endpoint temporal para registrar tokens FCM de prueba
+     */
+    public function registerTestToken(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'user_id' => 'required|integer',
+            'token' => 'required|string',
+            'platform' => 'required|string|in:android,ios,web',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            // Crear usuario de prueba si no existe
+            $user = User::firstOrCreate(
+                ['id' => $request->user_id],
+                [
+                    'name' => 'Test User ' . $request->user_id,
+                    'email' => 'testuser' . $request->user_id . '@example.com',
+                    'password' => Hash::make('password'),
+                    'role' => 'waiter'
+                ]
+            );
+
+            // Registrar token FCM
+            $deviceToken = DeviceToken::updateOrCreate(
+                [
+                    'user_id' => $request->user_id,
+                    'token' => $request->token,
+                ],
+                [
+                    'platform' => $request->platform,
+                    'expires_at' => now()->addMonths(6),
+                ]
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Test FCM token registered successfully',
+                'data' => [
+                    'user' => [
+                        'id' => $user->id,
+                        'name' => $user->name,
+                        'email' => $user->email
+                    ],
+                    'device_token' => $deviceToken
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to register test token: ' . $e->getMessage()
             ], 500);
         }
     }

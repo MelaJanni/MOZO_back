@@ -28,6 +28,8 @@ Route::get('/api-docs', [ApiDocumentationController::class, 'listAllApis']);
 // Broadcasting Auth route for real-time features
 Broadcast::routes(['middleware' => ['auth:sanctum']]);
 
+// Endpoint temporal para registrar tokens FCM de prueba
+Route::post('/test/register-fcm-token', [NotificationController::class, 'registerTestToken']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', fn (Request $request) => $request->user());
