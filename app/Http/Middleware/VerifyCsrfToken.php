@@ -17,6 +17,9 @@ class VerifyCsrfToken extends Middleware
         'api/forgot-password',
         'api/reset-password',
         'api/admin/notifications/*',
+        'api/notifications/*',
         'api/tables/*/call-waiter',
+        'api/waiter/*',
+        'api/device-token',
     ];
 }
