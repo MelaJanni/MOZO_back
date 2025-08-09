@@ -112,6 +112,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/staff/onboard', [WaiterController::class, 'onboardBusiness']);
 
         Route::get('/business', [AdminController::class, 'getBusinessInfo']);
+        Route::post('/business/regenerate-invitation-code', [AdminController::class, 'regenerateInvitationCode']);
         Route::post('/switch-view', [AdminController::class, 'switchView']);
         Route::get('/settings', [AdminController::class, 'getSettings']);
         Route::post('/settings', [AdminController::class, 'updateSettings']);

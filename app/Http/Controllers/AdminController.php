@@ -32,6 +32,22 @@ class AdminController extends Controller
             'tables_count' => $business->tables->count(),
             'menus_count' => $business->menus->count(),
             'qr_codes_count' => $business->qrCodes->count(),
+            'invitation_code' => $business->invitation_code,
+            'invitation_url' => config('app.frontend_url') . '/join-business?code=' . $business->invitation_code,
+        ]);
+    }
+
+    public function regenerateInvitationCode(Request $request)
+    {
+        $user = $request->user();
+        $business = Business::findOrFail($user->business_id);
+        
+        $business->regenerateInvitationCode();
+        
+        return response()->json([
+            'message' => 'Código de invitación regenerado exitosamente',
+            'invitation_code' => $business->invitation_code,
+            'invitation_url' => config('app.frontend_url') . '/join-business?code=' . $business->invitation_code,
         ]);
     }
 
