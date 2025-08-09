@@ -1545,7 +1545,7 @@ class WaiterCallController extends Controller
                     return [
                         'id' => $business->id,
                         'name' => $business->name,
-                        'slug' => $business->slug,
+                        'code' => $business->code,
                         'address' => $business->address,
                         'phone' => $business->phone,
                         'logo' => $business->logo ? asset('storage/' . $business->logo) : null,
@@ -1671,7 +1671,7 @@ class WaiterCallController extends Controller
                 'business' => [
                     'id' => $business->id,
                     'name' => $business->name,
-                    'slug' => $business->slug
+                    'code' => $business->code
                 ],
                 'tables' => $tables,
                 'statistics' => $stats,
@@ -1707,7 +1707,7 @@ class WaiterCallController extends Controller
         try {
             // Buscar el negocio por código
             $business = Business::where('invitation_code', $businessCode)
-                ->orWhere('slug', $businessCode)
+                ->orWhere('code', $businessCode)
                 ->first();
 
             if (!$business) {
@@ -1725,7 +1725,7 @@ class WaiterCallController extends Controller
                     'business' => [
                         'id' => $business->id,
                         'name' => $business->name,
-                        'slug' => $business->slug
+                        'code' => $business->code
                     ]
                 ], 409);
             }
@@ -1756,7 +1756,7 @@ class WaiterCallController extends Controller
                 'business' => [
                     'id' => $business->id,
                     'name' => $business->name,
-                    'slug' => $business->slug,
+                    'code' => $business->code,
                     'address' => $business->address,
                     'phone' => $business->phone,
                     'logo' => $business->logo ? asset('storage/' . $business->logo) : null,
@@ -1815,7 +1815,7 @@ class WaiterCallController extends Controller
                 'active_business' => [
                     'id' => $business->id,
                     'name' => $business->name,
-                    'slug' => $business->slug
+                    'code' => $business->code
                 ]
             ]);
 
