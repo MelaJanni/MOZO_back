@@ -10,13 +10,36 @@ class QrWebController extends Controller
 {
     public function showTablePage($restaurantSlug, $tableCode)
     {
-        // Buscar negocio por slug
-        $business = Business::whereRaw('LOWER(REPLACE(name, " ", "")) = ?', [strtolower(str_replace(' ', '', $restaurantSlug))])
-                           ->orWhere('code', $restaurantSlug)
-                           ->first();
+        // Debug: Log what we're looking for
+        \Log::info('QR Page Request', [
+            'restaurantSlug' => $restaurantSlug,
+            'tableCode' => $tableCode
+        ]);
+
+        // Buscar negocio por múltiples criterios
+        $business = Business::where(function($query) use ($restaurantSlug) {
+            // Exact name match (case insensitive)
+            $query->whereRaw('LOWER(name) = ?', [strtolower($restaurantSlug)])
+                  // Name without spaces (case insensitive) 
+                  ->orWhereRaw('LOWER(REPLACE(name, " ", "")) = ?', [strtolower(str_replace(' ', '', $restaurantSlug))])
+                  // Code match
+                  ->orWhere('code', $restaurantSlug);
+        })->first();
+        
+        \Log::info('Business Search Result', [
+            'found' => $business ? 'yes' : 'no',
+            'business_id' => $business ? $business->id : null,
+            'business_name' => $business ? $business->name : null
+        ]);
         
         if (!$business) {
-            abort(404, 'Business not found');
+            // Debug: Show available businesses
+            $availableBusinesses = Business::select('id', 'name', 'code')->get();
+            \Log::error('Business not found', [
+                'searched_for' => $restaurantSlug,
+                'available_businesses' => $availableBusinesses->toArray()
+            ]);
+            abort(404, 'Business not found: ' . $restaurantSlug);
         }
 
         // Buscar mesa por código
@@ -24,8 +47,24 @@ class QrWebController extends Controller
                      ->where('business_id', $business->id)
                      ->first();
         
+        \Log::info('Table Search Result', [
+            'found' => $table ? 'yes' : 'no',
+            'table_id' => $table ? $table->id : null,
+            'table_number' => $table ? $table->number : null
+        ]);
+        
         if (!$table) {
-            abort(404, 'Table not found');
+            // Debug: Show available tables for this business
+            $availableTables = Table::where('business_id', $business->id)
+                                   ->select('id', 'number', 'code', 'name')
+                                   ->get();
+            \Log::error('Table not found', [
+                'searched_for' => $tableCode,
+                'business_id' => $business->id,
+                'business_name' => $business->name,
+                'available_tables' => $availableTables->toArray()
+            ]);
+            abort(404, 'Table not found: ' . $tableCode . ' for business: ' . $business->name);
         }
 
         // Obtener URL del frontend desde configuración
