@@ -39,18 +39,9 @@ class BusinessSeeder extends Seeder
                     'address' => $businessData['address'],
                     'phone' => $businessData['phone'],
                     'email' => $businessData['email'],
-                    'join_code' => $this->generateUniqueJoinCode(),
                 ]);
             }
         }
     }
 
-    private function generateUniqueJoinCode(): string
-    {
-        do {
-            $code = str_pad(rand(0, 9999), 4, '0', STR_PAD_LEFT);
-        } while (Business::where('join_code', $code)->exists());
-
-        return $code;
-    }
 }
