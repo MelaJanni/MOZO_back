@@ -3,23 +3,25 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\Restaurant;
+use App\Models\Business;
 use App\Models\Table;
 
 class QrWebController extends Controller
 {
     public function showTablePage($restaurantSlug, $tableCode)
     {
-        // Buscar restaurante por slug
-        $restaurant = Restaurant::where('slug', $restaurantSlug)->first();
+        // Buscar negocio por slug
+        $business = Business::whereRaw('LOWER(REPLACE(name, " ", "")) = ?', [strtolower(str_replace(' ', '', $restaurantSlug))])
+                           ->orWhere('code', $restaurantSlug)
+                           ->first();
         
-        if (!$restaurant) {
-            abort(404, 'Restaurant not found');
+        if (!$business) {
+            abort(404, 'Business not found');
         }
 
         // Buscar mesa por código
         $table = Table::where('code', $tableCode)
-                     ->where('restaurant_id', $restaurant->id)
+                     ->where('business_id', $business->id)
                      ->first();
         
         if (!$table) {
@@ -29,7 +31,7 @@ class QrWebController extends Controller
         // Obtener URL del frontend desde configuración
         $frontendUrl = config('app.frontend_url', 'https://mozoqr.com');
         
-        return view('qr.table-page', compact('restaurant', 'table', 'frontendUrl'));
+        return view('qr.table-page', compact('business', 'table', 'frontendUrl'));
     }
 
     public function testQr()
