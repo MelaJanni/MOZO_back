@@ -19,6 +19,7 @@ class Business extends Model
         'phone',
         'email',
         'logo',
+        'menu_pdf',
         'working_hours',
         'notification_preferences',
     ];

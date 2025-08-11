@@ -22,6 +22,7 @@ class BusinessSeeder extends Seeder
                 'address' => 'Av. Corrientes 1234, CABA',
                 'phone' => '+5491123456789',
                 'email' => 'info@mcdonalds.com',
+                'menu_pdf' => 'menus/mcdonalds-menu.html',
             ],
             [
                 'name' => 'Starbucks',
@@ -30,6 +31,7 @@ class BusinessSeeder extends Seeder
                 'address' => 'Av. Santa Fe 5678, CABA',
                 'phone' => '+5491198765432',
                 'email' => 'info@starbucks.com',
+                'menu_pdf' => 'menus/starbucks-menu.html',
             ],
         ];
 
@@ -42,6 +44,7 @@ class BusinessSeeder extends Seeder
                     'address' => $businessData['address'],
                     'phone' => $businessData['phone'],
                     'email' => $businessData['email'],
+                    'menu_pdf' => $businessData['menu_pdf'],
                 ]);
             }
         }

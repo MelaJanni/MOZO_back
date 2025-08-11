@@ -81,4 +81,19 @@ class QrWebController extends Controller
             'timestamp' => now()->toISOString()
         ]);
     }
+
+    public function debugData()
+    {
+        $businesses = Business::all(['id', 'name', 'code', 'invitation_code']);
+        $tables = Table::all(['id', 'business_id', 'number', 'code', 'name']);
+        
+        return response()->json([
+            'businesses' => $businesses,
+            'tables' => $tables,
+            'test_lookup' => [
+                'mcdonalds_business' => Business::where('name', 'McDonalds')->orWhere('code', 'mcdonalds')->first(),
+                'table_JoA4vw' => Table::where('code', 'JoA4vw')->first()
+            ]
+        ]);
+    }
 }
