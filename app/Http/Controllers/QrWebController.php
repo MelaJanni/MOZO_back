@@ -100,40 +100,50 @@ class QrWebController extends Controller
     public function setupTestData()
     {
         try {
-            // Create or update McDonalds
-            $mcdonalds = Business::updateOrCreate(
-                ['name' => 'McDonalds'],
-                [
+            // First update existing McDonalds with code
+            $mcdonalds = Business::where('name', 'McDonalds')->first();
+            if ($mcdonalds) {
+                $mcdonalds->update(['code' => 'mcdonalds']);
+            } else {
+                // Create new McDonalds if it doesn't exist
+                $mcdonalds = Business::create([
+                    'name' => 'McDonalds',
                     'code' => 'mcdonalds',
                     'industry' => 'Comida Rápida',
                     'address' => 'Av. Corrientes 1234, CABA',
                     'phone' => '+5491123456789',
                     'email' => 'info@mcdonalds.com',
-                    'menu_pdf' => 'menus/mcdonalds-menu.html',
-                ]
-            );
+                ]);
+            }
 
-            // Create test table
-            $table = Table::updateOrCreate(
-                ['business_id' => $mcdonalds->id, 'code' => 'JoA4vw'],
-                [
+            // Create test table if it doesn't exist
+            $table = Table::where('code', 'JoA4vw')->first();
+            if (!$table) {
+                $table = Table::create([
+                    'business_id' => $mcdonalds->id,
                     'number' => 1,
+                    'code' => 'JoA4vw',
                     'name' => 'Mesa 1',
                     'notifications_enabled' => true,
-                ]
-            );
+                ]);
+            }
 
             return response()->json([
                 'status' => 'success',
                 'message' => 'Test data created successfully',
                 'business' => $mcdonalds,
                 'table' => $table,
-                'qr_url' => url("/QR/mcdonalds/JoA4vw")
+                'qr_url' => url("/QR/mcdonalds/JoA4vw"),
+                'debug_lookup' => [
+                    'business_by_code' => Business::where('code', 'mcdonalds')->first(),
+                    'table_by_code' => Table::where('code', 'JoA4vw')->first()
+                ]
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => $e->getMessage()
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ], 500);
         }
     }
