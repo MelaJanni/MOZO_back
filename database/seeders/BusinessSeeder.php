@@ -17,13 +17,15 @@ class BusinessSeeder extends Seeder
         $businesses = [
             [
                 'name' => 'McDonalds', 
+                'code' => 'mcdonalds',
                 'industry' => 'Comida Rápida',
                 'address' => 'Av. Corrientes 1234, CABA',
                 'phone' => '+5491123456789',
                 'email' => 'info@mcdonalds.com',
             ],
             [
-                'name' => 'Starbucks', 
+                'name' => 'Starbucks',
+                'code' => 'starbucks', 
                 'industry' => 'Cafetería',
                 'address' => 'Av. Santa Fe 5678, CABA',
                 'phone' => '+5491198765432',
@@ -35,6 +37,7 @@ class BusinessSeeder extends Seeder
             if (!Business::where('name', $businessData['name'])->exists()) {
                 Business::create([
                     'name' => $businessData['name'],
+                    'code' => $businessData['code'],
                     'industry' => $businessData['industry'],
                     'address' => $businessData['address'],
                     'phone' => $businessData['phone'],

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ $restaurant->name }} - Mesa {{ $table->number }}</title>
+    <title>{{ $business->name }} - Mesa {{ $table->number }}</title>
     <style>
         * {
             margin: 0;
@@ -259,13 +259,13 @@
     <div class="container">
         <header class="header">
             <div class="logo">
-                @if($restaurant->logo)
-                    <img src="{{ asset('storage/' . $restaurant->logo) }}" alt="{{ $restaurant->name }} Logo">
+                @if($business->logo)
+                    <img src="{{ asset('storage/' . $business->logo) }}" alt="{{ $business->name }} Logo">
                 @else
                     🍴
                 @endif
             </div>
-            <h1 class="restaurant-name">{{ $restaurant->name }}</h1>
+            <h1 class="restaurant-name">{{ $business->name }}</h1>
             <div class="table-info">Mesa {{ $table->number }} - {{ $table->name }}</div>
         </header>
 
@@ -273,7 +273,7 @@
             <div class="welcome-message">
                 <h2 class="welcome-title">¡Bienvenido!</h2>
                 <p class="welcome-text">
-                    Estás en {{ $restaurant->name }}, Mesa {{ $table->number }}. 
+                    Estás en {{ $business->name }}, Mesa {{ $table->number }}. 
                     Revisa nuestro menú y no dudes en llamar a nuestro mozo cuando estés listo para ordenar.
                 </p>
             </div>
@@ -281,13 +281,13 @@
             <section class="menu-section">
                 <h2 class="section-title">Nuestro Menú</h2>
                 <div class="menu-container">
-                    @if($restaurant->menu_pdf)
+                    @if($business->menu_pdf)
                         <iframe 
-                            src="{{ asset('storage/' . $restaurant->menu_pdf) }}" 
+                            src="{{ asset('storage/' . $business->menu_pdf) }}" 
                             class="menu-pdf"
-                            title="Menú de {{ $restaurant->name }}">
+                            title="Menú de {{ $business->name }}">
                             <p>Tu navegador no puede mostrar PDFs. 
-                            <a href="{{ asset('storage/' . $restaurant->menu_pdf) }}" target="_blank">
+                            <a href="{{ asset('storage/' . $business->menu_pdf) }}" target="_blank">
                                 Haz clic aquí para ver el menú
                             </a></p>
                         </iframe>
@@ -309,13 +309,13 @@
         </main>
 
         <footer class="footer">
-            <p>© {{ date('Y') }} {{ $restaurant->name }}. Sistema de llamado QR activo.</p>
+            <p>© {{ date('Y') }} {{ $business->name }}. Sistema de llamado QR activo.</p>
         </footer>
     </div>
 
     <script>
         const FRONTEND_URL = '{{ $frontendUrl }}';
-        const RESTAURANT_ID = {{ $restaurant->id }};
+        const RESTAURANT_ID = {{ $business->id }};
         const TABLE_ID = {{ $table->id }};
         
         let currentNotificationId = null;
