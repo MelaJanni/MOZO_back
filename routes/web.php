@@ -95,6 +95,10 @@ Route::get('/test-qr', [QrWebController::class, 'testQr'])
 Route::get('/debug-qr-data', [QrWebController::class, 'debugData'])
     ->name('qr.debug');
 
+// Ruta para setup datos de prueba
+Route::get('/setup-test-data', [QrWebController::class, 'setupTestData'])
+    ->name('qr.setup');
+
 // Ruta para mostrar página de mesa desde QR
 Route::get('/QR/{restaurantSlug}/{tableCode}', [QrWebController::class, 'showTablePage'])
     ->name('qr.table.page');

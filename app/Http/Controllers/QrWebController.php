@@ -96,4 +96,45 @@ class QrWebController extends Controller
             ]
         ]);
     }
+
+    public function setupTestData()
+    {
+        try {
+            // Create or update McDonalds
+            $mcdonalds = Business::updateOrCreate(
+                ['name' => 'McDonalds'],
+                [
+                    'code' => 'mcdonalds',
+                    'industry' => 'Comida Rápida',
+                    'address' => 'Av. Corrientes 1234, CABA',
+                    'phone' => '+5491123456789',
+                    'email' => 'info@mcdonalds.com',
+                    'menu_pdf' => 'menus/mcdonalds-menu.html',
+                ]
+            );
+
+            // Create test table
+            $table = Table::updateOrCreate(
+                ['business_id' => $mcdonalds->id, 'code' => 'JoA4vw'],
+                [
+                    'number' => 1,
+                    'name' => 'Mesa 1',
+                    'notifications_enabled' => true,
+                ]
+            );
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Test data created successfully',
+                'business' => $mcdonalds,
+                'table' => $table,
+                'qr_url' => url("/QR/mcdonalds/JoA4vw")
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
 }
