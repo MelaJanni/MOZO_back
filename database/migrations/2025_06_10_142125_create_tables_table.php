@@ -17,13 +17,14 @@ return new class extends Migration
             $table->string('code')->nullable();
             $table->integer('number');
             $table->foreignId('business_id')->constrained()->onDelete('cascade');
-            $table->foreignId('restaurant_id')->nullable()->constrained()->onDelete('cascade');
+            // Removemos la referencia a restaurant_id por ahora - se agregará después si es necesaria
+            $table->unsignedBigInteger('restaurant_id')->nullable();
             $table->boolean('notifications_enabled')->default(false);
             $table->timestamps();
             
             // Número de mesa único por negocio
             $table->unique(['number', 'business_id']);
-            // Código QR único por restaurante
+            // Código QR único por restaurante (sin restricción foreign key)
             $table->unique(['code', 'restaurant_id']);
         });
     }
