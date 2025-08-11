@@ -14,41 +14,43 @@ class TableSeeder extends Seeder
      */
     public function run(): void
     {
-        // Obtener todos los negocios
-        $businesses = Business::all();
-        
-        if ($businesses->isEmpty()) {
-            // Si no hay negocios, crear uno para los seeders
-            $business = Business::create([
-                'name' => 'Restaurant Demo',
-                'address' => 'Av. Corrientes 1234, CABA',
-                'phone' => '+5491123456789',
-                'email' => 'info@restaurantdemo.com',
-            ]);
+        $tablesData = [
+            [
+                'business_name' => 'McDonalds',
+                'tables' => [
+                    ['number' => 1, 'code' => 'JoA4vw', 'name' => 'Mesa 1'],
+                    ['number' => 2, 'code' => 'K3mX9q', 'name' => 'Mesa 2'], 
+                    ['number' => 3, 'code' => 'P8wT2n', 'name' => 'Mesa 3'],
+                    ['number' => 4, 'code' => 'L7qR5m', 'name' => 'Mesa 4'],
+                    ['number' => 5, 'code' => 'N9wE3x', 'name' => 'Mesa 5'],
+                ]
+            ],
+            [
+                'business_name' => 'Starbucks',
+                'tables' => [
+                    ['number' => 1, 'code' => 'A5xY7r', 'name' => 'Mesa 1'],
+                    ['number' => 2, 'code' => 'B9mN4s', 'name' => 'Mesa 2'],
+                    ['number' => 3, 'code' => 'C6tF8p', 'name' => 'Mesa 3'],
+                ]
+            ],
+        ];
+
+        foreach ($tablesData as $businessData) {
+            $business = Business::where('name', $businessData['business_name'])->first();
             
-            $businesses = collect([$business]);
-        }
-        
-        // Posibles ubicaciones para las mesas
-        $locations = ['Salón principal', 'Terraza', 'Balcón', 'VIP', 'Jardín', 'Bar', 'Entrada'];
-        
-        // Estados posibles para las mesas
-        $statuses = ['available', 'occupied', 'reserved', 'maintenance'];
-        
-        // Para cada negocio, crear mesas
-        foreach ($businesses as $business) {
-            // Crear 15 mesas para cada negocio
-            for ($i = 1; $i <= 15; $i++) {
-                // Verificar si ya existe una mesa con este número para este negocio
-                if (!Table::where('business_id', $business->id)->where('number', $i)->exists()) {
-                    Table::create([
-                        'business_id' => $business->id,
-                        'number' => $i,
-                        'capacity' => rand(2, 10), // Capacidad aleatoria entre 2 y 10 personas
-                        'location' => $locations[array_rand($locations)],
-                        'status' => $statuses[array_rand($statuses)],
-                        'notifications_enabled' => rand(0, 1), // Notificaciones habilitadas o no
-                    ]);
+            if ($business) {
+                foreach ($businessData['tables'] as $tableData) {
+                    if (!Table::where('business_id', $business->id)
+                               ->where('number', $tableData['number'])
+                               ->exists()) {
+                        Table::create([
+                            'business_id' => $business->id,
+                            'number' => $tableData['number'],
+                            'code' => $tableData['code'],
+                            'name' => $tableData['name'],
+                            'notifications_enabled' => true,
+                        ]);
+                    }
                 }
             }
         }
