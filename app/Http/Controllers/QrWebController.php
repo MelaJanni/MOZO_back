@@ -100,37 +100,20 @@ class QrWebController extends Controller
     public function setupTestData()
     {
         try {
-            // First update existing McDonalds with code
-            $mcdonalds = Business::where('name', 'McDonalds')->first();
-            if ($mcdonalds) {
-                $mcdonalds->update(['code' => 'mcdonalds']);
-            } else {
-                // Create new McDonalds if it doesn't exist
-                $mcdonalds = Business::create([
-                    'name' => 'McDonalds',
-                    'code' => 'mcdonalds',
-                    'industry' => 'Comida Rápida',
-                    'address' => 'Av. Corrientes 1234, CABA',
-                    'phone' => '+5491123456789',
-                    'email' => 'info@mcdonalds.com',
+            // Update existing table ID 1 to have the QR code
+            $table = Table::where('id', 1)->where('business_id', 1)->first();
+            if ($table) {
+                $table->update([
+                    'code' => 'JoA4vw',
+                    'name' => 'Mesa 1'
                 ]);
             }
 
-            // Create test table if it doesn't exist
-            $table = Table::where('code', 'JoA4vw')->first();
-            if (!$table) {
-                $table = Table::create([
-                    'business_id' => $mcdonalds->id,
-                    'number' => 1,
-                    'code' => 'JoA4vw',
-                    'name' => 'Mesa 1',
-                    'notifications_enabled' => true,
-                ]);
-            }
+            $mcdonalds = Business::find(1);
 
             return response()->json([
                 'status' => 'success',
-                'message' => 'Test data created successfully',
+                'message' => 'Test data updated successfully',
                 'business' => $mcdonalds,
                 'table' => $table,
                 'qr_url' => url("/QR/mcdonalds/JoA4vw"),
