@@ -1,1 +1,40 @@
+name: Auto Deploy to Production
 
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Deploy to server
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        key: ${{ secrets.SSH_KEY }}
+        script: |
+          cd /var/www/vhosts/mozoqr.com/httpdocs
+          git pull origin main
+          
+          # Fix permissions
+          chown -R www-data:www-data /var/www/vhosts/mozoqr.com/httpdocs/
+          find /var/www/vhosts/mozoqr.com/httpdocs/ -type f -exec chmod 644 {} \;
+          find /var/www/vhosts/mozoqr.com/httpdocs/ -type d -exec chmod 755 {} \;
+          chmod -R 775 /var/www/vhosts/mozoqr.com/httpdocs/storage/
+          chmod -R 775 /var/www/vhosts/mozoqr.com/httpdocs/bootstrap/cache/
+          
+          # Run migrations
+          php artisan migrate --force
+          
+          # Clear caches
+          php artisan config:clear
+          php artisan cache:clear
+          php artisan view:clear
+          
+          # Restart services
+          systemctl restart php8.3-fpm
+          
+          echo "🚀 Deploy completed successfully!"
