@@ -1593,15 +1593,16 @@ class WaiterCallController extends Controller
                 ], 403);
             }
 
-            // Obtener todas las mesas del negocio con información completa
+            // Obtener todas las mesas del negocio con información básica
             $tables = Table::where('business_id', $businessId)
-                ->with(['activeWaiter', 'pendingCalls', 'activeSilence'])
+                ->with(['activeWaiter'])
                 ->orderBy('number', 'asc')
                 ->get()
                 ->map(function ($table) use ($waiter) {
                     $isAssignedToMe = $table->active_waiter_id === $waiter->id;
-                    $pendingCalls = $table->pendingCalls;
-                    $activeSilence = $table->activeSilence();
+                    $pendingCallsCount = $table->waiterCalls()->where('status', 'pending')->count();
+                    $latestCall = $table->waiterCalls()->where('status', 'pending')->latest()->first();
+                    $activeSilence = $table->silences()->where('is_active', true)->first();
 
                     return [
                         'id' => $table->id,
@@ -1621,38 +1622,52 @@ class WaiterCallController extends Controller
                             'assigned_at' => $table->waiter_assigned_at
                         ],
                         'calls' => [
-                            'pending_count' => $pendingCalls->count(),
-                            'latest_call' => $pendingCalls->first() ? [
-                                'id' => $pendingCalls->first()->id,
-                                'called_at' => $pendingCalls->first()->called_at,
-                                'minutes_ago' => $pendingCalls->first()->called_at->diffInMinutes(now()),
-                                'message' => $pendingCalls->first()->message
+                            'pending_count' => $pendingCallsCount,
+                            'latest_call' => $latestCall ? [
+                                'id' => $latestCall->id,
+                                'called_at' => $latestCall->called_at,
+                                'minutes_ago' => $latestCall->called_at->diffInMinutes(now()),
+                                'message' => $latestCall->message
                             ] : null
                         ],
                         'silence' => [
-                            'is_silenced' => $activeSilence && $activeSilence->isActive(),
-                            'remaining_time' => $activeSilence && $activeSilence->isActive() ? 
-                                $activeSilence->formatted_remaining_time : null,
-                            'reason' => $activeSilence && $activeSilence->isActive() ? 
-                                $activeSilence->reason : null
+                            'is_silenced' => $activeSilence ? true : false,
+                            'remaining_time' => $activeSilence ? 
+                                ($activeSilence->formatted_remaining_time ?? null) : null,
+                            'reason' => $activeSilence ? $activeSilence->reason : null
                         ],
                         'actions_available' => [
                             'can_activate' => !$table->active_waiter_id,
                             'can_deactivate' => $isAssignedToMe,
-                            'can_silence' => $isAssignedToMe && (!$activeSilence || !$activeSilence->isActive()),
-                            'can_unsilence' => $isAssignedToMe && $activeSilence && $activeSilence->isActive()
+                            'can_silence' => $isAssignedToMe && !$activeSilence,
+                            'can_unsilence' => $isAssignedToMe && $activeSilence
                         ]
                     ];
                 });
 
-            // Estadísticas del negocio
+            // Estadísticas del negocio simplificadas
+            $available = 0;
+            $assignedToMe = 0; 
+            $occupied = 0;
+            $withCalls = 0;
+            $silenced = 0;
+            
+            foreach ($tables as $table) {
+                if (!$table['status']['assigned_waiter']) $available++;
+                elseif ($table['status']['assigned_waiter']['is_me']) $assignedToMe++;
+                else $occupied++;
+                
+                if ($table['calls']['pending_count'] > 0) $withCalls++;
+                if ($table['silence']['is_silenced']) $silenced++;
+            }
+            
             $stats = [
                 'total_tables' => $tables->count(),
-                'available' => $tables->where('status.assignment', 'available')->count(),
-                'assigned_to_me' => $tables->where('status.assignment', 'assigned_to_me')->count(),
-                'occupied_by_others' => $tables->where('status.assignment', 'occupied')->count(),
-                'with_pending_calls' => $tables->where('calls.pending_count', '>', 0)->count(),
-                'silenced' => $tables->where('silence.is_silenced', true)->count()
+                'available' => $available,
+                'assigned_to_me' => $assignedToMe,
+                'occupied_by_others' => $occupied,
+                'with_pending_calls' => $withCalls,
+                'silenced' => $silenced
             ];
 
             return response()->json([
@@ -1676,7 +1691,7 @@ class WaiterCallController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Error obteniendo las mesas del negocio'
+                'message' => 'Error obteniendo las mesas del negocio: ' . $e->getMessage()
             ], 500);
         }
     }
