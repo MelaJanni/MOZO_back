@@ -1514,25 +1514,15 @@ class WaiterCallController extends Controller
         $waiter = Auth::user();
         
         try {
-            // Obtener todos los negocios donde el mozo está registrado
+            // Versión simplificada - obtener negocios básicos
             $businesses = $waiter->businesses()
                 ->withPivot('joined_at', 'status', 'role')
-                ->with(['tables' => function ($query) use ($waiter) {
-                    // Contar mesas asignadas a este mozo y disponibles
-                    $query->selectRaw('business_id, COUNT(*) as total_tables')
-                        ->selectRaw('SUM(CASE WHEN active_waiter_id = ? THEN 1 ELSE 0 END) as assigned_to_me', [$waiter->id])
-                        ->selectRaw('SUM(CASE WHEN active_waiter_id IS NULL THEN 1 ELSE 0 END) as available')
-                        ->groupBy('business_id');
-                }])
                 ->get()
                 ->map(function ($business) use ($waiter) {
-                    // Obtener estadísticas de este negocio
-                    $tablesStats = $business->tables()
-                        ->selectRaw('COUNT(*) as total_tables')
-                        ->selectRaw('SUM(CASE WHEN active_waiter_id = ? THEN 1 ELSE 0 END) as assigned_to_me', [$waiter->id])
-                        ->selectRaw('SUM(CASE WHEN active_waiter_id IS NULL THEN 1 ELSE 0 END) as available')
-                        ->selectRaw('SUM(CASE WHEN active_waiter_id IS NOT NULL AND active_waiter_id != ? THEN 1 ELSE 0 END) as occupied_by_others', [$waiter->id])
-                        ->first();
+                    // Estadísticas básicas sin consultas complejas
+                    $totalTables = $business->tables()->count();
+                    $assignedToMe = $business->tables()->where('active_waiter_id', $waiter->id)->count();
+                    $available = $business->tables()->whereNull('active_waiter_id')->count();
 
                     // Llamadas pendientes de este mozo en este negocio
                     $pendingCalls = WaiterCall::where('waiter_id', $waiter->id)
@@ -1556,10 +1546,10 @@ class WaiterCallController extends Controller
                             'role' => $business->pivot->role ?? 'waiter'
                         ],
                         'tables_stats' => [
-                            'total' => (int)$tablesStats->total_tables,
-                            'assigned_to_me' => (int)$tablesStats->assigned_to_me,
-                            'available' => (int)$tablesStats->available,
-                            'occupied_by_others' => (int)$tablesStats->occupied_by_others
+                            'total' => $totalTables,
+                            'assigned_to_me' => $assignedToMe,
+                            'available' => $available,
+                            'occupied_by_others' => $totalTables - $assignedToMe - $available
                         ],
                         'pending_calls' => $pendingCalls,
                         'can_work' => $business->pivot->status === 'active'
@@ -1581,7 +1571,7 @@ class WaiterCallController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Error obteniendo los negocios'
+                'message' => 'Error obteniendo los negocios: ' . $e->getMessage()
             ], 500);
         }
     }
