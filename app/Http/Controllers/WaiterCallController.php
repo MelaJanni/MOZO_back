@@ -57,12 +57,17 @@ class WaiterCallController extends Controller
 
             if ($activeSilence && $activeSilence->isActive()) {
                 return response()->json([
-                    'success' => false,
-                    'message' => 'Esta mesa está temporalmente silenciada',
-                    'silenced_until' => $activeSilence->remaining_time,
-                    'reason' => $activeSilence->reason,
-                    'formatted_time' => $activeSilence->formatted_remaining_time
-                ], 429);
+                    'success' => true,
+                    'message' => 'Solicitud procesada (mesa silenciada)',
+                    'call' => [
+                        'table_number' => $table->number,
+                        'waiter_name' => $table->activeWaiter->name ?? 'Mozo',
+                        'status' => 'silenced',
+                        'silenced_until' => $activeSilence->remaining_time,
+                        'reason' => $activeSilence->reason,
+                        'formatted_time' => $activeSilence->formatted_remaining_time
+                    ]
+                ]);
             }
 
             // Verificar llamadas recientes para spam protection
@@ -1065,6 +1070,21 @@ class WaiterCallController extends Controller
                     'success' => false,
                     'message' => 'Esta mesa no tiene un mozo asignado actualmente'
                 ], 422);
+            }
+
+            // Verificar si la mesa está silenciada
+            if ($table->isSilenced()) {
+                // Retornar éxito pero sin enviar notificación
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Solicitud procesada (mesa silenciada)',
+                    'data' => [
+                        'table_number' => $table->number,
+                        'waiter_name' => $table->activeWaiter->name ?? 'Mozo',
+                        'status' => 'silenced',
+                        'silenced_reason' => 'Mesa temporalmente silenciada'
+                    ]
+                ]);
             }
 
             // Crear la llamada usando el método existente
