@@ -351,7 +351,7 @@ class WaiterCallController extends Controller
 
         $request->validate([
             'duration_minutes' => 'sometimes|integer|min:1|max:120', // Máximo 2 horas
-            'notes' => 'sometimes|string|max:500'
+            'notes' => 'nullable|string|max:500'
         ]);
 
         $durationMinutes = $request->input('duration_minutes', 30);

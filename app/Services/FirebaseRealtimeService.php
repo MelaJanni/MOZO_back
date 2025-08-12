@@ -26,8 +26,12 @@ class FirebaseRealtimeService
     {
         $serviceAccountPath = config('services.firebase.service_account_path');
         
-        if (!file_exists($serviceAccountPath)) {
-            throw new \Exception("Firebase service account file not found");
+        // 🚀 OPTIMIZACIÓN: Verificar si existe el archivo primero
+        if (empty($serviceAccountPath) || !file_exists($serviceAccountPath)) {
+            Log::warning("Firebase service account file not configured or not found", [
+                'path' => $serviceAccountPath
+            ]);
+            return null; // Return null en lugar de exception para no romper el sistema
         }
 
         $serviceAccount = json_decode(file_get_contents($serviceAccountPath), true);
@@ -73,6 +77,15 @@ class FirebaseRealtimeService
      */
     public function writeWaiterCall($call, $eventType = 'created')
     {
+        // 🚀 OPTIMIZACIÓN: Si no hay token, skip Firebase pero no fallar
+        if (!$this->accessToken) {
+            Log::info('Firebase not configured, skipping realtime sync', [
+                'call_id' => $call->id,
+                'event_type' => $eventType
+            ]);
+            return false;
+        }
+        
         try {
             // Estructura del documento para tiempo real
             $document = [

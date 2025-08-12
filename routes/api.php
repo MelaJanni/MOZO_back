@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\ApiDocumentationController;
+use App\Http\Controllers\NotificationStreamController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BusinessController;
 use App\Http\Controllers\MenuController;
@@ -210,4 +211,8 @@ Route::middleware('public_api')->group(function () {
     // Compatibility route for existing frontend (waiter-notifications)
     Route::post('/waiter-notifications', [WaiterCallController::class, 'createNotification']);
     Route::get('/waiter-notifications/{id}', [WaiterCallController::class, 'getNotificationStatus']);
+    
+    // 🚀 TIEMPO REAL OPTIMIZADO: Alternativas a Firebase
+    Route::get('/notifications/stream', [NotificationStreamController::class, 'stream']); // Server-Sent Events
+    Route::get('/notifications/poll', [NotificationStreamController::class, 'poll']);     // Polling optimizado
 });
