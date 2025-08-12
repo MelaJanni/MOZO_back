@@ -114,11 +114,12 @@ class WaiterCallController extends Controller
                 ]
             ]);
 
-            // Enviar notificación FCM al mozo
-            $this->sendNotificationToWaiter($call);
-
-            // 🔥 ESCRIBIR EN FIRESTORE PARA TIEMPO REAL
-            $this->firebaseRealtimeService->writeWaiterCall($call, 'created');
+            // 🚀 OPTIMIZACIÓN: Enviar notificaciones en paralelo
+            // Usar dispatch para procesar en background y reducir latencia
+            dispatch(function() use ($call) {
+                $this->sendNotificationToWaiter($call);
+                $this->firebaseRealtimeService->writeWaiterCall($call, 'created');
+            })->onQueue('notifications');
 
             return response()->json([
                 'success' => true,
@@ -472,7 +473,7 @@ class WaiterCallController extends Controller
     private function sendNotificationToWaiter(WaiterCall $call)
     {
         try {
-            $title = "🔔 Llamada de Mesa {$call->table->number}";
+            $title = "🔔 Mesa {$call->table->number}";
             $body = $call->message;
             $data = [
                 'type' => 'waiter_call',
@@ -480,14 +481,15 @@ class WaiterCallController extends Controller
                 'table_id' => (string)$call->table->id,
                 'table_number' => (string)$call->table->number,
                 'urgency' => $call->metadata['urgency'] ?? 'normal',
-                'action' => 'acknowledge_call'
+                'action' => 'acknowledge_call',
+                'timestamp' => now()->timestamp
             ];
 
-            // Enviar via FCM
-            $this->firebaseService->sendToUser($call->waiter_id, $title, $body, $data);
+            // 🚀 OPTIMIZACIÓN 1: Priority alta para notificaciones urgentes
+            $priority = ($call->metadata['urgency'] ?? 'normal') === 'high' ? 'high' : 'normal';
 
-            // También guardar en el sistema de notificaciones de Laravel
-            $call->waiter->notify(new FcmDatabaseNotification($title, $body, $data));
+            // 🚀 OPTIMIZACIÓN 2: Solo FCM, sin database notification (reduce latencia)
+            $this->firebaseService->sendToUser($call->waiter_id, $title, $body, $data, $priority);
 
             Log::info('Waiter call notification sent', [
                 'call_id' => $call->id,
@@ -1039,8 +1041,8 @@ class WaiterCallController extends Controller
                 'urgency' => 'sometimes|in:low,normal,high'
             ]);
 
-            // Buscar la mesa
-            $table = Table::find($request->table_id);
+            // 🚀 OPTIMIZACIÓN: Eager loading para reducir consultas
+            $table = Table::with(['activeWaiter', 'business'])->find($request->table_id);
             
             if (!$table) {
                 return response()->json([
@@ -1079,11 +1081,11 @@ class WaiterCallController extends Controller
                 ]
             ]);
 
-            // Enviar notificación FCM al mozo
-            $this->sendNotificationToWaiter($call);
-
-            // Escribir en Firestore para tiempo real
-            $this->firebaseRealtimeService->writeWaiterCall($call, 'created');
+            // 🚀 OPTIMIZACIÓN: Procesar notificaciones en background
+            dispatch(function() use ($call) {
+                $this->sendNotificationToWaiter($call);
+                $this->firebaseRealtimeService->writeWaiterCall($call, 'created');
+            })->onQueue('notifications');
 
             return response()->json([
                 'success' => true,
