@@ -65,7 +65,7 @@ class Table extends Model
 
     public function pendingCalls()
     {
-        return $this->waiterCalls()->pending();
+        return $this->waiterCalls()->where('status', 'pending');
     }
 
     public function silences()
@@ -75,12 +75,12 @@ class Table extends Model
 
     public function activeSilence()
     {
-        return $this->silences()->active()->first();
+        return $this->silences()->where('is_active', true);
     }
 
     public function isSilenced()
     {
-        $silence = $this->activeSilence();
+        $silence = $this->silences()->where('is_active', true)->first();
         return $silence && $silence->isActive();
     }
 
