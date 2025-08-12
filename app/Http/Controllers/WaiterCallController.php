@@ -981,12 +981,12 @@ class WaiterCallController extends Controller
                     'name' => $table->name,
                     'notifications_enabled' => $table->notifications_enabled,
                     'assigned_at' => $table->waiter_assigned_at,
-                    'pending_calls_count' => $table->pendingCalls->count(),
+                    'pending_calls_count' => $table->pendingCalls()->count(),
                     'is_silenced' => $table->isSilenced(),
-                    'silence_info' => $table->activeSilence() ? [
-                        'reason' => $table->activeSilence()->reason,
-                        'remaining_time' => $table->activeSilence()->formatted_remaining_time,
-                        'notes' => $table->activeSilence()->notes
+                    'silence_info' => ($activeSilence = $table->activeSilence()->first()) ? [
+                        'reason' => $activeSilence->reason,
+                        'remaining_time' => $activeSilence->formatted_remaining_time,
+                        'notes' => $activeSilence->notes
                     ] : null
                 ];
             });
@@ -1268,12 +1268,12 @@ class WaiterCallController extends Controller
                     'name' => $table->name,
                     'notifications_enabled' => $table->notifications_enabled,
                     'assigned_at' => $table->waiter_assigned_at,
-                    'pending_calls_count' => $table->pendingCalls->count(),
+                    'pending_calls_count' => $table->pendingCalls()->count(),
                     'is_silenced' => $table->isSilenced(),
-                    'silence_info' => $table->activeSilence() && $table->activeSilence()->isActive() ? [
-                        'reason' => $table->activeSilence()->reason,
-                        'remaining_time' => $table->activeSilence()->formatted_remaining_time,
-                        'notes' => $table->activeSilence()->notes
+                    'silence_info' => ($activeSilence = $table->activeSilence()->first()) ? [
+                        'reason' => $activeSilence->reason,
+                        'remaining_time' => $activeSilence->formatted_remaining_time,
+                        'notes' => $activeSilence->notes
                     ] : null
                 ];
             });
