@@ -1602,7 +1602,7 @@ class WaiterCallController extends Controller
                     $isAssignedToMe = $table->active_waiter_id === $waiter->id;
                     $pendingCallsCount = $table->waiterCalls()->where('status', 'pending')->count();
                     $latestCall = $table->waiterCalls()->where('status', 'pending')->latest()->first();
-                    $activeSilence = $table->silences()->where('is_active', true)->first();
+                    $activeSilence = $table->silences()->active()->first();
 
                     return [
                         'id' => $table->id,

@@ -75,12 +75,12 @@ class Table extends Model
 
     public function activeSilence()
     {
-        return $this->silences()->where('is_active', true);
+        return $this->silences()->active();
     }
 
     public function isSilenced()
     {
-        $silence = $this->silences()->where('is_active', true)->first();
+        $silence = $this->silences()->active()->first();
         return $silence && $silence->isActive();
     }
 
