@@ -1514,9 +1514,8 @@ class WaiterCallController extends Controller
         $waiter = Auth::user();
         
         try {
-            // Versión simplificada - obtener negocios básicos
+            // Versión simplificada - obtener negocios básicos sin pivot
             $businesses = $waiter->businesses()
-                ->withPivot('joined_at', 'status', 'role')
                 ->get()
                 ->map(function ($business) use ($waiter) {
                     // Estadísticas básicas sin consultas complejas
@@ -1541,9 +1540,9 @@ class WaiterCallController extends Controller
                         'logo' => $business->logo ? asset('storage/' . $business->logo) : null,
                         'is_active' => $business->id === $waiter->active_business_id,
                         'membership' => [
-                            'joined_at' => $business->pivot->joined_at ?? null,
-                            'status' => $business->pivot->status ?? 'active',
-                            'role' => $business->pivot->role ?? 'waiter'
+                            'joined_at' => null,
+                            'status' => 'active',
+                            'role' => 'waiter'
                         ],
                         'tables_stats' => [
                             'total' => $totalTables,
@@ -1552,7 +1551,7 @@ class WaiterCallController extends Controller
                             'occupied_by_others' => $totalTables - $assignedToMe - $available
                         ],
                         'pending_calls' => $pendingCalls,
-                        'can_work' => $business->pivot->status === 'active'
+                        'can_work' => true
                     ];
                 });
 
