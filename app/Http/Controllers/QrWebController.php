@@ -109,6 +109,24 @@ class QrWebController extends Controller
                 ]);
             }
 
+            // Create missing table mDWlbd if it doesn't exist
+            $tableMDWlbd = Table::where('code', 'mDWlbd')->first();
+            if (!$tableMDWlbd) {
+                $mcdonalds = Business::where('code', 'mcdonalds')->first();
+                if ($mcdonalds) {
+                    $nextNumber = Table::where('business_id', $mcdonalds->id)->max('number') + 1;
+                    $tableMDWlbd = Table::create([
+                        'business_id' => $mcdonalds->id,
+                        'number' => $nextNumber,
+                        'code' => 'mDWlbd',
+                        'name' => "Mesa {$nextNumber}",
+                        'capacity' => 4,
+                        'location' => 'Principal',
+                        'notifications_enabled' => true,
+                    ]);
+                }
+            }
+
             $mcdonalds = Business::find(1);
 
             return response()->json([
@@ -116,10 +134,13 @@ class QrWebController extends Controller
                 'message' => 'Test data updated successfully',
                 'business' => $mcdonalds,
                 'table' => $table,
+                'table_mDWlbd' => $tableMDWlbd,
                 'qr_url' => url("/QR/mcdonalds/JoA4vw"),
+                'qr_url_mDWlbd' => $tableMDWlbd ? url("/QR/mcdonalds/mDWlbd") : null,
                 'debug_lookup' => [
                     'business_by_code' => Business::where('code', 'mcdonalds')->first(),
-                    'table_by_code' => Table::where('code', 'JoA4vw')->first()
+                    'table_by_code' => Table::where('code', 'JoA4vw')->first(),
+                    'table_mDWlbd_by_code' => Table::where('code', 'mDWlbd')->first()
                 ]
             ]);
         } catch (\Exception $e) {
