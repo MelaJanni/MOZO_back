@@ -335,7 +335,6 @@
         const TABLE_ID = {{ $table->id }};
         
         let currentNotificationId = null;
-        let pollingInterval = null;
 
         function callWaiter() {
             const button = document.getElementById('callWaiterBtn');
@@ -369,13 +368,10 @@
                     statusMessage.className = 'status-message status-pending';
                     statusMessage.textContent = '🔥 Esperando confirmación en tiempo real...';
                     
-                    // 🚀 SOLO FIREBASE TIEMPO REAL - NO POLLING
-                    if (!firebaseReady) {
-                        console.warn('⚠️ Firebase not ready, forcing initialization...');
-                        initializeFirebaseImmediately();
-                    }
+                    // 🚀 USAR SERVER-SENT EVENTS PARA TIEMPO REAL INMEDIATO
+                    startRealtimeNotifications();
                     
-                    // Timeout de emergencia si Firebase falla
+                    // Timeout de emergencia
                     setTimeout(() => {
                         if (button.disabled && (button.textContent.includes('Esperando') || button.textContent.includes('Enviando'))) {
                             button.disabled = false;
@@ -390,8 +386,6 @@
                             currentNotificationId = null;
                         }
                     }, 30000); // 30 segundos timeout
-                    
-                    // NO LLAMAR startPolling() - Solo Firebase
                 } else {
                     throw new Error(data.message || 'Error al enviar la solicitud');
                 }
@@ -406,123 +400,91 @@
             });
         }
 
-        // 🔥 ELIMINADO: Ya no usamos polling, solo Firebase tiempo real
-        function startPolling() {
-            console.log('🚫 Polling disabled - using Firebase real-time only');
-            
-            // Si llegamos aquí sin Firebase, forzar inicialización
-            if (!firebaseReady) {
-                console.error('❌ Firebase not ready when trying to poll. Forcing init...');
-                initializeFirebaseImmediately();
-            }
-        }
+        // 🚀 SERVER-SENT EVENTS: Tiempo real VERDADERO (sub-segundo)
+        let eventSource = null;
         
-        // 🚀 Inicialización inmediata de Firebase
-        function initializeFirebaseImmediately() {
-            console.log('🔥 Forcing immediate Firebase initialization...');
+        function startRealtimeNotifications() {
+            console.log('🚀 Starting Server-Sent Events for real-time notifications...');
             
-            if (window.FirebaseRealtimeService) {
+            if (eventSource) {
+                eventSource.close();
+            }
+            
+            // Conectar a SSE stream
+            eventSource = new EventSource(`${FRONTEND_URL}/api/table/${TABLE_ID}/call-status/stream`);
+            
+            eventSource.onopen = function(event) {
+                console.log('✅ SSE connection opened');
+            };
+            
+            eventSource.onmessage = function(event) {
                 try {
-                    window.FirebaseRealtimeService.forceInit();
-                    firebaseReady = true;
-                    console.log('✅ Firebase initialized successfully!');
-                    setupFirebaseRealtime();
+                    const data = JSON.parse(event.data);
+                    console.log('📨 SSE message received:', data);
+                    
+                    if (data.type === 'connected') {
+                        console.log('🎆 Real-time connection established!');
+                    } else if (data.type === 'call_update' && data.call) {
+                        handleCallUpdate(data.call);
+                    } else if (data.type === 'connection_close') {
+                        console.log('🔄 SSE connection closed:', data.reason);
+                        eventSource.close();
+                    }
                 } catch (error) {
-                    console.error('❌ Failed to initialize Firebase:', error);
+                    console.error('❌ Error parsing SSE message:', error);
                 }
-            } else {
-                console.error('❌ FirebaseRealtimeService not available');
-                // Intentar cargar el script de Firebase si no está disponible
-                loadFirebaseScript();
+            };
+            
+            eventSource.onerror = function(error) {
+                console.error('❌ SSE connection error:', error);
+                console.log('🔄 Attempting to reconnect SSE in 3 seconds...');
+                setTimeout(() => {
+                    if (currentNotificationId) {
+                        startRealtimeNotifications();
+                    }
+                }, 3000);
+            };
+        }
+        
+        function handleCallUpdate(call) {
+            console.log('📨 Call update received:', call);
+            
+            // Solo procesar si es nuestra llamada actual
+            if (currentNotificationId && call.call_id == currentNotificationId) {
+                if (call.status === 'acknowledged') {
+                    console.log('✅ Waiter acknowledged our call!');
+                    handleWaiterAcknowledgment();
+                } else if (call.status === 'completed') {
+                    console.log('🎉 Call completed!');
+                    handleCallCompleted();
+                }
             }
         }
         
-        // 📥 Cargar script de Firebase si no está disponible
-        function loadFirebaseScript() {
-            const script = document.createElement('script');
-            script.src = '{{ asset('js/firebase-realtime.js') }}';
-            script.onload = function() {
-                console.log('🔄 Firebase script loaded, retrying initialization...');
-                setTimeout(initializeFirebaseImmediately, 100);
-            };
-            script.onerror = function() {
-                console.error('❌ Failed to load Firebase script');
-            };
-            document.head.appendChild(script);
+        function handleCallCompleted() {
+            const statusMessage = document.getElementById('statusMessage');
+            const button = document.getElementById('callWaiterBtn');
+            
+            statusMessage.className = 'status-message status-success';
+            statusMessage.textContent = '✅ ¡Solicitud completada!';
+            
+            setTimeout(() => {
+                button.disabled = false;
+                button.textContent = '🔔 Llamar Mozo';
+                statusMessage.style.display = 'none';
+                currentNotificationId = null;
+                
+                if (eventSource) {
+                    eventSource.close();
+                    eventSource = null;
+                }
+            }, 3000);
         }
 
-        // 🚀 MEJORAR NOTIFICACIONES CON FIREBASE REAL-TIME
-        let firebaseReady = false;
-        let firebaseRetries = 0;
-        
-        // Esperar a que Firebase esté listo (SIN POLLING FALLBACK)
-        function waitForFirebase() {
-            if (window.FirebaseRealtimeService && window.FirebaseRealtimeService.initialized) {
-                firebaseReady = true;
-                console.log('🎉 Firebase ready! Real-time notifications active');
-                setupFirebaseRealtime();
-            } else if (firebaseRetries < 20) { // Más reintentos
-                firebaseRetries++;
-                console.log(`⏳ Waiting for Firebase... (retry ${firebaseRetries}/20)`);
-                setTimeout(waitForFirebase, 500); // Más frecuente
-            } else {
-                console.error('❌ Firebase not ready after 20 retries. Real-time notifications disabled.');
-                console.error('🚫 POLLING IS PERMANENTLY DISABLED - Only Firebase real-time supported');
-                
-                // Mostrar mensaje al usuario
-                const statusMessage = document.getElementById('statusMessage');
-                if (statusMessage && currentNotificationId) {
-                    statusMessage.className = 'status-message status-error';
-                    statusMessage.textContent = '⚠️ Tiempo real no disponible. Por favor recarga la página.';
-                    statusMessage.style.display = 'block';
-                }
-            }
-        }
-        
-        // Configurar escucha en tiempo real con Firebase
-        function setupFirebaseRealtime() {
-            const tableId = {{ $table->id }};
-            
-            // Escuchar llamadas de mozo
-            window.FirebaseRealtimeService.listenToTableCalls(tableId, (update) => {
-                if (update.success) {
-                    console.log('📨 Real-time call update:', update);
-                    
-                    // Buscar nuestra llamada actual
-                    const ourCall = update.calls.find(call => call.id == currentNotificationId);
-                    if (ourCall && ourCall.status === 'acknowledged') {
-                        handleWaiterAcknowledgment();
-                    }
-                } else {
-                    console.error('❌ Firebase call update error:', update.error);
-                    // NO FALLBACK - Solo Firebase tiempo real
-                    console.warn('⚠️ Firebase error detected, attempting reconnection...');
-                    if (currentNotificationId) {
-                        setTimeout(() => {
-                            if (!firebaseReady) {
-                                initializeFirebaseImmediately();
-                            }
-                        }, 2000);
-                    }
-                }
-            });
-            
-            // Opcional: Escuchar cambios de estado de mesa
-            window.FirebaseRealtimeService.listenToTableStatus(tableId, (update) => {
-                if (update.success) {
-                    console.log('📊 Real-time status update:', update);
-                    // Aquí puedes manejar cambios de estado de mesa si es necesario
-                }
-            });
-        }
+        // 🚫 FIREBASE ELIMINADO - Solo Server-Sent Events (SSE) tiempo real
         
         // Manejar confirmación del mozo
         function handleWaiterAcknowledgment() {
-            if (pollingInterval) {
-                clearInterval(pollingInterval);
-                pollingInterval = null;
-            }
-            
             const statusMessage = document.getElementById('statusMessage');
             const button = document.getElementById('callWaiterBtn');
             
@@ -534,44 +496,22 @@
                 button.textContent = '🔔 Llamar Mozo';
                 statusMessage.style.display = 'none';
                 currentNotificationId = null;
+                
+                // Cerrar conexión SSE
+                if (eventSource) {
+                    eventSource.close();
+                    eventSource = null;
+                }
             }, 5000);
         }
         
-        // 🚀 INICIALIZAR FIREBASE INMEDIATAMENTE
-        // Intentar inicialización inmediata en lugar de esperar
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', function() {
-                initializeFirebaseImmediately();
-                // Fallback si Firebase tarda
-                setTimeout(waitForFirebase, 1000);
-            });
-        } else {
-            initializeFirebaseImmediately();
-            // Fallback si Firebase tarda
-            setTimeout(waitForFirebase, 1000);
-        }
+        // 🚀 Server-Sent Events ready - no need for initialization
+        console.log('🎆 Real-time notification system ready with SSE');
         
-        // 🚫 POLLING COMPLETAMENTE ELIMINADO - Solo Firebase tiempo real
-        // Eliminar todas las variables de polling
-        let pollingInterval = null; // Mantener para compatibilidad con handleWaiterAcknowledgment
-        
-        // Sobreescribir startPolling para que NUNCA haga polling
-        const originalStartPolling = startPolling;
-        startPolling = function() {
-            console.log('🚫 Polling permanently disabled - Firebase real-time only');
-            
-            // Si Firebase no está listo, forzar inicialización
-            if (!firebaseReady) {
-                console.warn('⚠️ Firebase not ready, forcing immediate initialization...');
-                initializeFirebaseImmediately();
-            }
-            
-            // NUNCA iniciar polling - solo Firebase
-            return;
-        };
+        // 🚫 POLLING Y FIREBASE ELIMINADOS - Solo SSE tiempo real
+        // Server-Sent Events proporciona notificaciones en menos de 2 segundos
     </script>
 
-    <!-- 🔥 Firebase Real-time Service -->
-    <script src="{{ asset('js/firebase-realtime.js') }}"></script>
+    <!-- 🚀 Server-Sent Events - No external dependencies needed -->
 </body>
 </html>

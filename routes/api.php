@@ -315,6 +315,81 @@ Route::middleware('public_api')->group(function () {
     Route::get('/notifications/stream', [NotificationStreamController::class, 'stream']); // Server-Sent Events
     Route::get('/notifications/poll', [NotificationStreamController::class, 'poll']);     // Polling optimizado
     
+    // 🔥 TIEMPO REAL PARA CLIENTES QR (sin autenticación)
+    Route::get('/table/{tableId}/call-status/stream', function($tableId) {
+        return response()->stream(function () use ($tableId) {
+            // Headers SSE
+            header('Content-Type: text/event-stream');
+            header('Cache-Control: no-cache');
+            header('Connection: keep-alive');
+            header('X-Accel-Buffering: no');
+            
+            echo "data: " . json_encode(['type' => 'connected', 'table_id' => $tableId, 'message' => 'Stream connected']) . "\n\n";
+            ob_flush();
+            flush();
+            
+            $lastStatus = null;
+            $maxIterations = 120; // 4 minutos máximo (2 segundos cada iteración)
+            $iterations = 0;
+            
+            while ($iterations < $maxIterations) {
+                $iterations++;
+                
+                // Buscar la llamada más reciente de esta mesa
+                $latestCall = \App\Models\WaiterCall::with(['waiter'])
+                    ->where('table_id', $tableId)
+                    ->orderBy('called_at', 'desc')
+                    ->first();
+                
+                if ($latestCall) {
+                    $currentStatus = [
+                        'call_id' => $latestCall->id,
+                        'status' => $latestCall->status,
+                        'waiter_name' => $latestCall->waiter->name ?? 'Mozo',
+                        'called_at' => $latestCall->called_at->toISOString(),
+                        'acknowledged_at' => $latestCall->acknowledged_at?->toISOString(),
+                        'completed_at' => $latestCall->completed_at?->toISOString(),
+                    ];
+                    
+                    // Solo enviar si cambió el estado
+                    if ($currentStatus !== $lastStatus) {
+                        echo "data: " . json_encode([
+                            'type' => 'call_update',
+                            'table_id' => $tableId,
+                            'call' => $currentStatus,
+                            'timestamp' => now()->toISOString()
+                        ]) . "\n\n";
+                        ob_flush();
+                        flush();
+                        
+                        $lastStatus = $currentStatus;
+                        
+                        // Si el mozo confirmó, mantener la conexión 5 segundos más y cerrar
+                        if ($latestCall->status === 'acknowledged') {
+                            sleep(5);
+                            echo "data: " . json_encode(['type' => 'connection_close', 'reason' => 'call_acknowledged']) . "\n\n";
+                            ob_flush();
+                            flush();
+                            break;
+                        }
+                    }
+                }
+                
+                sleep(2); // Verificar cada 2 segundos
+            }
+            
+            echo "data: " . json_encode(['type' => 'connection_close', 'reason' => 'timeout']) . "\n\n";
+            ob_flush();
+            flush();
+            
+        }, 200, [
+            'Content-Type' => 'text/event-stream',
+            'Cache-Control' => 'no-cache', 
+            'Connection' => 'keep-alive',
+            'X-Accel-Buffering' => 'no'
+        ]);
+    });
+    
     // 🔧 FALLBACK: Polling simple para notificaciones cuando Firebase falle
     Route::get('/waiter/{waiterId}/notifications', function($waiterId) {
         try {
