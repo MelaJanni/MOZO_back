@@ -1,0 +1,50 @@
+rules_version = "2";
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 🔓 REGLAS PÚBLICAS PARA QR CODES - Permiten acceso anónimo controlado
+    
+    // Llamadas de mozo desde QR (lectura pública, escritura desde backend)
+    match /tables/{tableId}/waiter_calls/{callId} {
+      allow read: if true; // Permitir lectura pública para monitoreo tiempo real
+      allow write: if request.auth != null; // Solo backend autenticado puede escribir
+    }
+    
+    // Estado de mesas (lectura pública limitada)
+    match /tables/{tableId}/status/{document} {
+      allow read: if true; // Permitir lectura para QR codes
+      allow write: if request.auth != null; // Solo backend puede escribir
+    }
+    
+    // 👤 REGLAS PARA MOZOS AUTENTICADOS
+    
+    // Llamadas asignadas a mozos específicos
+    match /waiters/{waiterId}/calls/{callId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Llamadas por negocio (para managers/admins)
+    match /businesses/{businessId}/waiter_calls/{callId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Estado de mesas por negocio
+    match /businesses/{businessId}/table_status/{tableId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // 📱 NOTIFICACIONES DE USUARIO
+    match /users/{userId}/notifications/{notificationId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // 🧪 TESTING Y DEBUG (solo en desarrollo)
+    match /testing/{document=**} {
+      allow read, write: if true; // Solo para testing
+    }
+    
+    // 🔐 DEFAULT: Denegar todo lo demás por seguridad
+    // match /{document=**} {
+    //   allow read, write: if false;
+    // }
+  }
+}
