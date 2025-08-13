@@ -127,6 +127,10 @@ Route::get('/QR/{restaurantSlug}/{tableCode}', [QrWebController::class, 'showTab
 Route::get('/QR/{restaurantSlug}/{tableCode}/fast', [QrWebController::class, 'showTablePageFast'])
     ->name('qr.table.page.fast');
 
+// Ruta para versión FIREBASE REAL-TIME de la página QR
+Route::get('/QR/{restaurantSlug}/{tableCode}/realtime', [QrWebController::class, 'showTablePageRealtime'])
+    ->name('qr.table.page.realtime');
+
 // Documentación de APIs
 Route::get('/api/docs/qr', [ApiDocumentationController::class, 'qrApis'])
     ->name('api.docs.qr');

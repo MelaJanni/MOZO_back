@@ -726,4 +726,44 @@ startxref
 
         return view('qr.table-page-fast', compact('business', 'table', 'frontendUrl', 'defaultMenu'));
     }
+
+    /**
+     * Mostrar página QR con FIREBASE REAL-TIME para testing
+     */
+    public function showTablePageRealtime($restaurantSlug, $tableCode)
+    {
+        \Log::info('QR Firebase Real-time Page Request', [
+            'restaurantSlug' => $restaurantSlug,
+            'tableCode' => $tableCode
+        ]);
+
+        // Buscar negocio
+        $business = Business::where(function($query) use ($restaurantSlug) {
+            $query->whereRaw('LOWER(name) = ?', [strtolower($restaurantSlug)])
+                  ->orWhereRaw('LOWER(REPLACE(name, " ", "")) = ?', [strtolower(str_replace(' ', '', $restaurantSlug))])
+                  ->orWhere('code', $restaurantSlug);
+        })->first();
+        
+        if (!$business) {
+            abort(404, 'Business not found: ' . $restaurantSlug);
+        }
+
+        // Buscar mesa
+        $table = Table::where('code', $tableCode)
+                     ->where('business_id', $business->id)
+                     ->first();
+        
+        if (!$table) {
+            abort(404, 'Table not found: ' . $tableCode);
+        }
+
+        // Obtener menú por defecto
+        $defaultMenu = \App\Models\Menu::where('business_id', $business->id)
+            ->where('is_default', true)
+            ->first();
+
+        $frontendUrl = env('FRONTEND_URL', config('app.url'));
+
+        return view('qr.table-page-realtime', compact('business', 'table', 'frontendUrl', 'defaultMenu'));
+    }
 }
