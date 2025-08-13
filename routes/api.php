@@ -37,6 +37,37 @@ Route::post('/test/register-fcm-token', [NotificationController::class, 'registe
 Route::middleware('public_api')->group(function () {
     Route::get('/firebase/config', [FirebaseConfigController::class, 'getConfig']);
     Route::get('/firebase/table/{table}/config', [FirebaseConfigController::class, 'getQrTableConfig']);
+    
+    // 🔧 DIAGNOSTICO: Verificar estado de Firebase
+    Route::get('/firebase/status', function() {
+        $serviceAccountPath = config('services.firebase.service_account_path');
+        $hasServiceAccount = !empty($serviceAccountPath) && file_exists($serviceAccountPath);
+        
+        $config = [
+            'project_id' => config('services.firebase.project_id'),
+            'has_server_key' => !empty(config('services.firebase.server_key')),
+            'has_service_account' => $hasServiceAccount,
+            'service_account_path' => $serviceAccountPath,
+            'has_api_key' => !empty(config('services.firebase.api_key')),
+            'has_auth_domain' => !empty(config('services.firebase.auth_domain')),
+        ];
+        
+        $isFullyConfigured = $config['has_server_key'] && $config['has_service_account'] && $config['has_api_key'];
+        
+        return response()->json([
+            'status' => $isFullyConfigured ? 'fully_configured' : 'partial_configuration',
+            'real_time_available' => $hasServiceAccount,
+            'fcm_available' => $config['has_server_key'],
+            'frontend_config_available' => $config['has_api_key'] && $config['has_auth_domain'],
+            'fallback_polling_enabled' => true,
+            'config' => $config,
+            'recommendations' => $isFullyConfigured ? [] : [
+                !$config['has_service_account'] ? 'Configure FIREBASE_SERVICE_ACCOUNT_PATH for real-time features' : null,
+                !$config['has_server_key'] ? 'Configure FIREBASE_SERVER_KEY for push notifications' : null,
+                !$config['has_api_key'] ? 'Configure FIREBASE_API_KEY for frontend auth' : null,
+            ]
+        ]);
+    });
 });
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -270,4 +301,100 @@ Route::middleware('public_api')->group(function () {
     // 🚀 TIEMPO REAL OPTIMIZADO: Alternativas a Firebase
     Route::get('/notifications/stream', [NotificationStreamController::class, 'stream']); // Server-Sent Events
     Route::get('/notifications/poll', [NotificationStreamController::class, 'poll']);     // Polling optimizado
+    
+    // 🔧 FALLBACK: Polling simple para notificaciones cuando Firebase falle
+    Route::get('/waiter/{waiterId}/notifications', function($waiterId) {
+        try {
+            // Obtener llamadas pendientes del mozo
+            $pendingCalls = \App\Models\WaiterCall::with(['table', 'waiter'])
+                ->where('waiter_id', $waiterId)
+                ->where('status', 'pending')
+                ->orderBy('called_at', 'desc')
+                ->take(10)
+                ->get();
+                
+            // Obtener llamadas recientes (últimos 5 minutos)
+            $recentCalls = \App\Models\WaiterCall::with(['table', 'waiter'])
+                ->where('waiter_id', $waiterId)
+                ->where('called_at', '>=', now()->subMinutes(5))
+                ->whereIn('status', ['acknowledged', 'completed'])
+                ->orderBy('called_at', 'desc')
+                ->take(5)
+                ->get();
+                
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'pending_calls' => $pendingCalls->map(function($call) {
+                        return [
+                            'id' => $call->id,
+                            'table_number' => $call->table->number,
+                            'table_name' => $call->table->name,
+                            'message' => $call->message,
+                            'called_at' => $call->called_at,
+                            'urgency' => $call->metadata['urgency'] ?? 'normal'
+                        ];
+                    }),
+                    'recent_calls' => $recentCalls->map(function($call) {
+                        return [
+                            'id' => $call->id,
+                            'table_number' => $call->table->number,
+                            'status' => $call->status,
+                            'called_at' => $call->called_at,
+                            'acknowledged_at' => $call->acknowledged_at,
+                            'completed_at' => $call->completed_at
+                        ];
+                    }),
+                    'total_pending' => $pendingCalls->count(),
+                    'last_check' => now()
+                ]
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    });
+    
+    // 🔧 FALLBACK: Polling de estado de mesa para frontend QR
+    Route::get('/table/{tableId}/call-status', function($tableId) {
+        try {
+            // Obtener la última llamada de esta mesa
+            $latestCall = \App\Models\WaiterCall::with(['waiter'])
+                ->where('table_id', $tableId)
+                ->orderBy('called_at', 'desc')
+                ->first();
+                
+            if (!$latestCall) {
+                return response()->json([
+                    'success' => true,
+                    'has_active_call' => false,
+                    'message' => 'No hay llamadas activas'
+                ]);
+            }
+            
+            return response()->json([
+                'success' => true,
+                'has_active_call' => $latestCall->status === 'pending',
+                'call' => [
+                    'id' => $latestCall->id,
+                    'status' => $latestCall->status,
+                    'waiter_name' => $latestCall->waiter->name ?? 'Mozo',
+                    'called_at' => $latestCall->called_at,
+                    'acknowledged_at' => $latestCall->acknowledged_at,
+                    'completed_at' => $latestCall->completed_at,
+                    'message' => $latestCall->message,
+                    'is_recent' => $latestCall->called_at->isAfter(now()->subMinutes(10))
+                ]
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    });
 });
