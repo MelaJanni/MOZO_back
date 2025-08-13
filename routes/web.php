@@ -99,6 +99,10 @@ Route::get('/debug-qr-data', [QrWebController::class, 'debugData'])
 Route::get('/setup-test-data', [QrWebController::class, 'setupTestData'])
     ->name('qr.setup');
 
+// Ruta para crear menú de prueba McDonalds
+Route::get('/create-test-menu', [QrWebController::class, 'createTestMenu'])
+    ->name('qr.create-menu');
+
 // Ruta para arreglar problemas QR
 Route::get('/fix-qr-issues', [QrWebController::class, 'fixQrIssues'])
     ->name('qr.fix');

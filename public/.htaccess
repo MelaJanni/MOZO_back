@@ -1,3 +1,19 @@
+# 📁 AUMENTAR LÍMITES DE SUBIDA DE ARCHIVOS
+php_value upload_max_filesize 50M
+php_value post_max_size 60M
+php_value max_execution_time 300
+php_value max_input_time 300
+php_value memory_limit 256M
+php_value max_file_uploads 20
+
+# 🌐 LÍMITES DE APACHE/NGINX (si está disponible)
+<IfModule mod_reqtimeout.c>
+    RequestReadTimeout header=20-300,MinRate=500 body=20-300,MinRate=500
+</IfModule>
+
+# Configuración adicional para archivos grandes
+LimitRequestBody 62914560
+
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes

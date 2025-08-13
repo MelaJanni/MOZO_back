@@ -392,8 +392,9 @@ class WaiterController extends Controller
     
     public function handleNotification(Request $request, $notificationId)
     {
+        // 🚀 MEJORADO: Action opcional, por defecto 'mark_as_read'
         $validator = Validator::make($request->all(), [
-            'action' => 'required|in:mark_as_read,delete',
+            'action' => 'sometimes|string|in:mark_as_read,delete,read',
         ]);
 
         if ($validator->fails()) {
@@ -410,19 +411,125 @@ class WaiterController extends Controller
             ], 404);
         }
         
-        if ($request->action === 'mark_as_read') {
+        // Por defecto, marcar como leída si no se especifica action
+        $action = $request->get('action', 'mark_as_read');
+        
+        // Normalizar 'read' a 'mark_as_read' para compatibilidad
+        if ($action === 'read') {
+            $action = 'mark_as_read';
+        }
+        
+        if ($action === 'mark_as_read') {
             $notification->markAsRead();
             
+            \Log::info('Notification marked as read', [
+                'notification_id' => $notificationId,
+                'user_id' => $user->id,
+                'user_name' => $user->name
+            ]);
+            
             return response()->json([
+                'success' => true,
                 'message' => 'Notificación marcada como leída',
                 'notification' => $notification
             ]);
-        } else if ($request->action === 'delete') {
+        } else if ($action === 'delete') {
             $notification->delete();
             
+            \Log::info('Notification deleted', [
+                'notification_id' => $notificationId,
+                'user_id' => $user->id,
+                'user_name' => $user->name
+            ]);
+            
             return response()->json([
+                'success' => true,
                 'message' => 'Notificación eliminada'
             ]);
         }
+        
+        // Fallback (no debería llegar aquí con la validación)
+        return response()->json([
+            'success' => false,
+            'message' => 'Acción no válida'
+        ], 400);
+    }
+
+    /**
+     * Marcar notificación como leída (endpoint simple)
+     */
+    public function markNotificationAsRead(Request $request, $notificationId)
+    {
+        $user = Auth::user();
+        
+        $notification = $user->notifications()->where('id', $notificationId)->first();
+        
+        if (!$notification) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Notificación no encontrada'
+            ], 404);
+        }
+        
+        $notification->markAsRead();
+        
+        \Log::info('Notification marked as read (simple endpoint)', [
+            'notification_id' => $notificationId,
+            'user_id' => $user->id,
+            'user_name' => $user->name
+        ]);
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Notificación marcada como leída',
+            'notification' => [
+                'id' => $notification->id,
+                'read_at' => $notification->read_at,
+                'data' => $notification->data
+            ]
+        ]);
+    }
+
+    /**
+     * Marcar múltiples notificaciones como leídas
+     */
+    public function markMultipleNotificationsAsRead(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'notification_ids' => 'required|array',
+            'notification_ids.*' => 'string|uuid',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+        
+        $user = Auth::user();
+        $notificationIds = $request->notification_ids;
+        
+        $notifications = $user->notifications()
+            ->whereIn('id', $notificationIds)
+            ->whereNull('read_at')
+            ->get();
+        
+        $markedCount = 0;
+        foreach ($notifications as $notification) {
+            $notification->markAsRead();
+            $markedCount++;
+        }
+        
+        \Log::info('Multiple notifications marked as read', [
+            'notification_ids' => $notificationIds,
+            'marked_count' => $markedCount,
+            'user_id' => $user->id,
+            'user_name' => $user->name
+        ]);
+        
+        return response()->json([
+            'success' => true,
+            'message' => "Se marcaron {$markedCount} notificaciones como leídas",
+            'marked_count' => $markedCount,
+            'total_requested' => count($notificationIds)
+        ]);
     }
 } 

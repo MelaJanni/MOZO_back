@@ -199,9 +199,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/menus/reorder', [MenuController::class, 'reorderMenus']);
     Route::get('/menus/{menu}/preview', [MenuController::class, 'preview']);
     Route::get('/menus/{menu}/download', [MenuController::class, 'download']);
+    Route::get('/menus/upload-limits', [MenuController::class, 'uploadLimits']);
     
     Route::get('/notifications', [WaiterController::class, 'fetchWaiterNotifications']);
     Route::post('/notifications/handle/{notificationId}', [WaiterController::class, 'handleNotification']);
+    Route::post('/notifications/{notificationId}/read', [WaiterController::class, 'markNotificationAsRead']);
+    Route::post('/notifications/mark-multiple-read', [WaiterController::class, 'markMultipleNotificationsAsRead']);
     Route::post('/notifications/global', [WaiterController::class, 'globalNotifications']);
     Route::post('/tables/toggle-notifications/{tableId}', [WaiterController::class, 'toggleTableNotifications']);
     
@@ -220,6 +223,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('/notifications', [WaiterController::class, 'fetchWaiterNotifications']);
         Route::post('/notifications/handle/{notificationId}', [WaiterController::class, 'handleNotification']);
+        Route::post('/notifications/{notificationId}/read', [WaiterController::class, 'markNotificationAsRead']);
+        Route::post('/notifications/mark-multiple-read', [WaiterController::class, 'markMultipleNotificationsAsRead']);
         Route::post('/notifications/global', [WaiterController::class, 'globalNotifications']);
 
         Route::get('/profiles', [WaiterController::class, 'listProfiles']);

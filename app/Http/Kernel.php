@@ -18,6 +18,7 @@ class Kernel extends HttpKernel
         \App\Http\Middleware\DefinitiveCors::class,
         \App\Http\Middleware\TrustProxies::class,
         \App\Http\Middleware\PreventRequestsDuringMaintenance::class,
+        \App\Http\Middleware\HandleUploadErrors::class, // 📁 Manejo de errores de subida
         \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class,
         \App\Http\Middleware\TrimStrings::class,
         \Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull::class,

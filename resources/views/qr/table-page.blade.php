@@ -281,7 +281,18 @@
             <section class="menu-section">
                 <h2 class="section-title">Nuestro Menú</h2>
                 <div class="menu-container">
-                    @if($business->menu_pdf)
+                    @if($defaultMenu && $defaultMenu->file_path)
+                        <iframe 
+                            src="{{ asset('storage/' . $defaultMenu->file_path) }}" 
+                            class="menu-pdf"
+                            title="Menú de {{ $business->name }}">
+                            <p>Tu navegador no puede mostrar PDFs. 
+                            <a href="{{ asset('storage/' . $defaultMenu->file_path) }}" target="_blank">
+                                Haz clic aquí para ver el menú
+                            </a></p>
+                        </iframe>
+                    @elseif($business->menu_pdf)
+                        <!-- Fallback al campo antiguo menu_pdf si existe -->
                         <iframe 
                             src="{{ asset('storage/' . $business->menu_pdf) }}" 
                             class="menu-pdf"
@@ -295,6 +306,11 @@
                         <div style="padding: 40px; text-align: center; color: #6c757d;">
                             <h3>Menú no disponible</h3>
                             <p>Por favor solicita el menú físico a nuestro personal</p>
+                            @if($defaultMenu)
+                                <small style="display: block; margin-top: 10px; font-size: 12px; opacity: 0.7;">
+                                    Debug: Menú encontrado pero sin archivo (ID: {{ $defaultMenu->id }})
+                                </small>
+                            @endif
                         </div>
                     @endif
                 </div>
@@ -326,7 +342,7 @@
             const statusMessage = document.getElementById('statusMessage');
             
             button.disabled = true;
-            button.textContent = '📞 Llamando...';
+            button.textContent = '📞 Enviando...';
             
             statusMessage.style.display = 'block';
             statusMessage.className = 'status-message status-pending';
@@ -349,8 +365,30 @@
             .then(data => {
                 if (data.success) {
                     currentNotificationId = data.data.id;
+                    button.textContent = '⏳ Esperando confirmación...';
                     statusMessage.className = 'status-message status-pending';
                     statusMessage.textContent = 'Solicitud enviada. El mozo ha sido notificado...';
+                    
+                    // 🚀 MEJORA: Resetear botón después de un tiempo si no hay confirmación
+                    setTimeout(() => {
+                        if (button.disabled && (button.textContent.includes('Esperando') || button.textContent.includes('Enviando'))) {
+                            button.disabled = false;
+                            button.textContent = '🔔 Llamar Mozo';
+                            statusMessage.className = 'status-message';
+                            statusMessage.textContent = 'Tiempo de espera agotado. Puedes volver a llamar.';
+                            
+                            setTimeout(() => {
+                                statusMessage.style.display = 'none';
+                            }, 3000);
+                            
+                            currentNotificationId = null;
+                            
+                            if (pollingInterval) {
+                                clearInterval(pollingInterval);
+                                pollingInterval = null;
+                            }
+                        }
+                    }, 30000); // 30 segundos timeout
                     
                     startPolling();
                 } else {

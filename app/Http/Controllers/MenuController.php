@@ -29,7 +29,7 @@ class MenuController extends Controller
     {
         $request->validate([
             'business_id' => 'required|exists:businesses,id',
-            'menu_file' => 'required|file|mimes:pdf|max:10240',
+            'menu_file' => 'required|file|mimes:pdf,jpg,jpeg,png|max:51200', // 50MB
             'is_default' => 'boolean',
         ]);
 
@@ -59,7 +59,7 @@ class MenuController extends Controller
     {
         $request->validate([
             'business_id' => 'exists:businesses,id',
-            'menu_file' => 'file|mimes:pdf|max:10240',
+            'menu_file' => 'file|mimes:pdf,jpg,jpeg,png|max:51200', // 50MB
             'is_default' => 'boolean',
         ]);
 
@@ -157,16 +157,52 @@ class MenuController extends Controller
     
     public function uploadMenu(Request $request)
     {
+        // 🚀 MANEJO MEJORADO DE ERRORES 413
+        if (!$request->hasFile('file') && empty($request->all())) {
+            return response()->json([
+                'success' => false,
+                'error' => 'REQUEST_TOO_LARGE',
+                'message' => 'El archivo es demasiado grande para el servidor.',
+                'details' => [
+                    'max_allowed' => '50MB',
+                    'common_causes' => [
+                        'Archivo mayor a 50MB',
+                        'Límites del servidor web',
+                        'Configuración PHP restrictiva'
+                    ]
+                ],
+                'diagnosis_url' => url('/api/menus/upload-limits')
+            ], 413);
+        }
+
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
-            'file' => 'required|file|mimes:pdf,jpg,jpeg,png|max:2048',
+            'file' => 'required|file|mimes:pdf,jpg,jpeg,png|max:51200', // 50MB (era 2MB)
             'is_default' => 'sometimes|boolean',
             'category' => 'sometimes|string|max:50',
             'description' => 'sometimes|string|max:500',
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
+            $errors = $validator->errors();
+            
+            // Detectar errores relacionados con tamaño de archivo
+            if ($errors->has('file')) {
+                $fileErrors = $errors->get('file');
+                foreach ($fileErrors as $error) {
+                    if (strpos($error, 'may not be greater than') !== false) {
+                        return response()->json([
+                            'success' => false,
+                            'error' => 'FILE_TOO_LARGE',
+                            'message' => 'El archivo supera el límite de 50MB',
+                            'errors' => $errors,
+                            'diagnosis_url' => url('/api/menus/upload-limits')
+                        ], 413);
+                    }
+                }
+            }
+            
+            return response()->json(['errors' => $errors], 422);
         }
         
         $user = Auth::user();
@@ -330,5 +366,102 @@ class MenuController extends Controller
         if ($user->business_id !== $businessId) {
             abort(403, 'No tienes permiso para realizar esta acción');
         }
+    }
+
+    /**
+     * Diagnóstico de límites de subida de archivos
+     */
+    public function uploadLimits()
+    {
+        // Obtener límites PHP
+        $uploadMaxFilesize = ini_get('upload_max_filesize');
+        $postMaxSize = ini_get('post_max_size');
+        $memoryLimit = ini_get('memory_limit');
+        $maxExecutionTime = ini_get('max_execution_time');
+        $maxInputTime = ini_get('max_input_time');
+        $maxFileUploads = ini_get('max_file_uploads');
+
+        // Convertir a bytes para comparación
+        $uploadMaxBytes = $this->parseSize($uploadMaxFilesize);
+        $postMaxBytes = $this->parseSize($postMaxSize);
+        $memoryLimitBytes = $this->parseSize($memoryLimit);
+
+        // Determinar el límite efectivo (el menor)
+        $effectiveLimit = min($uploadMaxBytes, $postMaxBytes);
+        $effectiveLimitMB = round($effectiveLimit / 1024 / 1024, 2);
+
+        return response()->json([
+            'php_limits' => [
+                'upload_max_filesize' => $uploadMaxFilesize,
+                'post_max_size' => $postMaxSize,
+                'memory_limit' => $memoryLimit,
+                'max_execution_time' => $maxExecutionTime,
+                'max_input_time' => $maxInputTime,
+                'max_file_uploads' => $maxFileUploads,
+            ],
+            'effective_limit' => [
+                'bytes' => $effectiveLimit,
+                'mb' => $effectiveLimitMB,
+                'human' => $this->formatBytes($effectiveLimit)
+            ],
+            'laravel_validation_limit' => '50MB (51200 KB)',
+            'recommendations' => $this->getUploadRecommendations($effectiveLimit),
+            'server_info' => [
+                'php_version' => PHP_VERSION,
+                'server_software' => $_SERVER['SERVER_SOFTWARE'] ?? 'Unknown',
+                'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown'
+            ]
+        ]);
+    }
+
+    /**
+     * Parsear tamaño de string a bytes
+     */
+    private function parseSize($size)
+    {
+        $unit = preg_replace('/[^bkmgtpezy]/i', '', $size);
+        $size = preg_replace('/[^0-9\.]/', '', $size);
+        
+        if ($unit) {
+            return round($size * pow(1024, stripos('bkmgtpezy', $unit[0])));
+        } else {
+            return round($size);
+        }
+    }
+
+    /**
+     * Formatear bytes a formato legible
+     */
+    private function formatBytes($bytes, $precision = 2)
+    {
+        $units = array('B', 'KB', 'MB', 'GB', 'TB');
+        
+        for ($i = 0; $bytes > 1024 && $i < count($units) - 1; $i++) {
+            $bytes /= 1024;
+        }
+        
+        return round($bytes, $precision) . ' ' . $units[$i];
+    }
+
+    /**
+     * Obtener recomendaciones basadas en límites
+     */
+    private function getUploadRecommendations($effectiveLimit)
+    {
+        $recommendations = [];
+        $limitMB = $effectiveLimit / 1024 / 1024;
+
+        if ($limitMB < 10) {
+            $recommendations[] = "⚠️ Límite muy bajo ({$this->formatBytes($effectiveLimit)}). Recomendamos al menos 10MB.";
+        } elseif ($limitMB < 25) {
+            $recommendations[] = "🟡 Límite bajo ({$this->formatBytes($effectiveLimit)}). Considere aumentar a 50MB para menús con imágenes.";
+        } else {
+            $recommendations[] = "✅ Límite adecuado ({$this->formatBytes($effectiveLimit)}) para la mayoría de archivos.";
+        }
+
+        $recommendations[] = "📁 Para archivos muy grandes, considere usar formatos comprimidos o dividir el contenido.";
+        $recommendations[] = "🔧 Si el problema persiste, verifique la configuración del servidor web (Apache/Nginx).";
+
+        return $recommendations;
     }
 }

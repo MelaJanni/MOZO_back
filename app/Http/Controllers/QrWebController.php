@@ -70,7 +70,27 @@ class QrWebController extends Controller
         // Obtener URL del frontend desde configuración
         $frontendUrl = config('app.frontend_url', 'https://mozoqr.com');
         
-        return view('qr.table-page', compact('business', 'table', 'frontendUrl'));
+        // 🚀 OBTENER MENÚ PREDETERMINADO DEL BUSINESS
+        $defaultMenu = \App\Models\Menu::where('business_id', $business->id)
+            ->where('is_default', true)
+            ->first();
+            
+        // Si no hay menú predeterminado, obtener el primero disponible
+        if (!$defaultMenu) {
+            $defaultMenu = \App\Models\Menu::where('business_id', $business->id)
+                ->orderBy('created_at', 'desc')
+                ->first();
+        }
+        
+        \Log::info('Menu search for QR', [
+            'business_id' => $business->id,
+            'business_name' => $business->name,
+            'default_menu_found' => $defaultMenu ? 'yes' : 'no',
+            'menu_id' => $defaultMenu ? $defaultMenu->id : null,
+            'menu_path' => $defaultMenu ? $defaultMenu->file_path : null
+        ]);
+        
+        return view('qr.table-page', compact('business', 'table', 'frontendUrl', 'defaultMenu'));
     }
 
     public function testQr()
@@ -80,6 +100,134 @@ class QrWebController extends Controller
             'message' => 'QR System is working!',
             'timestamp' => now()->toISOString()
         ]);
+    }
+
+    /**
+     * Crear menú de prueba para McDonalds
+     */
+    public function createTestMenu()
+    {
+        try {
+            $mcdonalds = \App\Models\Business::where('code', 'mcdonalds')
+                ->orWhere('name', 'McDonalds')
+                ->first();
+                
+            if (!$mcdonalds) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Business McDonalds no encontrado'
+                ], 404);
+            }
+
+            // Crear un menú de prueba con contenido base64 simple
+            $menuContent = '%PDF-1.4
+1 0 obj
+<<
+/Type /Catalog
+/Pages 2 0 R
+>>
+endobj
+
+2 0 obj
+<<
+/Type /Pages
+/Kids [3 0 R]
+/Count 1
+>>
+endobj
+
+3 0 obj
+<<
+/Type /Page
+/Parent 2 0 R
+/Resources <<
+  /Font <<
+    /F1 4 0 R
+  >>
+>>
+/MediaBox [0 0 612 792]
+/Contents 5 0 R
+>>
+endobj
+
+4 0 obj
+<<
+/Type /Font
+/Subtype /Type1
+/BaseFont /Helvetica
+>>
+endobj
+
+5 0 obj
+<<
+/Length 44
+>>
+stream
+BT
+/F1 24 Tf
+100 700 Td
+(MENU McDONALDS) Tj
+ET
+endstream
+endobj
+
+xref
+0 6
+0000000000 65535 f 
+0000000010 00000 n 
+0000000053 00000 n 
+0000000110 00000 n 
+0000000271 00000 n 
+0000000348 00000 n 
+trailer
+<<
+/Size 6
+/Root 1 0 R
+>>
+startxref
+442
+%%EOF';
+
+            // Guardar archivo
+            $fileName = 'mcdonalds-menu-test.pdf';
+            $filePath = 'menus/' . $mcdonalds->id . '/' . $fileName;
+            
+            \Storage::disk('public')->put($filePath, $menuContent);
+
+            // Crear registro en la tabla Menu
+            $menu = \App\Models\Menu::create([
+                'business_id' => $mcdonalds->id,
+                'name' => 'Menú Principal McDonalds',
+                'file_path' => $filePath,
+                'is_default' => true,
+                'category' => 'Principal',
+                'description' => 'Menú principal de prueba para McDonalds',
+                'display_order' => 0,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Menú de prueba creado para McDonalds',
+                'menu' => [
+                    'id' => $menu->id,
+                    'name' => $menu->name,
+                    'file_path' => $menu->file_path,
+                    'view_url' => asset('storage/' . $menu->file_path),
+                    'business_name' => $mcdonalds->name
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error creating test menu for McDonalds', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error creating test menu: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     public function debugData()
