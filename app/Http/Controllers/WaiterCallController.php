@@ -1126,13 +1126,16 @@ class WaiterCallController extends Controller
                 ]
             ]);
 
-            // 🚀 OPTIMIZACIÓN: Procesar notificaciones en background
-            // 🔧 TEMPORALMENTE DESHABILITADO PARA DEBUG
+            // 🚀 FIREBASE TIEMPO REAL: Escribir INMEDIATAMENTE (no background queue)
             try {
+                // Escribir a Firebase INMEDIATAMENTE para tiempo real
+                $this->firebaseRealtimeService->writeWaiterCall($call, 'created');
+                
+                // Notificaciones FCM en background (no bloquean tiempo real)
                 dispatch(function() use ($call) {
                     $this->sendNotificationToWaiter($call);
-                    $this->firebaseRealtimeService->writeWaiterCall($call, 'created');
                 })->onQueue('notifications');
+                
             } catch (\Exception $e) {
                 Log::warning('Firebase notification failed but continuing', [
                     'call_id' => $call->id,
