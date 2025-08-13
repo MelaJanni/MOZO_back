@@ -684,4 +684,46 @@ startxref
             ], 500);
         }
     }
+
+    /**
+     * Mostrar página QR ULTRA FAST para testing 
+     */
+    public function showTablePageFast($restaurantSlug, $tableCode)
+    {
+        // Reutilizar la lógica de showTablePage pero con vista diferente
+        \Log::info('QR ULTRA FAST Page Request', [
+            'restaurantSlug' => $restaurantSlug,
+            'tableCode' => $tableCode
+        ]);
+
+        // Buscar negocio por múltiples criterios
+        $business = Business::where(function($query) use ($restaurantSlug) {
+            $query->whereRaw('LOWER(name) = ?', [strtolower($restaurantSlug)])
+                  ->orWhereRaw('LOWER(REPLACE(name, " ", "")) = ?', [strtolower(str_replace(' ', '', $restaurantSlug))])
+                  ->orWhere('code', $restaurantSlug);
+        })->first();
+        
+        if (!$business) {
+            abort(404, 'Business not found: ' . $restaurantSlug);
+        }
+
+        // Buscar mesa por código
+        $table = Table::where('code', $tableCode)
+                     ->where('business_id', $business->id)
+                     ->first();
+        
+        if (!$table) {
+            abort(404, 'Table not found: ' . $tableCode);
+        }
+
+        // Obtener menú por defecto
+        $defaultMenu = \App\Models\Menu::where('business_id', $business->id)
+            ->where('is_default', true)
+            ->first();
+
+        // URL base del frontend
+        $frontendUrl = env('FRONTEND_URL', config('app.url'));
+
+        return view('qr.table-page-fast', compact('business', 'table', 'frontendUrl', 'defaultMenu'));
+    }
 }

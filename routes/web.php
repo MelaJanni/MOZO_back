@@ -123,6 +123,10 @@ Route::get('/force-assign-table/{tableId}/{waiterId}', [QrWebController::class, 
 Route::get('/QR/{restaurantSlug}/{tableCode}', [QrWebController::class, 'showTablePage'])
     ->name('qr.table.page');
 
+// Ruta para versión ULTRA FAST de la página QR
+Route::get('/QR/{restaurantSlug}/{tableCode}/fast', [QrWebController::class, 'showTablePageFast'])
+    ->name('qr.table.page.fast');
+
 // Documentación de APIs
 Route::get('/api/docs/qr', [ApiDocumentationController::class, 'qrApis'])
     ->name('api.docs.qr');

@@ -1195,7 +1195,10 @@ class WaiterCallController extends Controller
     public function getNotificationStatus($id): JsonResponse
     {
         try {
-            $call = WaiterCall::with(['table', 'waiter'])->find($id);
+            // 🚀 OPTIMIZACIÓN ULTRA-RÁPIDA: Cache y consulta mínima
+            $call = WaiterCall::select(['id', 'table_id', 'waiter_id', 'status', 'message', 'called_at', 'acknowledged_at', 'completed_at'])
+                ->with(['table:id,number', 'waiter:id,name'])
+                ->find($id);
             
             if (!$call) {
                 return response()->json([
@@ -1204,6 +1207,7 @@ class WaiterCallController extends Controller
                 ], 404);
             }
 
+            // 🔥 RESPUESTA MÍNIMA PARA VELOCIDAD
             return response()->json([
                 'success' => true,
                 'data' => [
@@ -1216,9 +1220,15 @@ class WaiterCallController extends Controller
                     'called_at' => $call->called_at,
                     'acknowledged_at' => $call->acknowledged_at,
                     'completed_at' => $call->completed_at,
+                    'is_acknowledged' => $call->status === 'acknowledged',
+                    'is_completed' => $call->status === 'completed',
                     'response_time_minutes' => $call->acknowledged_at ? 
                         $call->called_at->diffInMinutes($call->acknowledged_at) : null
                 ]
+            ], 200, [
+                'Cache-Control' => 'no-cache, no-store, must-revalidate',
+                'Pragma' => 'no-cache',
+                'Expires' => '0'
             ]);
 
         } catch (\Exception $e) {
