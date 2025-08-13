@@ -100,6 +100,8 @@ class QrWebController extends Controller
     public function setupTestData()
     {
         try {
+            $results = [];
+            
             // Update existing table ID 1 to have the QR code
             $table = Table::where('id', 1)->where('business_id', 1)->first();
             if ($table) {
@@ -107,6 +109,7 @@ class QrWebController extends Controller
                     'code' => 'JoA4vw',
                     'name' => 'Mesa 1'
                 ]);
+                $results[] = "✅ Mesa JoA4vw actualizada";
             }
 
             // Create missing table mDWlbd if it doesn't exist
@@ -124,17 +127,81 @@ class QrWebController extends Controller
                         'location' => 'Principal',
                         'notifications_enabled' => true,
                     ]);
+                    $results[] = "✅ Mesa mDWlbd creada: Mesa #{$nextNumber}";
+                }
+            } else {
+                $results[] = "✅ Mesa mDWlbd ya existe: Mesa #{$tableMDWlbd->number}";
+            }
+
+            // 🔥 NUEVA FUNCIONALIDAD: Asignar mozos a las mesas QR
+            $mcdonalds = Business::where('code', 'mcdonalds')->first();
+            
+            // Buscar un mozo disponible
+            $availableWaiter = \App\Models\User::where('role', 'waiter')
+                ->where('active_business_id', $mcdonalds->id)
+                ->first();
+                
+            // Si no hay mozo, crear uno de prueba
+            if (!$availableWaiter) {
+                $availableWaiter = \App\Models\User::create([
+                    'name' => 'Mozo Test McDonalds',
+                    'email' => 'mozo.test@mcdonalds.com',
+                    'password' => bcrypt('password123'),
+                    'role' => 'waiter',
+                    'active_business_id' => $mcdonalds->id,
+                    'phone' => '+5491123456789',
+                ]);
+                
+                // Asociar al negocio
+                $availableWaiter->businesses()->attach($mcdonalds->id, [
+                    'joined_at' => now(),
+                    'status' => 'active',
+                    'role' => 'waiter'
+                ]);
+                
+                $results[] = "✅ Mozo de prueba creado: {$availableWaiter->name}";
+            }
+            
+            // Asignar mozo a ambas mesas QR si no lo tienen
+            $qrTables = ['JoA4vw', 'mDWlbd'];
+            foreach ($qrTables as $code) {
+                $qrTable = Table::where('code', $code)->first();
+                if ($qrTable) {
+                    if (!$qrTable->active_waiter_id) {
+                        $qrTable->update([
+                            'active_waiter_id' => $availableWaiter->id,
+                            'waiter_assigned_at' => now(),
+                            'notifications_enabled' => true
+                        ]);
+                        $results[] = "✅ Mozo {$availableWaiter->name} asignado a Mesa {$code}";
+                    } else {
+                        $currentWaiter = $qrTable->activeWaiter->name ?? 'Desconocido';
+                        $results[] = "ℹ️ Mesa {$code} ya tiene mozo: {$currentWaiter}";
+                    }
                 }
             }
 
-            $mcdonalds = Business::find(1);
+            // Recargar datos actualizados
+            $table = $table->fresh();
+            $tableMDWlbd = $tableMDWlbd ? $tableMDWlbd->fresh() : Table::where('code', 'mDWlbd')->first();
 
             return response()->json([
                 'status' => 'success',
                 'message' => 'Test data updated successfully',
+                'results' => $results,
                 'business' => $mcdonalds,
                 'table' => $table,
                 'table_mDWlbd' => $tableMDWlbd,
+                'waiter_assignments' => [
+                    'JoA4vw' => [
+                        'has_waiter' => $table ? (bool)$table->active_waiter_id : false,
+                        'waiter_name' => $table && $table->activeWaiter ? $table->activeWaiter->name : null
+                    ],
+                    'mDWlbd' => [
+                        'has_waiter' => $tableMDWlbd ? (bool)$tableMDWlbd->active_waiter_id : false,
+                        'waiter_name' => $tableMDWlbd && $tableMDWlbd->activeWaiter ? $tableMDWlbd->activeWaiter->name : null
+                    ]
+                ],
                 'qr_url' => url("/QR/mcdonalds/JoA4vw"),
                 'qr_url_mDWlbd' => $tableMDWlbd ? url("/QR/mcdonalds/mDWlbd") : null,
                 'debug_lookup' => [
