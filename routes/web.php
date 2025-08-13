@@ -103,6 +103,10 @@ Route::get('/setup-test-data', [QrWebController::class, 'setupTestData'])
 Route::get('/fix-qr-issues', [QrWebController::class, 'fixQrIssues'])
     ->name('qr.fix');
 
+// Ruta para asignar mozo a mesa específica
+Route::get('/assign-waiter-to-table/{tableCode}', [QrWebController::class, 'assignWaiterToTable'])
+    ->name('qr.assign.waiter');
+
 // Ruta para mostrar página de mesa desde QR
 Route::get('/QR/{restaurantSlug}/{tableCode}', [QrWebController::class, 'showTablePage'])
     ->name('qr.table.page');

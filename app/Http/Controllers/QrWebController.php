@@ -355,4 +355,84 @@ class QrWebController extends Controller
             ], 500);
         }
     }
+
+    public function assignWaiterToTable($tableCode)
+    {
+        try {
+            // Buscar la mesa por código
+            $table = Table::where('code', $tableCode)->first();
+            
+            if (!$table) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => "Mesa con código {$tableCode} no encontrada"
+                ], 404);
+            }
+
+            // Si ya tiene mozo asignado
+            if ($table->active_waiter_id) {
+                $waiterName = $table->activeWaiter->name ?? 'Desconocido';
+                return response()->json([
+                    'status' => 'info',
+                    'message' => "Mesa {$tableCode} ya tiene mozo asignado",
+                    'table' => [
+                        'code' => $table->code,
+                        'number' => $table->number,
+                        'waiter_name' => $waiterName,
+                        'assigned_at' => $table->waiter_assigned_at
+                    ]
+                ]);
+            }
+
+            // Buscar un mozo disponible (preferir el que ya está trabajando)
+            $availableWaiter = \App\Models\User::where('role', 'waiter')
+                ->where('active_business_id', $table->business_id)
+                ->first();
+
+            // Si no encuentra uno con ese negocio activo, buscar cualquier mozo
+            if (!$availableWaiter) {
+                $availableWaiter = \App\Models\User::where('role', 'waiter')
+                    ->whereHas('businesses', function($query) use ($table) {
+                        $query->where('businesses.id', $table->business_id);
+                    })
+                    ->first();
+            }
+
+            if (!$availableWaiter) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'No hay mozos disponibles para este negocio'
+                ], 404);
+            }
+
+            // Asignar el mozo a la mesa
+            $table->update([
+                'active_waiter_id' => $availableWaiter->id,
+                'waiter_assigned_at' => now(),
+                'notifications_enabled' => true
+            ]);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => "Mozo {$availableWaiter->name} asignado exitosamente a Mesa {$tableCode}",
+                'table' => [
+                    'code' => $table->code,
+                    'number' => $table->number,
+                    'name' => $table->name,
+                    'waiter_id' => $availableWaiter->id,
+                    'waiter_name' => $availableWaiter->name,
+                    'assigned_at' => $table->waiter_assigned_at,
+                    'notifications_enabled' => $table->notifications_enabled
+                ],
+                'test_url' => url("/QR/mcdonalds/{$tableCode}")
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ], 500);
+        }
+    }
 }
