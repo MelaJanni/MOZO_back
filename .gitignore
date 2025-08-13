@@ -5,6 +5,7 @@
 /public/storage
 /storage/*.key
 /storage/app/firebase/*.json
+/storage/app/firebase/firebase.json
 /vendor
 .env
 .env.backup
