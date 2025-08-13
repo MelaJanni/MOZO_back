@@ -1,0 +1,105 @@
+name: Execute Firebase Setup Command
+
+on:
+  workflow_dispatch: # Manual trigger only
+
+jobs:
+  firebase-setup-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Setup PHP 8.2
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.2'
+        extensions: mbstring, xml, ctype, iconv, intl, pdo, pdo_mysql, dom, filter, gd, iconv, json, mbstring, openssl
+    
+    - name: Install Composer dependencies
+      run: composer install --prefer-dist --no-progress --no-suggest
+    
+    - name: Create storage directories
+      run: |
+        mkdir -p storage/app/firebase
+        mkdir -p storage/logs
+        chmod -R 775 storage
+    
+    - name: Setup environment file
+      run: |
+        cp .env.example .env
+        # Add Firebase configuration
+        cat >> .env << 'EOF'
+        FIREBASE_PROJECT_ID=mozoqr-7d32c
+        FIREBASE_SERVER_KEY=AIzaSyCecfSTfyxk3D2X4XsLaSGkckvf-OvhFZA
+        FIREBASE_SERVICE_ACCOUNT_PATH=storage/app/firebase/firebase.json
+        FIREBASE_API_KEY=AIzaSyCecfSTfyxk3D2X4XsLaSGkckvf-OvhFZA
+        FIREBASE_AUTH_DOMAIN=mozoqr-7d32c.firebaseapp.com
+        FIREBASE_STORAGE_BUCKET=mozoqr-7d32c.appspot.com
+        FIREBASE_MESSAGING_SENDER_ID=test-sender-id
+        FIREBASE_APP_ID=test-app-id
+        EOF
+    
+    - name: Create mock Firebase credentials for CI
+      run: |
+        cat > storage/app/firebase/firebase.json << 'EOF'
+        {
+          "type": "service_account",
+          "project_id": "mozoqr-7d32c",
+          "private_key_id": "mock-key-id-for-ci",
+          "private_key": "-----BEGIN PRIVATE KEY-----\nMOCK_PRIVATE_KEY_FOR_CI_TESTING_ONLY\n-----END PRIVATE KEY-----\n",
+          "client_email": "firebase-adminsdk-mock@mozoqr-7d32c.iam.gserviceaccount.com",
+          "client_id": "123456789012345678901",
+          "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+          "token_uri": "https://oauth2.googleapis.com/token",
+          "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+          "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-mock%40mozoqr-7d32c.iam.gserviceaccount.com",
+          "universe_domain": "googleapis.com"
+        }
+        EOF
+    
+    - name: Generate Laravel application key
+      run: php artisan key:generate
+    
+    - name: Execute Firebase Setup Command
+      run: |
+        echo "🔥 Executing: php artisan firebase:setup --test"
+        echo "=================================================="
+        php artisan firebase:setup --test
+        echo "=================================================="
+        echo "✅ Firebase setup command completed"
+    
+    - name: Display Firebase configuration status
+      run: |
+        echo ""
+        echo "📋 Final Firebase Configuration Status:"
+        echo "========================================"
+        
+        if [ -f "storage/app/firebase/firebase.json" ]; then
+          echo "✅ Firebase credentials file exists"
+          echo "📄 File size: $(stat -f%z storage/app/firebase/firebase.json 2>/dev/null || stat -c%s storage/app/firebase/firebase.json) bytes"
+        else
+          echo "❌ Firebase credentials file missing"
+        fi
+        
+        echo ""
+        echo "🌐 Environment variables:"
+        grep "FIREBASE_" .env || echo "No Firebase env vars found"
+        
+        echo ""
+        echo "📁 Storage structure:"
+        ls -la storage/app/firebase/ || echo "Firebase directory empty/missing"
+        
+    - name: Test Firebase service instantiation
+      run: |
+        echo ""
+        echo "🧪 Testing Firebase service instantiation..."
+        php artisan tinker --execute="
+        try {
+          \$service = app(App\\Services\\FirebaseRealtimeService::class);
+          echo 'ℹ️  Service instantiated successfully' . PHP_EOL;
+          echo 'ℹ️  Service class: ' . get_class(\$service) . PHP_EOL;
+        } catch (Exception \$e) {
+          echo '⚠️  Service instantiation: ' . \$e->getMessage() . PHP_EOL;
+        }"
