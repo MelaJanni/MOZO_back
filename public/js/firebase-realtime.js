@@ -42,6 +42,18 @@ class FirebaseRealtimeService {
                 console.log('✅ Firebase App inicializada');
             }
 
+            // Inicializar Authentication para acceso anónimo
+            this.auth = firebase.auth();
+            
+            // Configurar autenticación anónima para acceso público desde QR
+            try {
+                await this.auth.signInAnonymously();
+                console.log('✅ Autenticación anónima exitosa');
+            } catch (authError) {
+                console.warn('⚠️  Autenticación anónima falló, continuando sin auth:', authError.message);
+                // Continuar sin autenticación - las reglas permiten lectura pública
+            }
+
             // Inicializar Firestore
             this.db = firebase.firestore();
             
@@ -79,6 +91,8 @@ class FirebaseRealtimeService {
                 return;
             }
 
+            console.log('📦 Cargando Firebase SDK...');
+            
             const script1 = document.createElement('script');
             script1.src = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js';
             
@@ -87,8 +101,19 @@ class FirebaseRealtimeService {
                 script2.src = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js';
                 
                 script2.onload = () => {
-                    console.log('✅ Firebase SDK cargado');
-                    resolve();
+                    const script3 = document.createElement('script');
+                    script3.src = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js';
+                    
+                    script3.onload = () => {
+                        console.log('✅ Firebase SDK completo cargado (app, firestore, auth)');
+                        resolve();
+                    };
+                    
+                    script3.onerror = (error) => {
+                        console.warn('⚠️  Firebase Auth SDK failed to load, continuing without auth');
+                        resolve(); // Continue without auth
+                    };
+                    document.head.appendChild(script3);
                 };
                 
                 script2.onerror = reject;
@@ -117,36 +142,54 @@ class FirebaseRealtimeService {
                 .where('status', '==', 'pending')
                 .orderBy('called_at', 'desc')
                 .limit(5)
-                .onSnapshot(
-                    (snapshot) => {
-                        console.log(`📨 Received ${snapshot.docs.length} call updates for table ${tableId}`);
-                        
-                        const calls = snapshot.docs.map(doc => ({
-                            id: doc.id,
-                            ...doc.data(),
-                            _metadata: {
-                                isFromCache: snapshot.metadata.fromCache,
-                                hasPendingWrites: snapshot.metadata.hasPendingWrites
-                            }
-                        }));
+                .onSnapshot({
+                    // Incluir metadatos para debugging
+                    includeMetadataChanges: true
+                }, 
+                (snapshot) => {
+                    const fromCache = snapshot.metadata.fromCache;
+                    const hasPendingWrites = snapshot.metadata.hasPendingWrites;
+                    
+                    console.log(`📨 Received ${snapshot.docs.length} call updates for table ${tableId} (cache: ${fromCache}, pending: ${hasPendingWrites})`);
+                    
+                    const calls = snapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data(),
+                        _metadata: {
+                            isFromCache: fromCache,
+                            hasPendingWrites: hasPendingWrites
+                        }
+                    }));
 
-                        callback({
-                            success: true,
-                            calls,
-                            tableId,
-                            timestamp: new Date()
-                        });
-                    },
-                    (error) => {
-                        console.error(`❌ Error listening to table ${tableId} calls:`, error);
-                        callback({
-                            success: false,
-                            error: error.message,
-                            tableId,
-                            timestamp: new Date()
-                        });
+                    callback({
+                        success: true,
+                        calls,
+                        tableId,
+                        fromCache,
+                        timestamp: new Date()
+                    });
+                },
+                (error) => {
+                    console.error(`❌ Error listening to table ${tableId} calls:`, error);
+                    
+                    // Specific error handling for common Firestore errors
+                    let userFriendlyError = error.message;
+                    if (error.code === 'permission-denied') {
+                        userFriendlyError = 'Sin permisos para acceder a las notificaciones';
+                    } else if (error.code === 'failed-precondition') {
+                        userFriendlyError = 'Índices de Firestore no configurados';
+                    } else if (error.code === 'unavailable') {
+                        userFriendlyError = 'Servicio Firebase temporalmente no disponible';
                     }
-                );
+                    
+                    callback({
+                        success: false,
+                        error: userFriendlyError,
+                        errorCode: error.code,
+                        tableId,
+                        timestamp: new Date()
+                    });
+                });
 
             this.listeners.set(`table_calls_${tableId}`, unsubscribe);
             return unsubscribe;

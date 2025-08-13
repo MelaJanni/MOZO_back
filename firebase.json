@@ -1,0 +1,5 @@
+{
+  "firestore": {
+    "rules": "storage/app/firebase/firestore.rules"
+  }
+}
