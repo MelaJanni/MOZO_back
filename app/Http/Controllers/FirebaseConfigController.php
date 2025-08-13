@@ -12,20 +12,38 @@ class FirebaseConfigController extends Controller
      */
     public function getConfig(): JsonResponse
     {
+        $config = [
+            'apiKey' => config('services.firebase.api_key') ?: config('services.firebase.server_key'),
+            'authDomain' => config('services.firebase.auth_domain') ?: config('services.firebase.project_id') . '.firebaseapp.com',
+            'projectId' => config('services.firebase.project_id'),
+            'storageBucket' => config('services.firebase.storage_bucket') ?: config('services.firebase.project_id') . '.appspot.com',
+            'messagingSenderId' => config('services.firebase.messaging_sender_id'),
+            'appId' => config('services.firebase.app_id'),
+        ];
+
+        // 🔧 DIAGNOSTICS: Verificar qué configuraciones están disponibles
+        $diagnostics = [
+            'has_api_key' => !empty($config['apiKey']),
+            'has_auth_domain' => !empty($config['authDomain']),
+            'has_project_id' => !empty($config['projectId']),
+            'has_storage_bucket' => !empty($config['storageBucket']),
+            'has_messaging_sender_id' => !empty($config['messagingSenderId']),
+            'has_app_id' => !empty($config['appId']),
+            'service_account_configured' => !empty(config('services.firebase.service_account_path')) && 
+                                           file_exists(config('services.firebase.service_account_path')),
+        ];
+
         return response()->json([
             'success' => true,
-            'firebase_config' => [
-                'apiKey' => config('services.firebase.api_key'),
-                'authDomain' => config('services.firebase.auth_domain'),
-                'projectId' => config('services.firebase.project_id'),
-                'storageBucket' => config('services.firebase.storage_bucket'),
-                'messagingSenderId' => config('services.firebase.messaging_sender_id'),
-                'appId' => config('services.firebase.app_id'),
-            ],
+            'firebase_config' => $config,
             'realtime_endpoints' => [
                 'table_calls' => '/tables/{table_id}/waiter_calls',
                 'table_status' => '/tables/{table_id}/status/current'
-            ]
+            ],
+            'diagnostics' => $diagnostics,
+            'ready_for_realtime' => $diagnostics['has_project_id'] && $diagnostics['has_api_key'],
+            'backend_ready' => $diagnostics['service_account_configured'],
+            'timestamp' => now()
         ]);
     }
 
@@ -55,10 +73,10 @@ class FirebaseConfigController extends Controller
                 'has_active_waiter' => !is_null($table->active_waiter_id)
             ],
             'firebase_config' => [
-                'apiKey' => config('services.firebase.api_key'),
-                'authDomain' => config('services.firebase.auth_domain'),
+                'apiKey' => config('services.firebase.api_key') ?: config('services.firebase.server_key'),
+                'authDomain' => config('services.firebase.auth_domain') ?: config('services.firebase.project_id') . '.firebaseapp.com',
                 'projectId' => config('services.firebase.project_id'),
-                'storageBucket' => config('services.firebase.storage_bucket'),
+                'storageBucket' => config('services.firebase.storage_bucket') ?: config('services.firebase.project_id') . '.appspot.com',
                 'messagingSenderId' => config('services.firebase.messaging_sender_id'),
                 'appId' => config('services.firebase.app_id'),
             ],

@@ -398,6 +398,96 @@
                 });
             }, 3000);
         }
+
+        // 🚀 MEJORAR NOTIFICACIONES CON FIREBASE REAL-TIME
+        let firebaseReady = false;
+        let firebaseRetries = 0;
+        
+        // Esperar a que Firebase esté listo
+        function waitForFirebase() {
+            if (window.FirebaseRealtimeService && window.FirebaseRealtimeService.initialized) {
+                firebaseReady = true;
+                console.log('🎉 Firebase ready! Switching to real-time notifications');
+                setupFirebaseRealtime();
+            } else if (firebaseRetries < 10) {
+                firebaseRetries++;
+                setTimeout(waitForFirebase, 1000);
+            } else {
+                console.warn('⚠️  Firebase not ready after retries, using polling fallback');
+            }
+        }
+        
+        // Configurar escucha en tiempo real con Firebase
+        function setupFirebaseRealtime() {
+            const tableId = {{ $table->id }};
+            
+            // Escuchar llamadas de mozo
+            window.FirebaseRealtimeService.listenToTableCalls(tableId, (update) => {
+                if (update.success) {
+                    console.log('📨 Real-time call update:', update);
+                    
+                    // Buscar nuestra llamada actual
+                    const ourCall = update.calls.find(call => call.id == currentNotificationId);
+                    if (ourCall && ourCall.status === 'acknowledged') {
+                        handleWaiterAcknowledgment();
+                    }
+                } else {
+                    console.error('❌ Firebase call update error:', update.error);
+                    // Fallback a polling si Firebase falla
+                    if (!pollingInterval && currentNotificationId) {
+                        startPolling();
+                    }
+                }
+            });
+            
+            // Opcional: Escuchar cambios de estado de mesa
+            window.FirebaseRealtimeService.listenToTableStatus(tableId, (update) => {
+                if (update.success) {
+                    console.log('📊 Real-time status update:', update);
+                    // Aquí puedes manejar cambios de estado de mesa si es necesario
+                }
+            });
+        }
+        
+        // Manejar confirmación del mozo
+        function handleWaiterAcknowledgment() {
+            if (pollingInterval) {
+                clearInterval(pollingInterval);
+                pollingInterval = null;
+            }
+            
+            const statusMessage = document.getElementById('statusMessage');
+            const button = document.getElementById('callWaiterBtn');
+            
+            statusMessage.className = 'status-message status-success';
+            statusMessage.textContent = '✅ ¡El mozo confirmó tu solicitud! Llegará en breve.';
+            
+            setTimeout(() => {
+                button.disabled = false;
+                button.textContent = '🔔 Llamar Mozo';
+                statusMessage.style.display = 'none';
+                currentNotificationId = null;
+            }, 5000);
+        }
+        
+        // Inicializar sistema híbrido (Firebase + fallback)
+        setTimeout(waitForFirebase, 500);
+        
+        // 🔄 MODIFICAR POLLING PARA SER FALLBACK
+        const originalStartPolling = startPolling;
+        startPolling = function() {
+            // Solo iniciar polling si Firebase no está funcionando
+            if (firebaseReady) {
+                console.log('🔥 Firebase active, skipping polling');
+                return;
+            }
+            
+            console.log('📡 Starting polling fallback');
+            originalStartPolling();
+        };
     </script>
+
+    <!-- 🔥 Firebase Real-time Service -->
+    <script src="{{ asset('js/firebase-realtime.js') }}"></script>
 </body>
 </html>
