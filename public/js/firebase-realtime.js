@@ -57,10 +57,14 @@ class FirebaseRealtimeService {
             // Inicializar Firestore
             this.db = firebase.firestore();
             
-            // Configurar opciones de Firestore
+            // Configurar opciones de Firestore para TIEMPO REAL INMEDIATO
             this.db.settings({
-                cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
+                cacheSizeBytes: 1048576, // 1MB cache mínimo para velocidad
+                ignoreUndefinedProperties: true
             });
+
+            // Configurar preferencia por datos del servidor (NO cache)
+            this.db.enableNetwork();
 
             this.initialized = true;
             console.log('🎉 Firebase Real-time Service listo!');
@@ -143,10 +147,17 @@ class FirebaseRealtimeService {
                 .orderBy('called_at', 'desc')
                 .limit(5)
                 .onSnapshot({
-                    // Incluir metadatos para debugging
-                    includeMetadataChanges: true
+                    // PRIORIZAR SERVIDOR para tiempo real inmediato
+                    includeMetadataChanges: false,
+                    source: 'default' // server first, then cache
                 }, 
                 (snapshot) => {
+                    // 🚀 OPTIMIZACIÓN: Solo procesar si hay cambios reales del servidor
+                    if (snapshot.metadata.fromCache && !snapshot.metadata.hasPendingWrites) {
+                        console.log(`⚡ Skipping cache-only update for table ${tableId}`);
+                        return; // Skip cache-only updates
+                    }
+                    
                     const fromCache = snapshot.metadata.fromCache;
                     const hasPendingWrites = snapshot.metadata.hasPendingWrites;
                     

@@ -105,10 +105,8 @@ class FirebaseRealtimeService
                 ]
             ];
 
-            // Escribir en múltiples documentos para diferentes listeners
+            // 🚀 OPTIMIZACIÓN: Solo escribir en el documento esencial para QR (más rápido)
             $this->writeDocument("tables/{$call->table_id}/waiter_calls", $call->id, $document);
-            $this->writeDocument("waiters/{$call->waiter_id}/calls", $call->id, $document);
-            $this->writeDocument("businesses/{$call->table->business_id}/waiter_calls", $call->id, $document);
 
             Log::info("Firestore waiter call written successfully", [
                 'call_id' => $call->id,
@@ -214,7 +212,10 @@ class FirebaseRealtimeService
                 'Content-Type' => 'application/json',
             ],
             'json' => $document,
-            'query' => ['updateMask.fieldPaths' => '*']
+            'query' => ['updateMask.fieldPaths' => '*'],
+            // 🚀 OPTIMIZACIÓN: Timeout agresivo para velocidad
+            'timeout' => 2, // 2 segundos máximo
+            'connect_timeout' => 1 // 1 segundo para conectar
         ]);
 
         return json_decode($response->getBody(), true);

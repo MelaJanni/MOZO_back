@@ -119,12 +119,10 @@ class WaiterCallController extends Controller
                 ]
             ]);
 
-            // 🚀 OPTIMIZACIÓN: Enviar notificaciones en paralelo
-            // Usar dispatch para procesar en background y reducir latencia
-            dispatch(function() use ($call) {
-                $this->sendNotificationToWaiter($call);
-                $this->firebaseRealtimeService->writeWaiterCall($call, 'created');
-            })->onQueue('notifications');
+            // 🚀 OPTIMIZACIÓN: Cargar relaciones necesarias y enviar inmediato
+            $call->load(['table', 'waiter']);
+            $this->sendNotificationToWaiter($call);
+            $this->firebaseRealtimeService->writeWaiterCall($call, 'created');
 
             return response()->json([
                 'success' => true,

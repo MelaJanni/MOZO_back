@@ -99,10 +99,38 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
-        $request->user()->currentAccessToken()->delete();
+        $user = $request->user();
+        
+        // 🚀 NUEVA FUNCIONALIDAD: Desactivar todas las mesas del mozo al logout
+        if ($user->isWaiter()) {
+            $deactivatedTables = \App\Models\Table::where('active_waiter_id', $user->id)
+                ->whereNotNull('active_waiter_id')
+                ->get();
+            
+            foreach ($deactivatedTables as $table) {
+                // Cancelar llamadas pendientes
+                $table->pendingCalls()->update(['status' => 'cancelled']);
+                
+                // Desasignar mozo usando el método del modelo
+                $table->unassignWaiter();
+                
+                \Log::info("Mesa {$table->number} desactivada automáticamente por logout del mozo {$user->name}", [
+                    'table_id' => $table->id,
+                    'waiter_id' => $user->id,
+                    'waiter_name' => $user->name
+                ]);
+            }
+            
+            if ($deactivatedTables->count() > 0) {
+                \Log::info("Logout: {$deactivatedTables->count()} mesas desactivadas para mozo {$user->name}");
+            }
+        }
+        
+        $user->currentAccessToken()->delete();
 
         return response()->json([
-            'message' => 'Sesión cerrada exitosamente'
+            'message' => 'Sesión cerrada exitosamente',
+            'deactivated_tables' => $user->isWaiter() ? $deactivatedTables->count() : 0
         ]);
     }
 

@@ -128,12 +128,20 @@ Route::middleware('auth:sanctum')->group(function () {
         // Estado de mesas
         Route::get('/tables/silenced', [WaiterCallController::class, 'getSilencedTables']);
 
-        // Perfiles de mesa
-        Route::get('/table-profiles', [WaiterController::class, 'listProfiles']);
-        Route::post('/table-profiles', [WaiterController::class, 'createProfile']);
-        Route::put('/table-profiles/{id}', [WaiterController::class, 'updateProfile']);
-        Route::delete('/table-profiles/{id}', [WaiterController::class, 'deleteProfile']);
-        Route::post('/table-profiles/{id}/activate', [WaiterController::class, 'activateProfile']);
+        // Perfiles de mesa - CRUD completo
+        Route::get('/table-profiles', [App\Http\Controllers\TableProfileController::class, 'index']);
+        Route::post('/table-profiles', [App\Http\Controllers\TableProfileController::class, 'store']);
+        Route::get('/table-profiles/{profile}', [App\Http\Controllers\TableProfileController::class, 'show']);
+        Route::put('/table-profiles/{profile}', [App\Http\Controllers\TableProfileController::class, 'update']);
+        Route::delete('/table-profiles/{profile}', [App\Http\Controllers\TableProfileController::class, 'destroy']);
+        
+        // Activación de perfiles
+        Route::post('/table-profiles/{profile}/activate', [App\Http\Controllers\TableProfileController::class, 'activate']);
+        Route::post('/table-profiles/{profile}/deactivate', [App\Http\Controllers\TableProfileController::class, 'deactivate']);
+        
+        // Notificaciones de auto-completar
+        Route::get('/table-profiles/notifications', [App\Http\Controllers\TableProfileController::class, 'getAutoCompleteNotifications']);
+        Route::post('/table-profiles/notifications/{notificationId}/read', [App\Http\Controllers\TableProfileController::class, 'markNotificationAsRead']);
     });
 
     Route::prefix('admin')->group(function () {

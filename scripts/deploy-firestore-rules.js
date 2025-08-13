@@ -5,9 +5,13 @@
  * Ejecutar: node scripts/deploy-firestore-rules.js
  */
 
-const { execSync } = require('child_process');
-const fs = require('fs');
-const path = require('path');
+import { execSync } from 'child_process';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const projectId = 'mozoqr-7d32c';
 const rulesFile = path.join(__dirname, '../storage/app/firebase/firestore.rules');
