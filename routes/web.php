@@ -99,6 +99,10 @@ Route::get('/debug-qr-data', [QrWebController::class, 'debugData'])
 Route::get('/setup-test-data', [QrWebController::class, 'setupTestData'])
     ->name('qr.setup');
 
+// Ruta para arreglar problemas QR
+Route::get('/fix-qr-issues', [QrWebController::class, 'fixQrIssues'])
+    ->name('qr.fix');
+
 // Ruta para mostrar página de mesa desde QR
 Route::get('/QR/{restaurantSlug}/{tableCode}', [QrWebController::class, 'showTablePage'])
     ->name('qr.table.page');

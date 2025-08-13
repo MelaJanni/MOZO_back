@@ -130,4 +130,141 @@ class QrWebController extends Controller
             ], 500);
         }
     }
+
+    public function fixQrIssues()
+    {
+        try {
+            $results = [];
+            
+            // 1. Verificar que existe el negocio McDonalds
+            $mcdonalds = Business::where('name', 'McDonalds')
+                ->orWhere('code', 'mcdonalds')
+                ->first();
+                
+            if (!$mcdonalds) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'No se encontró el negocio McDonalds'
+                ], 404);
+            }
+            
+            $results[] = "✅ Negocio encontrado: {$mcdonalds->name} (ID: {$mcdonalds->id})";
+            
+            // 2. Crear mesa mDWlbd si no existe
+            $tableMDWlbd = Table::where('code', 'mDWlbd')->first();
+            if (!$tableMDWlbd) {
+                // Buscar el siguiente número de mesa disponible
+                $nextNumber = Table::where('business_id', $mcdonalds->id)->max('number') + 1;
+                
+                $tableMDWlbd = Table::create([
+                    'business_id' => $mcdonalds->id,
+                    'number' => $nextNumber,
+                    'code' => 'mDWlbd',
+                    'name' => "Mesa {$nextNumber}",
+                    'capacity' => 4,
+                    'location' => 'Principal',
+                    'notifications_enabled' => true,
+                ]);
+                
+                $results[] = "✅ Mesa mDWlbd creada: Mesa #{$nextNumber} (ID: {$tableMDWlbd->id})";
+            } else {
+                $results[] = "✅ Mesa mDWlbd ya existe: Mesa #{$tableMDWlbd->number}";
+            }
+            
+            // 3. Verificar mesa JoA4vw
+            $tableJoA4vw = Table::where('code', 'JoA4vw')->first();
+            if (!$tableJoA4vw) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Mesa JoA4vw no encontrada'
+                ], 404);
+            }
+            
+            $results[] = "✅ Mesa JoA4vw encontrada: Mesa #{$tableJoA4vw->number}";
+            
+            // 4. Verificar/crear mozos de prueba
+            $results[] = "🔍 Verificando mozos disponibles...";
+            
+            $waiters = \App\Models\User::where('role', 'waiter')->get();
+            if ($waiters->isEmpty()) {
+                $results[] = "⚠️ No hay mozos registrados, creando mozo de prueba...";
+                
+                // Crear mozo de prueba
+                $testWaiter = \App\Models\User::create([
+                    'name' => 'Mozo Test McDonalds',
+                    'email' => 'mozo.test@mcdonalds.com',
+                    'password' => bcrypt('password123'),
+                    'role' => 'waiter',
+                    'active_business_id' => $mcdonalds->id,
+                    'phone' => '+5491123456789',
+                ]);
+                
+                // Asociar el mozo al negocio
+                $testWaiter->businesses()->attach($mcdonalds->id, [
+                    'joined_at' => now(),
+                    'status' => 'active',
+                    'role' => 'waiter'
+                ]);
+                
+                $results[] = "✅ Mozo de prueba creado: {$testWaiter->name} (ID: {$testWaiter->id})";
+                $waiters = collect([$testWaiter]);
+            }
+            
+            $availableWaiter = $waiters->first();
+            
+            // 5. Asignar mozo a las mesas si no lo tienen
+            $tables = [$tableMDWlbd, $tableJoA4vw];
+            
+            foreach ($tables as $table) {
+                if (!$table->active_waiter_id) {
+                    $table->update([
+                        'active_waiter_id' => $availableWaiter->id,
+                        'waiter_assigned_at' => now(),
+                        'notifications_enabled' => true
+                    ]);
+                    
+                    $results[] = "✅ Mozo {$availableWaiter->name} asignado a Mesa {$table->code}";
+                } else {
+                    $waiterName = $table->activeWaiter->name ?? 'Desconocido';
+                    $results[] = "✅ Mesa {$table->code} ya tiene mozo: {$waiterName}";
+                }
+            }
+            
+            // Recargar las mesas para obtener datos actualizados
+            $tableMDWlbd->load('activeWaiter');
+            $tableJoA4vw->load('activeWaiter');
+            
+            return response()->json([
+                'status' => 'success',
+                'message' => '🎉 ¡Reparación completada!',
+                'results' => $results,
+                'summary' => [
+                    'business' => $mcdonalds->name,
+                    'tables' => [
+                        'mDWlbd' => [
+                            'number' => $tableMDWlbd->number,
+                            'waiter' => $tableMDWlbd->activeWaiter->name ?? 'Sin asignar',
+                            'notifications_enabled' => $tableMDWlbd->notifications_enabled
+                        ],
+                        'JoA4vw' => [
+                            'number' => $tableJoA4vw->number,
+                            'waiter' => $tableJoA4vw->activeWaiter->name ?? 'Sin asignar',
+                            'notifications_enabled' => $tableJoA4vw->notifications_enabled
+                        ]
+                    ]
+                ],
+                'test_urls' => [
+                    'mDWlbd' => url("/QR/mcdonalds/mDWlbd"),
+                    'JoA4vw' => url("/QR/mcdonalds/JoA4vw")
+                ]
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ], 500);
+        }
+    }
 }
