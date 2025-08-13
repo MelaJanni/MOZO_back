@@ -1039,6 +1039,16 @@ class WaiterCallController extends Controller
     public function createNotification(Request $request): JsonResponse
     {
         try {
+            // 🔧 DEBUG: Log request details
+            Log::info('Waiter notification request received', [
+                'method' => $request->method(),
+                'url' => $request->fullUrl(),
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'headers' => $request->headers->all(),
+                'body' => $request->all()
+            ]);
+            
             $request->validate([
                 'restaurant_id' => 'required|integer',
                 'table_id' => 'required|integer',

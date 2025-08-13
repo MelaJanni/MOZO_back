@@ -212,6 +212,34 @@ Route::middleware('public_api')->group(function () {
     Route::post('/waiter-notifications', [WaiterCallController::class, 'createNotification']);
     Route::get('/waiter-notifications/{id}', [WaiterCallController::class, 'getNotificationStatus']);
     
+    // 🔧 DEBUG: Agregar ruta GET para diagnosticar el problema
+    Route::get('/waiter-notifications', function() {
+        return response()->json([
+            'error' => 'Método no permitido',
+            'message' => 'Esta ruta solo acepta POST para crear notificaciones.',
+            'correct_usage' => [
+                'method' => 'POST',
+                'url' => '/api/waiter-notifications',
+                'body' => [
+                    'restaurant_id' => 'integer',
+                    'table_id' => 'integer', 
+                    'message' => 'string (optional)',
+                    'urgency' => 'string (optional: low,normal,high)'
+                ]
+            ],
+            'status_check' => [
+                'method' => 'GET',
+                'url' => '/api/waiter-notifications/{notification_id}'
+            ],
+            'debug_info' => [
+                'timestamp' => now(),
+                'requested_method' => 'GET',
+                'client_ip' => request()->ip(),
+                'user_agent' => request()->userAgent()
+            ]
+        ], 405); // Method Not Allowed
+    });
+    
     // 🚀 TIEMPO REAL OPTIMIZADO: Alternativas a Firebase
     Route::get('/notifications/stream', [NotificationStreamController::class, 'stream']); // Server-Sent Events
     Route::get('/notifications/poll', [NotificationStreamController::class, 'poll']);     // Polling optimizado
