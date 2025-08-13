@@ -1112,10 +1112,19 @@ class WaiterCallController extends Controller
             ]);
 
             // 🚀 OPTIMIZACIÓN: Procesar notificaciones en background
-            dispatch(function() use ($call) {
-                $this->sendNotificationToWaiter($call);
-                $this->firebaseRealtimeService->writeWaiterCall($call, 'created');
-            })->onQueue('notifications');
+            // 🔧 TEMPORALMENTE DESHABILITADO PARA DEBUG
+            try {
+                dispatch(function() use ($call) {
+                    $this->sendNotificationToWaiter($call);
+                    $this->firebaseRealtimeService->writeWaiterCall($call, 'created');
+                })->onQueue('notifications');
+            } catch (\Exception $e) {
+                Log::warning('Firebase notification failed but continuing', [
+                    'call_id' => $call->id,
+                    'error' => $e->getMessage()
+                ]);
+                // No fallar la petición si Firebase falla
+            }
 
             return response()->json([
                 'success' => true,
@@ -1130,16 +1139,37 @@ class WaiterCallController extends Controller
                 ]
             ]);
 
-        } catch (\Exception $e) {
-            Log::error('Error creating waiter notification', [
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::warning('Validation failed for waiter notification', [
                 'request_data' => $request->all(),
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'validation_errors' => $e->errors()
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Error procesando la solicitud. Intente nuevamente.'
+                'message' => 'Datos de solicitud inválidos',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Error creating waiter notification', [
+                'request_data' => $request->all(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ]);
+
+            // En desarrollo, mostrar más detalles del error
+            $debugMessage = config('app.debug') ? $e->getMessage() : 'Error procesando la solicitud. Intente nuevamente.';
+
+            return response()->json([
+                'success' => false,
+                'message' => $debugMessage,
+                'debug_info' => config('app.debug') ? [
+                    'error' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine()
+                ] : null
             ], 500);
         }
     }

@@ -212,6 +212,33 @@ Route::middleware('public_api')->group(function () {
     Route::post('/waiter-notifications', [WaiterCallController::class, 'createNotification']);
     Route::get('/waiter-notifications/{id}', [WaiterCallController::class, 'getNotificationStatus']);
     
+    // 🔧 TEST: Endpoint simple para probar la API
+    Route::post('/test-waiter-notification', function(Illuminate\Http\Request $request) {
+        try {
+            Log::info('Test waiter notification', [
+                'method' => $request->method(),
+                'body' => $request->all(),
+                'ip' => $request->ip()
+            ]);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Test endpoint funcionando correctamente',
+                'received_data' => $request->all(),
+                'timestamp' => now()
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+                'debug' => config('app.debug') ? [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine()
+                ] : null
+            ], 500);
+        }
+    });
+    
     // 🔧 DEBUG: Agregar ruta GET para diagnosticar el problema
     Route::get('/waiter-notifications', function() {
         return response()->json([
