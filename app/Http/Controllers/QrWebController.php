@@ -435,4 +435,105 @@ class QrWebController extends Controller
             ], 500);
         }
     }
+
+    public function cleanOrphanTables()
+    {
+        try {
+            $results = [];
+            $cleaned = 0;
+            $kept = 0;
+
+            // Buscar todas las mesas con mozo asignado
+            $assignedTables = Table::whereNotNull('active_waiter_id')->get();
+
+            foreach ($assignedTables as $table) {
+                // Verificar si el mozo asignado existe
+                $waiterExists = \App\Models\User::where('id', $table->active_waiter_id)->exists();
+                
+                if (!$waiterExists) {
+                    // El mozo no existe, limpiar la asignación
+                    $table->update([
+                        'active_waiter_id' => null,
+                        'waiter_assigned_at' => null
+                    ]);
+                    
+                    $results[] = "🧹 Mesa {$table->number} (ID: {$table->id}) - Mozo ID {$table->active_waiter_id} no existe, limpiada";
+                    $cleaned++;
+                } else {
+                    $waiter = \App\Models\User::find($table->active_waiter_id);
+                    $results[] = "✅ Mesa {$table->number} (ID: {$table->id}) - Mozo {$waiter->name} (ID: {$waiter->id}) existe";
+                    $kept++;
+                }
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'message' => "Limpieza completada: {$cleaned} mesas limpiadas, {$kept} mantenidas",
+                'summary' => [
+                    'total_assigned_tables' => $assignedTables->count(),
+                    'cleaned' => $cleaned,
+                    'kept' => $kept
+                ],
+                'results' => $results
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function forceAssignTable($tableId, $waiterId)
+    {
+        try {
+            $table = Table::find($tableId);
+            $waiter = \App\Models\User::find($waiterId);
+
+            if (!$table) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => "Mesa ID {$tableId} no encontrada"
+                ], 404);
+            }
+
+            if (!$waiter) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => "Mozo ID {$waiterId} no encontrado"
+                ], 404);
+            }
+
+            // Información del estado anterior
+            $previousWaiter = $table->active_waiter_id ? 
+                \App\Models\User::find($table->active_waiter_id) : null;
+
+            // Forzar la asignación
+            $table->update([
+                'active_waiter_id' => $waiter->id,
+                'waiter_assigned_at' => now(),
+                'notifications_enabled' => true
+            ]);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => "Mesa {$table->number} reasignada exitosamente a {$waiter->name}",
+                'table' => [
+                    'id' => $table->id,
+                    'number' => $table->number,
+                    'name' => $table->name,
+                    'previous_waiter' => $previousWaiter ? $previousWaiter->name : 'Sin asignar',
+                    'new_waiter' => $waiter->name,
+                    'assigned_at' => $table->waiter_assigned_at
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

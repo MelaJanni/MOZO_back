@@ -107,6 +107,14 @@ Route::get('/fix-qr-issues', [QrWebController::class, 'fixQrIssues'])
 Route::get('/assign-waiter-to-table/{tableCode}', [QrWebController::class, 'assignWaiterToTable'])
     ->name('qr.assign.waiter');
 
+// Ruta para limpiar asignaciones de mesas huérfanas
+Route::get('/clean-orphan-tables', [QrWebController::class, 'cleanOrphanTables'])
+    ->name('qr.clean.orphans');
+
+// Ruta para forzar reasignación de mesa específica
+Route::get('/force-assign-table/{tableId}/{waiterId}', [QrWebController::class, 'forceAssignTable'])
+    ->name('qr.force.assign');
+
 // Ruta para mostrar página de mesa desde QR
 Route::get('/QR/{restaurantSlug}/{tableCode}', [QrWebController::class, 'showTablePage'])
     ->name('qr.table.page');

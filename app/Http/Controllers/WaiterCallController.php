@@ -546,11 +546,28 @@ class WaiterCallController extends Controller
 
         // Verificar si la mesa ya tiene un mozo activo
         if ($table->active_waiter_id && $table->active_waiter_id !== $waiter->id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Esta mesa ya tiene un mozo asignado',
-                'current_waiter' => $table->activeWaiter->name
-            ], 409);
+            // Verificar si el mozo asignado aún existe
+            $assignedWaiterExists = \App\Models\User::where('id', $table->active_waiter_id)->exists();
+            
+            if (!$assignedWaiterExists) {
+                // El mozo asignado no existe, permitir reasignación
+                \Log::info('Mesa con mozo huérfano encontrada', [
+                    'table_id' => $table->id,
+                    'orphan_waiter_id' => $table->active_waiter_id,
+                    'new_waiter_id' => $waiter->id
+                ]);
+            } else {
+                // El mozo asignado existe, verificar si está activo
+                $assignedWaiter = \App\Models\User::find($table->active_waiter_id);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Esta mesa ya tiene un mozo asignado',
+                    'current_waiter' => $assignedWaiter->name,
+                    'assigned_waiter_id' => $assignedWaiter->id,
+                    'requesting_waiter_id' => $waiter->id,
+                    'suggestion' => 'Si eres el mozo original, contacta al administrador para reasignar la mesa'
+                ], 409);
+            }
         }
 
         // Si ya está asignado a este mozo, no hacer nada
