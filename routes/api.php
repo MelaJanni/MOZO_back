@@ -15,6 +15,7 @@ use App\Http\Controllers\WaiterController;
 use App\Http\Controllers\WaiterCallController;
 use App\Http\Controllers\PublicQrController;
 use App\Http\Controllers\FirebaseConfigController;
+use App\Http\Controllers\RealtimeController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Broadcast;
@@ -25,6 +26,10 @@ Route::post('/login', [AuthController::class, 'login'])->name('login');
 Route::post('/login/google', [AuthController::class, 'loginWithGoogle']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+
+// 🚀 SSE ENDPOINTS - Fuera de middleware para acceso directo
+Route::get('/test/sse', [RealtimeController::class, 'testStream']);
+Route::get('/table/{tableId}/call-status/stream', [RealtimeController::class, 'tableCallStream']);
 
 Route::get('/api-docs', [ApiDocumentationController::class, 'listAllApis']);
 
@@ -316,97 +321,7 @@ Route::middleware('public_api')->group(function () {
     Route::get('/notifications/stream', [NotificationStreamController::class, 'stream']); // Server-Sent Events
     Route::get('/notifications/poll', [NotificationStreamController::class, 'poll']);     // Polling optimizado
     
-    // 🔥 TIEMPO REAL PARA CLIENTES QR (sin autenticación)  
-    Route::get('/table/{tableId}/call-status/stream', function($tableId) {
-        // Log para debugging
-        Log::info("SSE connection requested for table: " . $tableId);
-        
-        return response()->stream(function () use ($tableId) {
-            // Log para debugging
-            Log::info("Starting SSE stream for table: " . $tableId);
-            
-            // Enviar mensaje inicial
-            echo "data: " . json_encode([
-                'type' => 'connected', 
-                'table_id' => (int)$tableId, 
-                'message' => 'Stream connected',
-                'timestamp' => now()->toISOString()
-            ]) . "\n\n";
-            
-            if (ob_get_level()) {
-                ob_end_flush();
-            }
-            flush();
-            
-            $lastStatus = null;
-            $maxIterations = 120; // 4 minutos máximo 
-            $iterations = 0;
-            
-            while ($iterations < $maxIterations) {
-                $iterations++;
-                
-                try {
-                    // Buscar la llamada más reciente de esta mesa
-                    $latestCall = \App\Models\WaiterCall::with(['waiter'])
-                        ->where('table_id', $tableId)
-                        ->orderBy('called_at', 'desc')
-                        ->first();
-                    
-                    $currentStatus = null;
-                    if ($latestCall) {
-                        $currentStatus = [
-                            'call_id' => $latestCall->id,
-                            'status' => $latestCall->status,
-                            'waiter_name' => $latestCall->waiter->name ?? 'Mozo',
-                            'called_at' => $latestCall->called_at->toISOString(),
-                            'acknowledged_at' => $latestCall->acknowledged_at?->toISOString(),
-                            'completed_at' => $latestCall->completed_at?->toISOString(),
-                        ];
-                    }
-                    
-                    // Solo enviar si cambió el estado
-                    if ($currentStatus !== $lastStatus) {
-                        echo "data: " . json_encode([
-                            'type' => 'call_update',
-                            'table_id' => (int)$tableId,
-                            'call' => $currentStatus,
-                            'timestamp' => now()->toISOString()
-                        ]) . "\n\n";
-                        flush();
-                        
-                        $lastStatus = $currentStatus;
-                        
-                        // Si el mozo confirmó, mantener la conexión 5 segundos más y cerrar
-                        if ($latestCall && $latestCall->status === 'acknowledged') {
-                            sleep(5);
-                            echo "data: " . json_encode(['type' => 'connection_close', 'reason' => 'call_acknowledged']) . "\n\n";
-                            flush();
-                            break;
-                        }
-                    }
-                } catch (\Exception $e) {
-                    Log::error("SSE error for table $tableId: " . $e->getMessage());
-                    echo "data: " . json_encode([
-                        'type' => 'error',
-                        'message' => 'Error checking call status',
-                        'timestamp' => now()->toISOString()
-                    ]) . "\n\n";
-                    flush();
-                }
-                
-                sleep(2); // Verificar cada 2 segundos
-            }
-            
-            echo "data: " . json_encode(['type' => 'connection_close', 'reason' => 'timeout']) . "\n\n";
-            flush();
-            
-        }, 200, [
-            'Content-Type' => 'text/event-stream',
-            'Cache-Control' => 'no-cache', 
-            'Connection' => 'keep-alive',
-            'X-Accel-Buffering' => 'no'
-        ]);
-    });
+    // SSE endpoints moved outside middleware groups for direct access
     
     // 🔧 FALLBACK: Polling simple para notificaciones cuando Firebase falle
     Route::get('/waiter/{waiterId}/notifications', function($waiterId) {

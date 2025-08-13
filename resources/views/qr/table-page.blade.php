@@ -368,8 +368,8 @@
                     statusMessage.className = 'status-message status-pending';
                     statusMessage.textContent = '🔥 Esperando confirmación en tiempo real...';
                     
-                    // 🚀 USAR SERVER-SENT EVENTS PARA TIEMPO REAL INMEDIATO
-                    startRealtimeNotifications();
+                    // 🚀 USAR POLLING MUY RÁPIDO PARA TIEMPO REAL (1 segundo)
+                    startFastPolling();
                     
                     // Timeout de emergencia
                     setTimeout(() => {
@@ -400,65 +400,59 @@
             });
         }
 
-        // 🚀 SERVER-SENT EVENTS: Tiempo real VERDADERO (sub-segundo)
-        let eventSource = null;
+        // 🚀 POLLING ULTRA-RÁPIDO: 1 segundo para tiempo real
+        let fastPollingInterval = null;
         
-        function startRealtimeNotifications() {
-            console.log('🚀 Starting Server-Sent Events for real-time notifications...');
+        function startFastPolling() {
+            console.log('🚀 Starting FAST polling (1 second intervals) for real-time notifications...');
             
-            if (eventSource) {
-                eventSource.close();
+            if (fastPollingInterval) {
+                clearInterval(fastPollingInterval);
             }
             
-            // Conectar a SSE stream
-            eventSource = new EventSource(`${FRONTEND_URL}/api/table/${TABLE_ID}/call-status/stream`);
+            // Verificar inmediatamente
+            checkCallStatus();
             
-            eventSource.onopen = function(event) {
-                console.log('✅ SSE connection opened');
-            };
-            
-            eventSource.onmessage = function(event) {
-                try {
-                    const data = JSON.parse(event.data);
-                    console.log('📨 SSE message received:', data);
-                    
-                    if (data.type === 'connected') {
-                        console.log('🎆 Real-time connection established!');
-                    } else if (data.type === 'call_update' && data.call) {
-                        handleCallUpdate(data.call);
-                    } else if (data.type === 'connection_close') {
-                        console.log('🔄 SSE connection closed:', data.reason);
-                        eventSource.close();
-                    }
-                } catch (error) {
-                    console.error('❌ Error parsing SSE message:', error);
+            // Luego verificar cada 1 segundo
+            fastPollingInterval = setInterval(() => {
+                if (currentNotificationId) {
+                    checkCallStatus();
+                } else {
+                    clearInterval(fastPollingInterval);
+                    fastPollingInterval = null;
                 }
-            };
-            
-            eventSource.onerror = function(error) {
-                console.error('❌ SSE connection error:', error);
-                console.log('🔄 Attempting to reconnect SSE in 3 seconds...');
-                setTimeout(() => {
-                    if (currentNotificationId) {
-                        startRealtimeNotifications();
-                    }
-                }, 3000);
-            };
+            }, 1000); // 1 segundo = tiempo real efectivo
         }
         
-        function handleCallUpdate(call) {
-            console.log('📨 Call update received:', call);
+        function checkCallStatus() {
+            if (!currentNotificationId) return;
             
-            // Solo procesar si es nuestra llamada actual
-            if (currentNotificationId && call.call_id == currentNotificationId) {
-                if (call.status === 'acknowledged') {
-                    console.log('✅ Waiter acknowledged our call!');
-                    handleWaiterAcknowledgment();
-                } else if (call.status === 'completed') {
-                    console.log('🎉 Call completed!');
-                    handleCallCompleted();
-                }
-            }
+            console.log('⚡ Checking call status:', currentNotificationId);
+            
+            fetch(`${FRONTEND_URL}/api/table/${TABLE_ID}/call-status`)
+                .then(response => response.json())
+                .then(data => {
+                    console.log('📨 Call status update:', data);
+                    
+                    if (data.success && data.has_active_call && data.call) {
+                        const call = data.call;
+                        
+                        // Solo procesar si es nuestra llamada actual
+                        if (call.id == currentNotificationId) {
+                            if (call.status === 'acknowledged') {
+                                console.log('✅ Waiter acknowledged our call!');
+                                handleWaiterAcknowledgment();
+                            } else if (call.status === 'completed') {
+                                console.log('🎉 Call completed!');
+                                handleCallCompleted();
+                            }
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('❌ Error checking call status:', error);
+                    // Continue polling even on error
+                });
         }
         
         function handleCallCompleted() {
@@ -468,16 +462,17 @@
             statusMessage.className = 'status-message status-success';
             statusMessage.textContent = '✅ ¡Solicitud completada!';
             
+            // Limpiar polling
+            if (fastPollingInterval) {
+                clearInterval(fastPollingInterval);
+                fastPollingInterval = null;
+            }
+            
             setTimeout(() => {
                 button.disabled = false;
                 button.textContent = '🔔 Llamar Mozo';
                 statusMessage.style.display = 'none';
                 currentNotificationId = null;
-                
-                if (eventSource) {
-                    eventSource.close();
-                    eventSource = null;
-                }
             }, 3000);
         }
 
@@ -491,17 +486,17 @@
             statusMessage.className = 'status-message status-success';
             statusMessage.textContent = '✅ ¡El mozo confirmó tu solicitud! Llegará en breve.';
             
+            // Limpiar polling inmediatamente
+            if (fastPollingInterval) {
+                clearInterval(fastPollingInterval);
+                fastPollingInterval = null;
+            }
+            
             setTimeout(() => {
                 button.disabled = false;
                 button.textContent = '🔔 Llamar Mozo';
                 statusMessage.style.display = 'none';
                 currentNotificationId = null;
-                
-                // Cerrar conexión SSE
-                if (eventSource) {
-                    eventSource.close();
-                    eventSource = null;
-                }
             }, 5000);
         }
         
