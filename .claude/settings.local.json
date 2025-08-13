@@ -20,7 +20,8 @@
       "Bash(curl:*)",
       "Bash(node:*)",
       "Bash(timeout:*)",
-      "Bash(time curl:*)"
+      "Bash(time curl:*)",
+      "Bash(cp:*)"
     ],
     "deny": []
   }

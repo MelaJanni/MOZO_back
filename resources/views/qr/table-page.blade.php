@@ -156,30 +156,11 @@
             box-shadow: 0 8px 25px rgba(231, 76, 60, 0.4);
         }
 
-        .call-button:active {
-            transform: translateY(0);
-        }
-
         .call-button:disabled {
             background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
             cursor: not-allowed;
             transform: none;
             box-shadow: 0 4px 15px rgba(149, 165, 166, 0.3);
-        }
-
-        .call-button::before {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-            transition: left 0.5s;
-        }
-
-        .call-button:hover::before {
-            left: 100%;
         }
 
         .status-message {
@@ -214,6 +195,27 @@
             0% { opacity: 1; }
             50% { opacity: 0.7; }
             100% { opacity: 1; }
+        }
+
+        .realtime-status {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+
+        .realtime-status.connected {
+            background: rgba(34, 139, 34, 0.9);
+        }
+
+        .realtime-status.error {
+            background: rgba(220, 20, 60, 0.9);
         }
 
         .footer {
@@ -325,8 +327,12 @@
         </main>
 
         <footer class="footer">
-            <p>© {{ date('Y') }} {{ $business->name }}. Sistema de llamado QR activo.</p>
+            <p>© {{ date('Y') }} {{ $business->name }}. Sistema de llamado QR con tiempo real.</p>
         </footer>
+    </div>
+
+    <div id="realtimeStatus" class="realtime-status">
+        🔄 Conectando Firebase...
     </div>
 
     <script>
@@ -335,6 +341,13 @@
         const TABLE_ID = {{ $table->id }};
         
         let currentNotificationId = null;
+        let firebaseListener = null;
+
+        function updateRealtimeStatus(message, type = 'connecting') {
+            const status = document.getElementById('realtimeStatus');
+            status.textContent = message;
+            status.className = `realtime-status ${type}`;
+        }
 
         function callWaiter() {
             const button = document.getElementById('callWaiterBtn');
@@ -345,7 +358,7 @@
             
             statusMessage.style.display = 'block';
             statusMessage.className = 'status-message status-pending';
-            statusMessage.textContent = 'Enviando solicitud al mozo...';
+            statusMessage.textContent = '🚀 Enviando solicitud - Firebase tiempo real activo...';
 
             fetch(`${FRONTEND_URL}/api/waiter-notifications`, {
                 method: 'POST',
@@ -357,41 +370,33 @@
                     restaurant_id: RESTAURANT_ID,
                     table_id: TABLE_ID,
                     message: 'Cliente solicita atención',
-                    urgency: 'normal'
+                    urgency: 'high'
                 })
             })
             .then(response => response.json())
             .then(data => {
+                console.log('✅ Notification created:', data);
                 if (data.success) {
                     currentNotificationId = data.data.id;
-                    button.textContent = '⏳ Esperando confirmación...';
-                    statusMessage.className = 'status-message status-pending';
-                    statusMessage.textContent = '🔥 Esperando confirmación en tiempo real...';
+                    button.textContent = '⚡ Esperando confirmación...';
+                    statusMessage.textContent = '🔥 Escuchando Firebase en TIEMPO REAL...';
                     
-                    // 🚀 USAR POLLING MUY RÁPIDO PARA TIEMPO REAL (1 segundo)
-                    startFastPolling();
+                    // NO polling - solo Firebase real-time
+                    startFirebaseRealtime();
                     
                     // Timeout de emergencia
                     setTimeout(() => {
-                        if (button.disabled && (button.textContent.includes('Esperando') || button.textContent.includes('Enviando'))) {
-                            button.disabled = false;
-                            button.textContent = '🔔 Llamar Mozo';
-                            statusMessage.className = 'status-message';
-                            statusMessage.textContent = 'Tiempo de espera agotado. Puedes volver a llamar.';
-                            
-                            setTimeout(() => {
-                                statusMessage.style.display = 'none';
-                            }, 3000);
-                            
-                            currentNotificationId = null;
+                        if (button.disabled && button.textContent.includes('Esperando')) {
+                            console.warn('⚠️ Emergency timeout reached');
+                            resetButton();
                         }
-                    }, 30000); // 30 segundos timeout
+                    }, 60000); // 1 minuto timeout
                 } else {
                     throw new Error(data.message || 'Error al enviar la solicitud');
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
+                console.error('❌ Error:', error);
                 statusMessage.className = 'status-message status-error';
                 statusMessage.textContent = 'Error al contactar al mozo. Inténtalo nuevamente.';
                 
@@ -400,113 +405,134 @@
             });
         }
 
-        // 🚀 POLLING ULTRA-RÁPIDO: 1 segundo para tiempo real
-        let fastPollingInterval = null;
-        
-        function startFastPolling() {
-            console.log('🚀 Starting FAST polling (1 second intervals) for real-time notifications...');
+        function startFirebaseRealtime() {
+            console.log('🔥 Starting Firebase real-time listener...');
             
-            if (fastPollingInterval) {
-                clearInterval(fastPollingInterval);
+            if (!window.FirebaseRealtimeService) {
+                console.error('❌ Firebase service not available');
+                updateRealtimeStatus('❌ Firebase no disponible', 'error');
+                return;
             }
-            
-            // Verificar inmediatamente
-            checkCallStatus();
-            
-            // Luego verificar cada 1 segundo
-            fastPollingInterval = setInterval(() => {
-                if (currentNotificationId) {
-                    checkCallStatus();
-                } else {
-                    clearInterval(fastPollingInterval);
-                    fastPollingInterval = null;
-                }
-            }, 1000); // 1 segundo = tiempo real efectivo
-        }
-        
-        function checkCallStatus() {
-            if (!currentNotificationId) return;
-            
-            console.log('⚡ Checking call status:', currentNotificationId);
-            
-            fetch(`${FRONTEND_URL}/api/table/${TABLE_ID}/call-status`)
-                .then(response => response.json())
-                .then(data => {
-                    console.log('📨 Call status update:', data);
+
+            if (!window.FirebaseRealtimeService.initialized) {
+                console.log('⏳ Waiting for Firebase to initialize...');
+                updateRealtimeStatus('⏳ Inicializando Firebase...', 'connecting');
+                
+                setTimeout(() => {
+                    if (window.FirebaseRealtimeService.initialized) {
+                        startFirebaseRealtime();
+                    } else {
+                        console.error('❌ Firebase initialization timeout');
+                        updateRealtimeStatus('❌ Timeout Firebase', 'error');
+                    }
+                }, 5000);
+                return;
+            }
+
+            updateRealtimeStatus('🔥 Escuchando tiempo real...', 'connected');
+
+            firebaseListener = window.FirebaseRealtimeService.listenToTableCalls(TABLE_ID, (update) => {
+                console.log('📨 Firebase real-time update:', update);
+                
+                if (update.success) {
+                    updateRealtimeStatus(`🔥 Tiempo real activo (${update.totalCalls} calls)`, 'connected');
                     
-                    if (data.success && data.has_active_call && data.call) {
-                        const call = data.call;
+                    // Buscar nuestra llamada actual
+                    const ourCall = update.calls.find(call => call.id == currentNotificationId);
+                    if (ourCall) {
+                        console.log('🎯 Found our call:', ourCall);
                         
-                        // Solo procesar si es nuestra llamada actual
-                        if (call.id == currentNotificationId) {
-                            if (call.status === 'acknowledged') {
-                                console.log('✅ Waiter acknowledged our call!');
-                                handleWaiterAcknowledgment();
-                            } else if (call.status === 'completed') {
-                                console.log('🎉 Call completed!');
-                                handleCallCompleted();
-                            }
+                        if (ourCall.status === 'acknowledged') {
+                            console.log('🎉 FIREBASE REAL-TIME SUCCESS! Call acknowledged!');
+                            handleWaiterAcknowledgment();
+                        } else if (ourCall.status === 'completed') {
+                            console.log('✅ Call completed via Firebase!');
+                            handleCallCompleted();
                         }
                     }
-                })
-                .catch(error => {
-                    console.error('❌ Error checking call status:', error);
-                    // Continue polling even on error
-                });
+                } else {
+                    console.error('❌ Firebase real-time error:', update.error);
+                    updateRealtimeStatus(`❌ Error: ${update.error}`, 'error');
+                }
+            });
         }
-        
-        function handleCallCompleted() {
+
+        function handleWaiterAcknowledgment() {
+            console.log('🎉 Waiter acknowledged - FIREBASE REAL-TIME SUCCESS!');
+            
+            if (firebaseListener) {
+                firebaseListener();
+                firebaseListener = null;
+            }
+            
             const statusMessage = document.getElementById('statusMessage');
             const button = document.getElementById('callWaiterBtn');
             
             statusMessage.className = 'status-message status-success';
-            statusMessage.textContent = '✅ ¡Solicitud completada!';
+            statusMessage.textContent = '🎉 ¡FIREBASE TIEMPO REAL! El mozo confirmó instantáneamente!';
             
-            // Limpiar polling
-            if (fastPollingInterval) {
-                clearInterval(fastPollingInterval);
-                fastPollingInterval = null;
-            }
+            updateRealtimeStatus('✅ Confirmado en tiempo real!', 'connected');
             
             setTimeout(() => {
-                button.disabled = false;
-                button.textContent = '🔔 Llamar Mozo';
-                statusMessage.style.display = 'none';
-                currentNotificationId = null;
+                resetButton();
+            }, 5000);
+        }
+
+        function handleCallCompleted() {
+            console.log('✅ Call completed via Firebase real-time!');
+            
+            if (firebaseListener) {
+                firebaseListener();
+                firebaseListener = null;
+            }
+            
+            const statusMessage = document.getElementById('statusMessage');
+            
+            statusMessage.className = 'status-message status-success';
+            statusMessage.textContent = '✅ ¡Solicitud completada en tiempo real!';
+            
+            updateRealtimeStatus('✅ Completado!', 'connected');
+            
+            setTimeout(() => {
+                resetButton();
             }, 3000);
         }
 
-        // 🚫 FIREBASE ELIMINADO - Solo Server-Sent Events (SSE) tiempo real
-        
-        // Manejar confirmación del mozo
-        function handleWaiterAcknowledgment() {
-            const statusMessage = document.getElementById('statusMessage');
+        function resetButton() {
             const button = document.getElementById('callWaiterBtn');
+            const statusMessage = document.getElementById('statusMessage');
             
-            statusMessage.className = 'status-message status-success';
-            statusMessage.textContent = '✅ ¡El mozo confirmó tu solicitud! Llegará en breve.';
+            button.disabled = false;
+            button.textContent = '🔔 Llamar Mozo';
+            statusMessage.style.display = 'none';
+            currentNotificationId = null;
             
-            // Limpiar polling inmediatamente
-            if (fastPollingInterval) {
-                clearInterval(fastPollingInterval);
-                fastPollingInterval = null;
-            }
-            
-            setTimeout(() => {
-                button.disabled = false;
-                button.textContent = '🔔 Llamar Mozo';
-                statusMessage.style.display = 'none';
-                currentNotificationId = null;
-            }, 5000);
+            updateRealtimeStatus('🔥 Tiempo real listo', 'connected');
         }
-        
-        // 🚀 Server-Sent Events ready - no need for initialization
-        console.log('🎆 Real-time notification system ready with SSE');
-        
-        // 🚫 POLLING Y FIREBASE ELIMINADOS - Solo SSE tiempo real
-        // Server-Sent Events proporciona notificaciones en menos de 2 segundos
+
+        // Esperar a que Firebase esté listo
+        function waitForFirebase() {
+            if (window.FirebaseRealtimeService && window.FirebaseRealtimeService.initialized) {
+                updateRealtimeStatus('🔥 Firebase listo!', 'connected');
+                console.log('🎉 Firebase Real-time ready for instant notifications!');
+            } else {
+                updateRealtimeStatus('⏳ Cargando Firebase...', 'connecting');
+                setTimeout(waitForFirebase, 1000);
+            }
+        }
+
+        // Inicializar cuando la página esté lista
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🚀 Firebase Real-time QR page loaded!');
+            waitForFirebase();
+        });
+
+        console.log('🔥 REAL-TIME notification system initialized!');
+        console.log('⚡ Using Firebase Firestore real-time listeners');
+        console.log('🎯 Target: Instant notifications (<1 second)');
     </script>
 
-    <!-- 🚀 Server-Sent Events - No external dependencies needed -->
+    <!-- 🔥 Firebase Real-time Service -->
+    <script src="{{ asset('js/firebase-realtime-simple.js') }}"></script>
 </body>
 </html>
