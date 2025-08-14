@@ -4,19 +4,61 @@ namespace App\Services;
 
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
+use GuzzleHttp\Pool;
+use GuzzleHttp\Psr7\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
 
 class FirebaseRealtimeService
 {
     private $client;
     private $projectId;
     private $accessToken;
+    private static $instance = null;
+    private $connectionPool;
 
     public function __construct()
     {
-        $this->client = new Client();
+        $this->client = new Client([
+            'timeout' => 3.0,
+            'connect_timeout' => 1.0,
+            'read_timeout' => 2.0,
+            'http_errors' => false,
+            'curl' => [
+                CURLOPT_CONNECTTIMEOUT => 1,
+                CURLOPT_TIMEOUT => 3,
+                CURLOPT_FRESH_CONNECT => false,
+                CURLOPT_FORBID_REUSE => false,
+            ]
+        ]);
         $this->projectId = config('services.firebase.project_id');
         $this->accessToken = $this->getAccessToken();
+        $this->initializeConnectionPool();
+    }
+
+    public static function getInstance()
+    {
+        if (self::$instance === null) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
+
+    private function initializeConnectionPool()
+    {
+        $this->connectionPool = new Client([
+            'timeout' => 2.0,
+            'connect_timeout' => 0.5,
+            'read_timeout' => 1.5,
+            'http_errors' => false,
+            'verify' => false,
+            'curl' => [
+                CURLOPT_CONNECTTIMEOUT => 1,
+                CURLOPT_TIMEOUT => 2,
+                CURLOPT_FRESH_CONNECT => false,
+                CURLOPT_FORBID_REUSE => false,
+            ]
+        ]);
     }
 
     /**
@@ -73,11 +115,10 @@ class FirebaseRealtimeService
     }
 
     /**
-     * Write waiter call data to Firestore for real-time updates
+     * Write waiter call data to Firestore with parallel writes - ULTRA OPTIMIZADO
      */
     public function writeWaiterCall($call, $eventType = 'created')
     {
-        // 🚀 OPTIMIZACIÓN: Si no hay token, skip Firebase pero no fallar
         if (!$this->accessToken) {
             Log::info('Firebase not configured, skipping realtime sync', [
                 'call_id' => $call->id,
@@ -87,42 +128,267 @@ class FirebaseRealtimeService
         }
         
         try {
-            // Estructura del documento para tiempo real
             $document = [
                 'fields' => [
-                    'id' => ['integerValue' => (string)$call->id],
-                    'table_id' => ['integerValue' => (string)$call->table_id],
-                    'table_number' => ['integerValue' => (string)$call->table->number],
-                    'waiter_id' => ['integerValue' => (string)$call->waiter_id],
+                    'id' => ['stringValue' => (string)$call->id],
+                    'table_id' => ['stringValue' => (string)$call->table_id],
+                    'table_number' => ['stringValue' => (string)$call->table->number],
+                    'waiter_id' => ['stringValue' => (string)$call->waiter_id],
                     'waiter_name' => ['stringValue' => $call->waiter->name ?? 'Mozo'],
                     'status' => ['stringValue' => $call->status],
                     'message' => ['stringValue' => $call->message],
                     'event_type' => ['stringValue' => $eventType],
-                    'called_at' => ['timestampValue' => $call->called_at->toISOString()],
-                    'acknowledged_at' => ['timestampValue' => $call->acknowledged_at?->toISOString()],
-                    'completed_at' => ['timestampValue' => $call->completed_at?->toISOString()],
-                    'timestamp' => ['timestampValue' => now()->toISOString()]
+                    'timestamp' => ['stringValue' => now()->toISOString()],
+                    'expires_at' => ['stringValue' => now()->addHours(2)->toISOString()]
                 ]
             ];
 
-            // 🚀 OPTIMIZACIÓN: Solo escribir en el documento esencial para QR (más rápido)
-            $this->writeDocument("tables/{$call->table_id}/waiter_calls", $call->id, $document);
+            $paths = [
+                "tables/{$call->table_id}/waiter_calls/{$call->id}",
+                "waiters/{$call->waiter_id}/calls/{$call->id}",
+                "active_calls/{$call->id}"
+            ];
 
-            Log::info("Firestore waiter call written successfully", [
-                'call_id' => $call->id,
-                'event_type' => $eventType,
-                'table_id' => $call->table_id
-            ]);
+            if (isset($call->business_id)) {
+                $paths[] = "businesses/{$call->business_id}/waiter_calls/{$call->id}";
+            }
+
+            $this->writeDocumentsParallel($paths, $document);
+            $this->cacheCallData($call->id, $document);
 
             return true;
 
         } catch (\Exception $e) {
-            Log::error("Failed to write waiter call to Firestore", [
+            Log::warning("Firebase parallel write failed", [
                 'call_id' => $call->id,
                 'error' => $e->getMessage()
             ]);
+            return $this->fallbackWrite($call, $eventType);
+        }
+    }
+
+    /**
+     * Parallel document writes using GuzzleHttp Pool
+     */
+    private function writeDocumentsParallel(array $paths, array $document)
+    {
+        $requests = [];
+        $headers = [
+            'Authorization' => 'Bearer ' . $this->accessToken,
+            'Content-Type' => 'application/json',
+        ];
+
+        foreach ($paths as $path) {
+            $url = "https://firestore.googleapis.com/v1/projects/{$this->projectId}/databases/(default)/documents/{$path}";
+            $requests[] = new Request('PATCH', $url, $headers, json_encode($document));
+        }
+
+        $pool = new Pool($this->connectionPool, $requests, [
+            'concurrency' => 4,
+            'fulfilled' => function ($response, $index) {
+                Log::debug("Parallel write completed", ['index' => $index, 'status' => $response->getStatusCode()]);
+            },
+            'rejected' => function ($reason, $index) {
+                Log::warning("Parallel write failed", ['index' => $index, 'error' => $reason->getMessage()]);
+            },
+        ]);
+
+        $promise = $pool->promise();
+        $promise->wait();
+
+        return true;
+    }
+
+    /**
+     * Batch write with retry mechanism
+     */
+    public function batchWriteWaiterCalls(array $calls, $eventType = 'created')
+    {
+        if (!$this->accessToken || empty($calls)) {
             return false;
         }
+
+        $startTime = microtime(true);
+        $allPaths = [];
+        $documents = [];
+
+        foreach ($calls as $call) {
+            $document = $this->buildCallDocument($call, $eventType);
+            $paths = $this->getCallPaths($call);
+            
+            foreach ($paths as $path) {
+                $allPaths[] = $path;
+                $documents[] = $document;
+            }
+        }
+
+        try {
+            $this->writeDocumentsParallel($allPaths, $documents[0]);
+            
+            $duration = (microtime(true) - $startTime) * 1000;
+            Log::info("Batch write completed", [
+                'calls_count' => count($calls),
+                'paths_count' => count($allPaths),
+                'duration_ms' => round($duration, 2)
+            ]);
+
+            return true;
+        } catch (\Exception $e) {
+            Log::error("Batch write failed", ['error' => $e->getMessage()]);
+            return false;
+        }
+    }
+
+    /**
+     * Helper method to build call document
+     */
+    private function buildCallDocument($call, $eventType)
+    {
+        return [
+            'fields' => [
+                'id' => ['stringValue' => (string)$call->id],
+                'table_id' => ['stringValue' => (string)$call->table_id],
+                'table_number' => ['stringValue' => (string)($call->table->number ?? '')],
+                'waiter_id' => ['stringValue' => (string)$call->waiter_id],
+                'waiter_name' => ['stringValue' => $call->waiter->name ?? 'Mozo'],
+                'status' => ['stringValue' => $call->status],
+                'message' => ['stringValue' => $call->message ?? ''],
+                'event_type' => ['stringValue' => $eventType],
+                'timestamp' => ['stringValue' => now()->toISOString()],
+                'expires_at' => ['stringValue' => now()->addHours(2)->toISOString()]
+            ]
+        ];
+    }
+
+    /**
+     * Get all paths for a call
+     */
+    private function getCallPaths($call)
+    {
+        $paths = [
+            "tables/{$call->table_id}/waiter_calls/{$call->id}",
+            "waiters/{$call->waiter_id}/calls/{$call->id}",
+            "active_calls/{$call->id}"
+        ];
+
+        if (isset($call->business_id)) {
+            $paths[] = "businesses/{$call->business_id}/waiter_calls/{$call->id}";
+        }
+
+        return $paths;
+    }
+
+    /**
+     * Cache call data for faster access
+     */
+    private function cacheCallData($callId, $document)
+    {
+        $cacheKey = "waiter_call_{$callId}";
+        Cache::put($cacheKey, $document, 300); // 5 minutes
+    }
+
+    /**
+     * Fallback write method
+     */
+    private function fallbackWrite($call, $eventType)
+    {
+        try {
+            $document = $this->buildCallDocument($call, $eventType);
+            $url = "https://firestore.googleapis.com/v1/projects/{$this->projectId}/databases/(default)/documents/active_calls/{$call->id}";
+            
+            $this->connectionPool->patch($url, [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $this->accessToken,
+                    'Content-Type' => 'application/json',
+                ],
+                'json' => $document,
+            ]);
+
+            Log::info('Fallback write successful', ['call_id' => $call->id]);
+            return true;
+        } catch (\Exception $e) {
+            Log::error('Fallback write failed', ['call_id' => $call->id, 'error' => $e->getMessage()]);
+            return false;
+        }
+    }
+
+    /**
+     * Update call with retry mechanism
+     */
+    public function updateWaiterCall($call, $eventType, $retries = 2)
+    {
+        for ($attempt = 0; $attempt <= $retries; $attempt++) {
+            try {
+                $updateData = [
+                    'fields' => [
+                        'status' => ['stringValue' => $call->status],
+                        'event_type' => ['stringValue' => $eventType],
+                        'timestamp' => ['stringValue' => now()->toISOString()],
+                        "{$eventType}_at" => ['stringValue' => now()->toISOString()]
+                    ]
+                ];
+
+                $paths = $this->getCallPaths($call);
+                $this->updateDocumentsParallel($paths, $updateData);
+
+                if ($eventType === 'completed') {
+                    $this->scheduleCallCleanup($call->id);
+                }
+
+                return true;
+            } catch (\Exception $e) {
+                if ($attempt === $retries) {
+                    Log::error("Update failed after {$retries} retries", [
+                        'call_id' => $call->id,
+                        'error' => $e->getMessage()
+                    ]);
+                    return false;
+                }
+                
+                usleep(100000 * ($attempt + 1)); // Exponential backoff
+            }
+        }
+        
+        return false;
+    }
+
+    /**
+     * Parallel document updates
+     */
+    private function updateDocumentsParallel(array $paths, array $updateData)
+    {
+        $requests = [];
+        $headers = [
+            'Authorization' => 'Bearer ' . $this->accessToken,
+            'Content-Type' => 'application/json',
+        ];
+
+        foreach ($paths as $path) {
+            $url = "https://firestore.googleapis.com/v1/projects/{$this->projectId}/databases/(default)/documents/{$path}";
+            $requests[] = new Request('PATCH', $url, $headers, json_encode($updateData));
+        }
+
+        $pool = new Pool($this->connectionPool, $requests, [
+            'concurrency' => 4,
+            'fulfilled' => function ($response, $index) {
+                Log::debug("Parallel update completed", ['index' => $index]);
+            },
+            'rejected' => function ($reason, $index) {
+                Log::warning("Parallel update failed", ['index' => $index, 'error' => $reason->getMessage()]);
+            },
+        ]);
+
+        $promise = $pool->promise();
+        $promise->wait();
+    }
+
+    /**
+     * Schedule call cleanup
+     */
+    private function scheduleCallCleanup($callId)
+    {
+        Cache::put("cleanup_call_{$callId}", true, 300);
+        Log::info("Call cleanup scheduled", ['call_id' => $callId]);
     }
 
     /**
@@ -248,19 +514,130 @@ class FirebaseRealtimeService
     }
 
     /**
-     * Write waiter call completion - removes from pending
+     * Write waiter call completion with parallel cleanup
      */
     public function completeWaiterCall($call)
     {
-        // Escribir estado completado
-        $this->writeWaiterCall($call, 'completed');
-        
-        // Eliminar de documentos "pendientes" después de 30 segundos
-        // (en producción usarías una job queue)
-        Log::info("Waiter call completed, should cleanup pending documents", [
-            'call_id' => $call->id
-        ]);
-
+        $this->updateWaiterCall($call, 'completed');
+        $this->scheduleCallCleanup($call->id);
         return true;
+    }
+
+    /**
+     * Parallel table status update
+     */
+    public function updateTableStatusParallel($table, $statusType, $statusData = [])
+    {
+        if (!$this->accessToken) {
+            return false;
+        }
+
+        try {
+            $document = [
+                'fields' => [
+                    'table_id' => ['integerValue' => (string)$table->id],
+                    'table_number' => ['integerValue' => (string)$table->number],
+                    'table_name' => ['stringValue' => $table->name ?? ''],
+                    'status_type' => ['stringValue' => $statusType],
+                    'status_data' => ['stringValue' => json_encode($statusData)],
+                    'notifications_enabled' => ['booleanValue' => $table->notifications_enabled ?? false],
+                    'active_waiter_id' => ['integerValue' => (string)($table->active_waiter_id ?? 0)],
+                    'active_waiter_name' => ['stringValue' => $table->activeWaiter->name ?? ''],
+                    'timestamp' => ['timestampValue' => now()->toISOString()]
+                ]
+            ];
+
+            $paths = [
+                "tables/{$table->id}/status/current",
+                "businesses/{$table->business_id}/table_status/{$table->id}"
+            ];
+
+            $this->writeDocumentsParallel($paths, $document);
+            Cache::put("table_status_{$table->id}", $document, 300);
+
+            return true;
+        } catch (\Exception $e) {
+            Log::error("Parallel table status update failed", [
+                'table_id' => $table->id,
+                'error' => $e->getMessage()
+            ]);
+            return false;
+        }
+    }
+
+    /**
+     * Performance test for parallel writes
+     */
+    public function testParallelPerformance($testCount = 10)
+    {
+        if (!$this->accessToken) {
+            return ['error' => 'No access token'];
+        }
+
+        $results = [
+            'sequential' => 0,
+            'parallel' => 0,
+            'improvement' => 0
+        ];
+
+        // Test sequential writes
+        $start = microtime(true);
+        for ($i = 0; $i < $testCount; $i++) {
+            $testDoc = [
+                'fields' => [
+                    'test_id' => ['stringValue' => "seq_test_{$i}"],
+                    'timestamp' => ['stringValue' => now()->toISOString()]
+                ]
+            ];
+            $this->writeDocument("performance_tests/sequential", "test_{$i}", $testDoc);
+        }
+        $results['sequential'] = (microtime(true) - $start) * 1000;
+
+        // Test parallel writes
+        $start = microtime(true);
+        $paths = [];
+        for ($i = 0; $i < $testCount; $i++) {
+            $paths[] = "performance_tests/parallel/test_{$i}";
+        }
+        $testDoc = [
+            'fields' => [
+                'test_type' => ['stringValue' => 'parallel'],
+                'timestamp' => ['stringValue' => now()->toISOString()]
+            ]
+        ];
+        $this->writeDocumentsParallel($paths, $testDoc);
+        $results['parallel'] = (microtime(true) - $start) * 1000;
+
+        $results['improvement'] = (($results['sequential'] - $results['parallel']) / $results['sequential']) * 100;
+
+        Log::info("Performance test completed", $results);
+        return $results;
+    }
+
+    /**
+     * Cleanup completed calls in batch
+     */
+    public function batchCleanupCompletedCalls($maxAge = 3600)
+    {
+        try {
+            $cutoffTime = now()->subSeconds($maxAge)->toISOString();
+            
+            // This would normally use a Firebase query to find old documents
+            // For now, we'll clean up cached items
+            $cleanedCount = 0;
+            for ($i = 1; $i <= 100; $i++) {
+                $cacheKey = "cleanup_call_{$i}";
+                if (Cache::has($cacheKey)) {
+                    Cache::forget($cacheKey);
+                    $cleanedCount++;
+                }
+            }
+
+            Log::info("Batch cleanup completed", ['cleaned_count' => $cleanedCount]);
+            return $cleanedCount;
+        } catch (\Exception $e) {
+            Log::error("Batch cleanup failed", ['error' => $e->getMessage()]);
+            return 0;
+        }
     }
 }

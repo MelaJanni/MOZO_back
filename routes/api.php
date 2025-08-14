@@ -16,6 +16,8 @@ use App\Http\Controllers\WaiterCallController;
 use App\Http\Controllers\PublicQrController;
 use App\Http\Controllers\FirebaseConfigController;
 use App\Http\Controllers\RealtimeController;
+use App\Http\Controllers\WaiterCallRealtimeController;
+use App\Http\Controllers\WaiterCallRealtimeControllerHTTP;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Broadcast;
@@ -248,7 +250,15 @@ Route::middleware('auth:sanctum')->group(function () {
 
 // Rutas públicas para QR codes y llamadas de mozo (sin autenticación)
 Route::middleware('public_api')->group(function () {
-    Route::post('/tables/{table}/call-waiter', [WaiterCallController::class, 'callWaiter']);
+    // 🚀 RUTAS OPTIMIZADAS PARA TIEMPO REAL (HTTP - SIN DEPENDENCIAS)
+    Route::post('/realtime/calls/create', [WaiterCallRealtimeControllerHTTP::class, 'createInstantCall']);
+    Route::get('/realtime/latency-test', [WaiterCallRealtimeControllerHTTP::class, 'testLatency']);
+    
+    // 🚀 RUTA OPTIMIZADA - SOLUCIÓN AL DELAY DE 20 SEGUNDOS
+    Route::post('/tables/{table}/call-waiter', [WaiterCallRealtimeControllerHTTP::class, 'createInstantCall']);
+    
+    // Ruta original (fallback)
+    Route::post('/tables/{table}/call-waiter-legacy', [WaiterCallController::class, 'callWaiter']);
     
     // API pública para información de QR codes
     Route::get('/qr/{restaurantSlug}/{tableCode}', [PublicQrController::class, 'getTableInfo'])

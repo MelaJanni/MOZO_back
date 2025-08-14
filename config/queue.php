@@ -42,6 +42,16 @@ return [
             'after_commit' => false,
         ],
 
+        // 🚀 CONFIGURACIÓN OPTIMIZADA PARA NOTIFICACIONES
+        'redis-fast' => [
+            'driver' => 'redis',
+            'connection' => 'default',
+            'queue' => env('REDIS_QUEUE', 'high-priority'),
+            'retry_after' => 30,
+            'block_for' => null,
+            'after_commit' => false,
+        ],
+
         'beanstalkd' => [
             'driver' => 'beanstalkd',
             'host' => 'localhost',

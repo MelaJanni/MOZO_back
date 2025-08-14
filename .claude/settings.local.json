@@ -23,6 +23,10 @@
       "Bash(time curl:*)",
       "Bash(cp:*)"
     ],
-    "deny": []
+    "deny": [],
+    "defaultMode": "acceptEdits",
+    "additionalDirectories": [
+      "C:\\c\\Users\\USUARIO\\Documents\\GitHub"
+    ]
   }
 }

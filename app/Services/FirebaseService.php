@@ -90,7 +90,7 @@ class FirebaseService
     /**
      * Send notification to specific device token
      */
-    public function sendToDevice($token, $title, $body, $data = [])
+    public function sendToDevice($token, $title, $body, $data = [], $priority = 'normal')
     {
         // FCM HTTP v1 API requiere que todos los valores en 'data' sean strings
         $formattedData = (object)[];  // Siempre debe ser un objeto, nunca array
@@ -100,6 +100,9 @@ class FirebaseService
             }
         }
 
+        // 🚀 OPTIMIZACIÓN: Configuración de prioridad para delivery inmediato
+        $isHighPriority = $priority === 'high';
+        
         $message = [
             'message' => [
                 'token' => $token,
@@ -109,12 +112,22 @@ class FirebaseService
                 ],
                 'data' => $formattedData,
                 'android' => [
+                    'priority' => $isHighPriority ? 'high' : 'normal',
                     'notification' => [
+                        'priority' => $isHighPriority ? 'high' : 'default',
                         'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
                         'sound' => 'default',
+                        'channel_id' => $isHighPriority ? 'waiter_urgent' : 'waiter_normal',
                     ],
+                    'data' => [
+                        'priority' => $isHighPriority ? 'high' : 'normal'
+                    ]
                 ],
                 'apns' => [
+                    'headers' => [
+                        'apns-priority' => $isHighPriority ? '10' : '5',
+                        'apns-push-type' => 'alert'
+                    ],
                     'payload' => [
                         'aps' => [
                             'alert' => [
@@ -123,6 +136,8 @@ class FirebaseService
                             ],
                             'sound' => 'default',
                             'badge' => 1,
+                            'content-available' => $isHighPriority ? 1 : 0,
+                            'interruption-level' => $isHighPriority ? 'critical' : 'active'
                         ],
                     ],
                 ],
@@ -135,7 +150,7 @@ class FirebaseService
     /**
      * Send notification to multiple device tokens using HTTP v1 API
      */
-    public function sendToMultipleDevices($tokens, $title, $body, $data = [])
+    public function sendToMultipleDevices($tokens, $title, $body, $data = [], $priority = 'normal')
     {
         $results = [];
         
@@ -143,7 +158,7 @@ class FirebaseService
         // Necesitamos enviar individualmente o usar sendToAllUsers con topic
         foreach ($tokens as $token) {
             try {
-                $result = $this->sendToDevice($token, $title, $body, $data);
+                $result = $this->sendToDevice($token, $title, $body, $data, $priority);
                 $results[] = ['token' => $token, 'success' => true, 'result' => $result];
             } catch (\Exception $e) {
                 $results[] = ['token' => $token, 'success' => false, 'error' => $e->getMessage()];
@@ -156,7 +171,7 @@ class FirebaseService
     /**
      * Send notification to specific user
      */
-    public function sendToUser($userId, $title, $body, $data = [])
+    public function sendToUser($userId, $title, $body, $data = [], $priority = 'normal')
     {
         $user = User::find($userId);
         if (!$user) {
@@ -170,14 +185,16 @@ class FirebaseService
             return false;
         }
 
-        // 1. Enviar FCM push notification
+        // 🚀 OPTIMIZACIÓN 1: Solo FCM inmediato, DB notification solo si es normal priority
         $results = [];
         foreach ($deviceTokens as $token) {
-            $results[] = $this->sendToDevice($token, $title, $body, $data);
+            $results[] = $this->sendToDevice($token, $title, $body, $data, $priority);
         }
 
-        // 2. Guardar notificación en BD para que aparezca en el historial
-        $user->notify(new FcmDatabaseNotification($title, $body, $data));
+        // 🚀 OPTIMIZACIÓN 2: Solo guardar en BD si NO es high priority (reduce latencia)
+        if ($priority !== 'high') {
+            $user->notify(new FcmDatabaseNotification($title, $body, $data));
+        }
 
         return $results;
     }
@@ -185,7 +202,7 @@ class FirebaseService
     /**
      * Send notification to all users
      */
-    public function sendToAllUsers($title, $body, $data = [])
+    public function sendToAllUsers($title, $body, $data = [], $priority = 'normal')
     {
         $deviceTokens = DeviceToken::pluck('token')->toArray();
         
@@ -200,14 +217,16 @@ class FirebaseService
         $results = [];
 
         foreach ($batches as $batch) {
-            $results[] = $this->sendToMultipleDevices($batch, $title, $body, $data);
+            $results[] = $this->sendToMultipleDevices($batch, $title, $body, $data, $priority);
         }
 
-        // 2. Guardar notificación en BD para todos los usuarios que tienen tokens
-        $userIds = DeviceToken::distinct('user_id')->pluck('user_id');
-        $users = User::whereIn('id', $userIds)->get();
-        
-        Notification::send($users, new FcmDatabaseNotification($title, $body, $data));
+        // 2. Guardar notificación en BD solo si NO es high priority
+        if ($priority !== 'high') {
+            $userIds = DeviceToken::distinct('user_id')->pluck('user_id');
+            $users = User::whereIn('id', $userIds)->get();
+            
+            Notification::send($users, new FcmDatabaseNotification($title, $body, $data));
+        }
 
         return $results;
     }
@@ -279,7 +298,7 @@ class FirebaseService
     /**
      * Send notification to topic
      */
-    public function sendToTopic($topic, $title, $body, $data = [])
+    public function sendToTopic($topic, $title, $body, $data = [], $priority = 'normal')
     {
         // FCM HTTP v1 API requiere que todos los valores en 'data' sean strings
         $formattedData = (object)[];  // Siempre debe ser un objeto, nunca array
@@ -289,6 +308,8 @@ class FirebaseService
             }
         }
 
+        $isHighPriority = $priority === 'high';
+        
         $message = [
             'message' => [
                 'topic' => $topic,
@@ -298,12 +319,18 @@ class FirebaseService
                 ],
                 'data' => $formattedData,
                 'android' => [
+                    'priority' => $isHighPriority ? 'high' : 'normal',
                     'notification' => [
+                        'priority' => $isHighPriority ? 'high' : 'default',
                         'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
                         'sound' => 'default',
+                        'channel_id' => $isHighPriority ? 'waiter_urgent' : 'waiter_normal',
                     ],
                 ],
                 'apns' => [
+                    'headers' => [
+                        'apns-priority' => $isHighPriority ? '10' : '5'
+                    ],
                     'payload' => [
                         'aps' => [
                             'alert' => [
@@ -312,6 +339,7 @@ class FirebaseService
                             ],
                             'sound' => 'default',
                             'badge' => 1,
+                            'content-available' => $isHighPriority ? 1 : 0
                         ],
                     ],
                 ],

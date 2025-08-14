@@ -119,10 +119,16 @@ class WaiterCallController extends Controller
                 ]
             ]);
 
-            // 🚀 OPTIMIZACIÓN: Cargar relaciones necesarias y enviar inmediato
-            $call->load(['table', 'waiter']);
-            $this->sendNotificationToWaiter($call);
-            $this->firebaseRealtimeService->writeWaiterCall($call, 'created');
+            // 🚀 OPTIMIZACIÓN: Procesamiento asíncrono para sub-segundo response
+            if (config('queue.default') !== 'sync') {
+                // Usar queue asíncrono para máxima velocidad
+                dispatch(new \App\Jobs\ProcessWaiterCallNotification($call))->onQueue('high-priority');
+            } else {
+                // Fallback síncrono si no hay queue configurado
+                $call->load(['table', 'waiter']);
+                $this->sendNotificationToWaiter($call);
+                $this->firebaseRealtimeService->writeWaiterCall($call, 'created');
+            }
 
             return response()->json([
                 'success' => true,
@@ -491,8 +497,8 @@ class WaiterCallController extends Controller
             // 🚀 OPTIMIZACIÓN 1: Priority alta para notificaciones urgentes
             $priority = ($call->metadata['urgency'] ?? 'normal') === 'high' ? 'high' : 'normal';
 
-            // 🚀 OPTIMIZACIÓN 2: Solo FCM, sin database notification (reduce latencia)
-            $this->firebaseService->sendToUser($call->waiter_id, $title, $body, $data, $priority);
+            // 🚀 OPTIMIZACIÓN 2: FCM con prioridad alta para notificaciones urgentes
+            $this->firebaseService->sendToUser($call->waiter_id, $title, $body, $data, 'high');
 
             Log::info('Waiter call notification sent', [
                 'call_id' => $call->id,
@@ -1126,22 +1132,22 @@ class WaiterCallController extends Controller
                 ]
             ]);
 
-            // 🚀 FIREBASE TIEMPO REAL: Escribir INMEDIATAMENTE (no background queue)
-            try {
-                // Escribir a Firebase INMEDIATAMENTE para tiempo real
-                $this->firebaseRealtimeService->writeWaiterCall($call, 'created');
-                
-                // Notificaciones FCM en background (no bloquean tiempo real)
-                dispatch(function() use ($call) {
+            // 🚀 PROCESAMIENTO ULTRA-RÁPIDO: Queue asíncrono para sub-segundo response
+            if (config('queue.default') !== 'sync') {
+                // Usar queue de alta prioridad para máxima velocidad
+                dispatch(new \App\Jobs\ProcessWaiterCallNotification($call))->onQueue('high-priority');
+            } else {
+                // Fallback síncrono inmediato
+                try {
+                    $call->load(['table', 'waiter']);
+                    $this->firebaseRealtimeService->writeWaiterCall($call, 'created');
                     $this->sendNotificationToWaiter($call);
-                })->onQueue('notifications');
-                
-            } catch (\Exception $e) {
-                Log::warning('Firebase notification failed but continuing', [
-                    'call_id' => $call->id,
-                    'error' => $e->getMessage()
-                ]);
-                // No fallar la petición si Firebase falla
+                } catch (\Exception $e) {
+                    Log::warning('Firebase notification failed but continuing', [
+                        'call_id' => $call->id,
+                        'error' => $e->getMessage()
+                    ]);
+                }
             }
 
             return response()->json([
