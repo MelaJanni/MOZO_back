@@ -103,11 +103,13 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Llamadas de mozo - APIs para mozos autenticados
     Route::prefix('waiter')->group(function () {
-        // Gestión de llamadas
-        Route::get('/calls/pending', [WaiterCallController::class, 'getPendingCalls']);
+        // 🔥 GESTIÓN DE LLAMADAS CON FIREBASE REAL-TIME
+        Route::get('/calls/pending', [App\Http\Controllers\RealtimeWaiterCallController::class, 'getPendingCalls']);
+        Route::post('/calls/{call}/acknowledge', [App\Http\Controllers\RealtimeWaiterCallController::class, 'acknowledgeCall']);
+        Route::post('/calls/{call}/complete', [App\Http\Controllers\RealtimeWaiterCallController::class, 'completeCall']);
+        
+        // Historial (sin tiempo real)
         Route::get('/calls/history', [WaiterCallController::class, 'getCallHistory']);
-        Route::post('/calls/{call}/acknowledge', [WaiterCallController::class, 'acknowledgeCall']);
-        Route::post('/calls/{call}/complete', [WaiterCallController::class, 'completeCall']);
         
         // Dashboard y estado
         Route::get('/dashboard', [WaiterCallController::class, 'getDashboard']);
@@ -250,12 +252,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
 // Rutas públicas para QR codes y llamadas de mozo (sin autenticación)
 Route::middleware('public_api')->group(function () {
-    // 🚀 RUTAS OPTIMIZADAS PARA TIEMPO REAL (HTTP - SIN DEPENDENCIAS)
-    Route::post('/realtime/calls/create', [WaiterCallRealtimeControllerHTTP::class, 'createInstantCall']);
-    Route::get('/realtime/latency-test', [WaiterCallRealtimeControllerHTTP::class, 'testLatency']);
-    
-    // 🚀 RUTA OPTIMIZADA - SOLUCIÓN AL DELAY DE 20 SEGUNDOS
-    Route::post('/tables/{table}/call-waiter', [WaiterCallRealtimeControllerHTTP::class, 'createInstantCall']);
+    // 🔥 FIREBASE REAL-TIME DESDE CERO (LIMPIO Y ORGANIZADO)
+    Route::post('/tables/{table}/call-waiter', [App\Http\Controllers\RealtimeWaiterCallController::class, 'createCall']);
+    Route::get('/firebase/test', [App\Http\Controllers\RealtimeWaiterCallController::class, 'testFirebase']);
     
     // Ruta original (fallback)
     Route::post('/tables/{table}/call-waiter-legacy', [WaiterCallController::class, 'callWaiter']);
