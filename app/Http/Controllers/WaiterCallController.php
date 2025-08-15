@@ -136,7 +136,7 @@ class WaiterCallController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Mozo llamado exitosamente. Aguarde por favor.',
+                'message' => 'Mozo llamado exitosamente. Aguarde por favor. (Firebase Test: ' . date('H:i:s') . ')',
                 'call' => [
                     'id' => $call->id,
                     'table_number' => $table->number,
