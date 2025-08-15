@@ -134,6 +134,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('waiter')->group(function () {
         // 🔥 GESTIÓN DE LLAMADAS CON FIREBASE REAL-TIME
         Route::get('/calls/pending', [App\Http\Controllers\RealtimeWaiterCallController::class, 'getPendingCalls']);
+        Route::get('/calls/recent', [App\Http\Controllers\RealtimeWaiterCallController::class, 'getRecentCalls']);
         Route::post('/calls/{call}/acknowledge', [App\Http\Controllers\RealtimeWaiterCallController::class, 'acknowledgeCall']);
         Route::post('/calls/{call}/complete', [App\Http\Controllers\RealtimeWaiterCallController::class, 'completeCall']);
         

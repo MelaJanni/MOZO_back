@@ -12,12 +12,10 @@ use Illuminate\Support\Facades\Log;
 class RealtimeWaiterCallController extends Controller
 {
     private $firebaseService;
-    private $pushService;
 
-    public function __construct(FirebaseRealtimeDatabaseService $firebaseService, PushNotificationService $pushService)
+    public function __construct(FirebaseRealtimeDatabaseService $firebaseService)
     {
         $this->firebaseService = $firebaseService;
-        $this->pushService = $pushService;
     }
 
     /**
@@ -261,6 +259,45 @@ class RealtimeWaiterCallController extends Controller
     }
 
     /**
+     * 🔍 DEBUG: OBTENER LLAMADAS RECIENTES PARA TESTING
+     */
+    public function getRecentCalls()
+    {
+        try {
+            $recentCalls = WaiterCall::with(['table', 'waiter'])
+                ->orderBy('created_at', 'desc')
+                ->take(10)
+                ->get()
+                ->map(function($call) {
+                    return [
+                        'id' => $call->id,
+                        'table_id' => $call->table_id,
+                        'table_number' => $call->table->number ?? 'N/A',
+                        'waiter_id' => $call->waiter_id,
+                        'waiter_name' => $call->waiter->name ?? 'N/A',
+                        'status' => $call->status,
+                        'message' => $call->message,
+                        'created_at' => $call->created_at,
+                        'acknowledged_at' => $call->acknowledged_at,
+                        'completed_at' => $call->completed_at
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'recent_calls' => $recentCalls,
+                'total_found' => $recentCalls->count()
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * 🔔 ENVIAR NOTIFICACIÓN PUSH AL CLIENTE
      */
     private function sendClientNotification($call, $status, $message)
@@ -268,7 +305,8 @@ class RealtimeWaiterCallController extends Controller
         try {
             // 🔥 NOTIFICACIÓN EN TIEMPO REAL (ya implementada via Firebase Realtime)
             // 🔔 PUSH NOTIFICATION PARA CLIENTES OFFLINE
-            $pushSuccess = $this->pushService->sendToTable($call->table_id, [
+            $pushService = new PushNotificationService();
+            $pushSuccess = $pushService->sendToTable($call->table_id, [
                 'title' => $status === 'acknowledged' ? 'Tu mozo está en camino' : 'Servicio completado',
                 'body' => $message,
                 'data' => [
