@@ -156,6 +156,24 @@ class RealtimeWaiterCallController extends Controller
                 Log::warning('Failed to update Firestore for acknowledged call', ['error' => $e->getMessage(), 'call_id' => $callId]);
             }
 
+            // También actualizar estado resumido de la mesa en Firestore para que la página pública
+            // que escucha `tables/{tableId}/status/current` refleje inmediatamente el ack.
+            try {
+                $firestoreService = app(\App\Services\FirebaseRealtimeService::class);
+                $statusData = [
+                    'status' => 'acknowledged',
+                    'waiter_id' => (string)$call->waiter_id,
+                    'waiter_name' => $call->waiter->name ?? 'Mozo',
+                    'acknowledged_at' => time() * 1000,
+                    'message' => 'Tu mozo recibió la solicitud'
+                ];
+
+                $firestoreService->writeTableStatus($call->table, 'acknowledged', $statusData);
+                Log::info('Firestore table status updated for acknowledged call', ['call_id' => $callId, 'table_id' => $call->table_id]);
+            } catch (\Exception $e) {
+                Log::warning('Failed to update Firestore table status for acknowledged call', ['error' => $e->getMessage(), 'call_id' => $callId]);
+            }
+
             // 🔔 PUSH NOTIFICATION AL CLIENTE
             $this->sendClientNotification($call, 'acknowledged', 'Tu mozo recibió la solicitud');
 
