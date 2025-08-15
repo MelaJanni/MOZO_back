@@ -62,6 +62,34 @@ Route::middleware('public_api')->group(function () {
         
         $isFullyConfigured = $config['has_server_key'] && $config['has_service_account'] && $config['has_api_key'];
         
+        // 🔥 TEST DE ESCRITURA A FIREBASE REALTIME DB
+        $firebaseWriteTest = null;
+        try {
+            $testData = [
+                'id' => 'backend_test_' . time(),
+                'message' => 'Test de escritura desde backend',
+                'timestamp' => now()->toIso8601String(),
+                'source' => 'firebase_status_endpoint'
+            ];
+            
+            $url = "https://mozoqr-7d32c-default-rtdb.firebaseio.com/backend_tests/test_" . time() . ".json";
+            $response = \Illuminate\Support\Facades\Http::timeout(3)->put($url, $testData);
+            
+            $firebaseWriteTest = [
+                'attempted' => true,
+                'success' => $response->successful(),
+                'url' => $url,
+                'status_code' => $response->status(),
+                'response_body' => $response->body()
+            ];
+        } catch (\Exception $e) {
+            $firebaseWriteTest = [
+                'attempted' => true,
+                'success' => false,
+                'error' => $e->getMessage()
+            ];
+        }
+
         return response()->json([
             'status' => $isFullyConfigured ? 'fully_configured' : 'partial_configuration',
             'real_time_available' => $hasServiceAccount,
@@ -69,6 +97,7 @@ Route::middleware('public_api')->group(function () {
             'frontend_config_available' => $config['has_api_key'] && $config['has_auth_domain'],
             'fallback_polling_enabled' => true,
             'config' => $config,
+            'firebase_write_test' => $firebaseWriteTest,
             'recommendations' => $isFullyConfigured ? [] : [
                 !$config['has_service_account'] ? 'Configure FIREBASE_SERVICE_ACCOUNT_PATH for real-time features' : null,
                 !$config['has_server_key'] ? 'Configure FIREBASE_SERVER_KEY for push notifications' : null,
