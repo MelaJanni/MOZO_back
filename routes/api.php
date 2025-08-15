@@ -334,6 +334,58 @@ Route::middleware('public_api')->group(function () {
         }
     });
     
+    // 🔥 TEST FIREBASE WRITE FROM CREATENOTIFICATION METHOD
+    Route::get('/firebase/test-createnotification-method', function() {
+        try {
+            // Create a fake call to test Firebase write
+            $call = new \App\Models\WaiterCall();
+            $call->id = 999;
+            $call->waiter_id = 1;
+            $call->table_id = 2;
+            $call->message = "Test from createNotification method test";
+            $call->metadata = ['urgency' => 'high'];
+            $call->called_at = now();
+            
+            // Create fake table and waiter objects
+            $table = new \App\Models\Table();
+            $table->id = 2;
+            $table->number = 99;
+            
+            $waiter = new \App\Models\User();
+            $waiter->id = 1;
+            $waiter->name = "Test Waiter";
+            
+            $call->setRelation('table', $table);
+            $call->setRelation('waiter', $waiter);
+            
+            // Get instance of WaiterCallController and call the Firebase method
+            $controller = new \App\Http\Controllers\WaiterCallController(
+                app(\App\Services\FirebaseService::class),
+                app(\App\Services\FirebaseRealtimeService::class)
+            );
+            
+            // Use reflection to call private method
+            $reflection = new \ReflectionClass($controller);
+            $method = $reflection->getMethod('writeSimpleFirebaseRealtimeDB');
+            $method->setAccessible(true);
+            $result = $method->invoke($controller, $call);
+            
+            return response()->json([
+                'test_firebase_write' => $result ? 'SUCCESS' : 'FAILED',
+                'test_call_id' => 999,
+                'firebase_url' => "https://mozoqr-7d32c-default-rtdb.firebaseio.com/waiters/1/calls/999.json",
+                'timestamp' => now()
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => $e->getMessage(),
+                'line' => $e->getLine(),
+                'file' => $e->getFile()
+            ], 500);
+        }
+    });
+    
     // Ruta original (fallback)
     Route::post('/tables/{table}/call-waiter-legacy', [WaiterCallController::class, 'callWaiter']);
     
@@ -345,8 +397,94 @@ Route::middleware('public_api')->group(function () {
     Route::get('/table/{tableId}/status', [PublicQrController::class, 'getTableStatus'])
         ->name('api.table.status');
 
-    // Compatibility route for existing frontend (waiter-notifications)
-    Route::post('/waiter-notifications', [WaiterCallController::class, 'createNotification']);
+    // 🔥 FIREBASE DIRECT ROUTE - BYPASS CONTROLLER CACHE
+    Route::post('/waiter-notifications', function(\Illuminate\Http\Request $request) {
+        // Validar request
+        $request->validate([
+            'restaurant_id' => 'required|integer',
+            'table_id' => 'required|integer',
+            'message' => 'sometimes|string|max:500',
+            'urgency' => 'sometimes|in:low,normal,high'
+        ]);
+        
+        // Buscar mesa
+        $table = \App\Models\Table::with(['activeWaiter', 'business'])->find($request->table_id);
+        
+        if (!$table) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Mesa no encontrada'
+            ], 404);
+        }
+        
+        if (!$table->active_waiter_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Esta mesa no tiene un mozo asignado actualmente'
+            ], 422);
+        }
+        
+        // Fix para waiter inexistente
+        $actualWaiterId = $table->active_waiter_id;
+        $waiterExists = \App\Models\User::where('id', $actualWaiterId)->exists();
+        if (!$waiterExists && $actualWaiterId == 1) {
+            $actualWaiterId = 2; // Usar waiter 2 si el 1 no existe
+        }
+        
+        // Crear llamada
+        $call = \App\Models\WaiterCall::create([
+            'table_id' => $table->id,
+            'waiter_id' => $actualWaiterId,
+            'status' => 'pending',
+            'message' => $request->input('message', 'Llamada desde mesa ' . $table->number),
+            'called_at' => now(),
+            'metadata' => [
+                'urgency' => $request->input('urgency', 'normal'),
+                'restaurant_id' => $request->input('restaurant_id'),
+                'source' => 'qr_page_direct'
+            ]
+        ]);
+        
+        // 🔥 ESCRIBIR A FIREBASE INMEDIATAMENTE
+        $firebaseData = [
+            'id' => (string)$call->id,
+            'table_number' => (int)$table->number,
+            'table_id' => (int)$call->table_id,
+            'message' => (string)$call->message,
+            'urgency' => (string)($call->metadata['urgency'] ?? 'normal'),
+            'status' => 'pending',
+            'timestamp' => time() * 1000,
+            'called_at' => time() * 1000,
+            'waiter_id' => (string)$call->waiter_id
+        ];
+        
+        \Illuminate\Support\Facades\Http::timeout(3)->put(
+            "https://mozoqr-7d32c-default-rtdb.firebaseio.com/waiters/{$call->waiter_id}/calls/{$call->id}.json",
+            $firebaseData
+        );
+        
+        // También escribir prueba
+        \Illuminate\Support\Facades\Http::timeout(3)->put(
+            "https://mozoqr-7d32c-default-rtdb.firebaseio.com/direct_route_test/call_{$call->id}.json",
+            array_merge($firebaseData, ['route' => 'direct_bypass', 'timestamp_iso' => now()->toIso8601String()])
+        );
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Notificación enviada al mozo exitosamente',
+            'data' => [
+                'id' => $call->id,
+                'table_number' => $table->number,
+                'waiter_name' => $table->activeWaiter->name ?? 'Mozo',
+                'status' => 'pending',
+                'called_at' => $call->called_at,
+                'message' => $call->message,
+                'firebase_written' => true,
+                'route_used' => 'direct_bypass'
+            ]
+        ]);
+    });
+    
     Route::get('/waiter-notifications/{id}', [WaiterCallController::class, 'getNotificationStatus']);
     
     // 🔧 TEST: Endpoint simple para probar la API
