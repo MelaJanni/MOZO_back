@@ -287,6 +287,15 @@ class NotificationController extends Controller
         }
 
         try {
+            // Mantener UN solo token por usuario: eliminar otros tokens distintos al actual
+            try {
+                DeviceToken::where('user_id', $request->user()->id)
+                    ->where('token', '<>', $request->token)
+                    ->delete();
+            } catch (\Exception $e) {
+                \Log::warning('Could not delete other device tokens for user ' . $request->user()->id . ': ' . $e->getMessage());
+            }
+
             $deviceToken = DeviceToken::updateOrCreate(
                 [
                     'user_id' => $request->user()->id,
