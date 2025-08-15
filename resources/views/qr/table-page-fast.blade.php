@@ -353,7 +353,7 @@
 
         // 🔥 FIREBASE REALTIME LISTENER - DETECTA CAMBIOS DE ESTADO
         function startRealTimeStatusListener() {
-            console.log('🚀🚀🚀 INICIANDO DEBUG COMPLETO - FIREBASE REALTIME DATABASE 🚀🚀🚀');
+            console.log('🚀🚀🚀 INICIANDO LISTENER CORREGIDO - FIREBASE REALTIME DATABASE 🚀🚀🚀');
             console.log('🔍 TABLE_ID:', TABLE_ID);
             console.log('🔍 currentNotificationId al iniciar listener:', currentNotificationId);
             
@@ -377,155 +377,54 @@
             const database = firebase.database();
             console.log('✅ Database reference obtenida');
             
-            // 🔥 LISTENER PRINCIPAL: Primero intentar /tables/{table_id}/call_status/
-            // Pero también escuchar en toda la estructura de tables para encontrar nuestros datos
-            console.log('🎧 Configurando múltiples listeners para detectar cambios...');
+            // 🎯 LISTENER CORREGIDO: La data está en /call_status/ (root level)
+            const callStatusRef = database.ref('call_status');
+            console.log('🎧 Listener configurado en path CORRECTO: /call_status/');
             
-            // Listener 1: Path específico esperado
-            const statusRef = database.ref(`tables/${TABLE_ID}/call_status`);
-            console.log('🎧 Listener 1 en path:', `tables/${TABLE_ID}/call_status`);
-            
-            // Listener 2: Toda la estructura de tables (por si el índice es diferente)
-            const allTablesRef = database.ref('tables');
-            console.log('🎧 Listener 2 en path: tables (completo)');
-            
-            statusRef.on('child_added', (snapshot) => {
+            // Listener para cambios en cualquier call
+            callStatusRef.on('child_added', (snapshot) => {
                 const callId = snapshot.key;
                 const data = snapshot.val();
-                console.log('🔥 [CHILD_ADDED] Nueva llamada detectada:', { callId, data, currentNotificationId });
+                console.log('🔥 [CALL_STATUS ADDED] Nueva llamada en /call_status/:', { callId, data, currentNotificationId });
                 
                 if (data && currentNotificationId && String(callId) === String(currentNotificationId)) {
-                    console.log('✅ [CHILD_ADDED] Match found - handling update');
+                    console.log('✅ [CALL_STATUS ADDED] Match found - handling update');
                     handleRealTimeStatusUpdate(data);
                 }
             });
             
-            statusRef.on('child_changed', (snapshot) => {
+            callStatusRef.on('child_changed', (snapshot) => {
                 const callId = snapshot.key;
                 const data = snapshot.val();
-                console.log('🔥 [CHILD_CHANGED] Estado actualizado:', { callId, data, currentNotificationId });
+                console.log('🔥 [CALL_STATUS CHANGED] Estado actualizado en /call_status/:', { callId, data, currentNotificationId });
                 
                 if (data && currentNotificationId && String(callId) === String(currentNotificationId)) {
-                    console.log('✅ [CHILD_CHANGED] Match found - handling update');
+                    console.log('✅ [CALL_STATUS CHANGED] Match found - handling update');
                     handleRealTimeStatusUpdate(data);
                 }
             });
             
-            statusRef.on('value', (snapshot) => {
-                const allData = snapshot.val();
-                console.log('🔥 [VALUE] Todos los datos de la mesa:', allData);
+            // Listener específico para mi call
+            if (currentNotificationId) {
+                const myCallRef = database.ref(`call_status/${currentNotificationId}`);
+                console.log('🎧 Listener específico para mi call:', `call_status/${currentNotificationId}`);
                 
-                if (allData && currentNotificationId) {
-                    const myCallData = allData[currentNotificationId];
-                    if (myCallData) {
-                        console.log('🔥 [VALUE] Encontré mi llamada:', myCallData);
-                        handleRealTimeStatusUpdate(myCallData);
+                myCallRef.on('value', (snapshot) => {
+                    const data = snapshot.val();
+                    if (data) {
+                        console.log('🔥 [MY_CALL] Cambio en mi llamada específica:', data);
+                        handleRealTimeStatusUpdate(data);
                     } else {
-                        console.log('⚠️ [VALUE] Mi llamada no encontrada en:', Object.keys(allData));
+                        console.log('⚠️ [MY_CALL] Mi llamada no existe o fue eliminada');
                     }
-                } else {
-                    console.log('⚠️ [VALUE] No hay datos o currentNotificationId no está set');
-                }
-            });
-            
-            // 🔥 LISTENER PARA TODA LA ESTRUCTURA DE TABLES
-            allTablesRef.on('child_changed', (tableSnapshot) => {
-                const tableIndex = tableSnapshot.key;
-                const tableData = tableSnapshot.val();
-                console.log(`🔥 [ALL_TABLES] Tabla ${tableIndex} cambió:`, tableData);
+                });
                 
-                if (tableData && tableData.call_status && currentNotificationId) {
-                    const myCall = tableData.call_status[currentNotificationId];
-                    if (myCall) {
-                        console.log(`🔥 [ALL_TABLES] Mi llamada encontrada en tabla ${tableIndex}:`, myCall);
-                        handleRealTimeStatusUpdate(myCall);
-                    }
-                }
-            });
-            
-            allTablesRef.on('value', (tablesSnapshot) => {
-                const allTablesData = tablesSnapshot.val();
-                console.log('🔥 [ALL_TABLES_VALUE] Estructura completa de tables:', allTablesData);
-                
-                if (allTablesData && currentNotificationId) {
-                    // Buscar mi llamada en todas las tablas
-                    Object.keys(allTablesData).forEach(tableIndex => {
-                        const tableData = allTablesData[tableIndex];
-                        if (tableData && tableData.call_status && tableData.call_status[currentNotificationId]) {
-                            console.log(`🎯 [ALL_TABLES_VALUE] Mi llamada encontrada en tabla ${tableIndex}:`, tableData.call_status[currentNotificationId]);
-                            handleRealTimeStatusUpdate(tableData.call_status[currentNotificationId]);
-                        }
-                    });
-                }
-            });
-            
-            // 🔥 LISTENER ALTERNATIVO: Escuchar directamente en /waiters/*/calls/*
-            const waitersRef = database.ref('waiters');
-            console.log('🎧 Configurando listener en path: waiters');
-            
-            waitersRef.on('child_changed', (waiterSnapshot) => {
-                const waiterId = waiterSnapshot.key;
-                const waiterData = waiterSnapshot.val();
-                console.log('🔥 [WAITERS] Waiter cambió:', { waiterId, waiterData });
-                
-                if (waiterData && waiterData.calls && currentNotificationId) {
-                    const myCall = waiterData.calls[currentNotificationId];
-                    if (myCall) {
-                        console.log('🔥 [WAITERS] Estado de mi llamada cambió:', myCall);
-                        handleRealTimeStatusUpdate(myCall);
-                        
-                        // Sincronizar en el path de la mesa
-                        database.ref(`tables/${TABLE_ID}/call_status/${currentNotificationId}`).set(myCall)
-                            .then(() => console.log('✅ Sincronizado en path de mesa'))
-                            .catch(e => console.error('❌ Error sincronizando:', e));
-                    } else {
-                        console.log('⚠️ [WAITERS] Mi llamada no encontrada en calls del waiter');
-                    }
-                } else {
-                    console.log('⚠️ [WAITERS] No hay calls o currentNotificationId no está set');
-                }
-            });
-            
-            // 🔥 LISTENER DE EMERGENCIA: Escuchar TODO el root para debug
-            const rootRef = database.ref('/');
-            rootRef.on('value', (snapshot) => {
-                const allRootData = snapshot.val();
-                console.log('🔥 [ROOT DEBUG] Estructura completa de Firebase:', allRootData);
-                
-                // Buscar mi llamada en TODA la estructura
-                if (currentNotificationId && allRootData) {
-                    let found = false;
-                    
-                    // Buscar en /tables/
-                    if (allRootData.tables && allRootData.tables[TABLE_ID] && allRootData.tables[TABLE_ID].call_status) {
-                        const myCall = allRootData.tables[TABLE_ID].call_status[currentNotificationId];
-                        if (myCall) {
-                            console.log('🎯 [ROOT DEBUG] Mi llamada encontrada en tables:', myCall);
-                            found = true;
-                        }
-                    }
-                    
-                    // Buscar en /waiters/
-                    if (allRootData.waiters) {
-                        Object.keys(allRootData.waiters).forEach(waiterId => {
-                            if (allRootData.waiters[waiterId].calls && allRootData.waiters[waiterId].calls[currentNotificationId]) {
-                                console.log(`🎯 [ROOT DEBUG] Mi llamada encontrada en waiters/${waiterId}:`, allRootData.waiters[waiterId].calls[currentNotificationId]);
-                                found = true;
-                            }
-                        });
-                    }
-                    
-                    if (!found) {
-                        console.log('❌ [ROOT DEBUG] Mi llamada NO encontrada en ningún lado');
-                    }
-                }
-            });
+                // Guardar referencia para cleanup
+                window.firebaseMyCallListener = myCallRef;
+            }
             
             // Guardar referencias para cleanup
-            window.firebaseStatusListener = statusRef;
-            window.firebaseAllTablesListener = allTablesRef;
-            window.firebaseWaitersListener = waitersRef;
-            window.firebaseRootListener = rootRef;
+            window.firebaseCallStatusListener = callStatusRef;
             
             console.log('✅ Todos los listeners configurados');
         }
@@ -533,25 +432,15 @@
         // 🧹 FUNCIÓN PARA LIMPIAR LISTENERS DE FIREBASE
         function cleanupFirebaseListeners() {
             try {
-                if (window.firebaseStatusListener) {
-                    window.firebaseStatusListener.off();
-                    window.firebaseStatusListener = null;
-                    console.log('🧹 Firebase status listener cleaned up');
+                if (window.firebaseCallStatusListener) {
+                    window.firebaseCallStatusListener.off();
+                    window.firebaseCallStatusListener = null;
+                    console.log('🧹 Firebase call status listener cleaned up');
                 }
-                if (window.firebaseAllTablesListener) {
-                    window.firebaseAllTablesListener.off();
-                    window.firebaseAllTablesListener = null;
-                    console.log('🧹 Firebase all tables listener cleaned up');
-                }
-                if (window.firebaseWaitersListener) {
-                    window.firebaseWaitersListener.off();
-                    window.firebaseWaitersListener = null;
-                    console.log('🧹 Firebase waiters listener cleaned up');
-                }
-                if (window.firebaseRootListener) {
-                    window.firebaseRootListener.off();
-                    window.firebaseRootListener = null;
-                    console.log('🧹 Firebase root listener cleaned up');
+                if (window.firebaseMyCallListener) {
+                    window.firebaseMyCallListener.off();
+                    window.firebaseMyCallListener = null;
+                    console.log('🧹 Firebase my call listener cleaned up');
                 }
             } catch (e) {
                 console.warn('⚠️ Error cleaning up Firebase listeners:', e);
