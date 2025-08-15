@@ -21,7 +21,8 @@
       "Bash(node:*)",
       "Bash(timeout:*)",
       "Bash(time curl:*)",
-      "Bash(cp:*)"
+      "Bash(cp:*)",
+      "WebFetch(domain:mozoqr-7d32c-default-rtdb.firebaseio.com)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",
