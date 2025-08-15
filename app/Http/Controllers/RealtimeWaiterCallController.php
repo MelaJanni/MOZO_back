@@ -146,6 +146,16 @@ class RealtimeWaiterCallController extends Controller
                 'firebase_success' => $clientFirebaseResponse->successful()
             ]);
 
+            // Además, actualizar Firestore / estructuras que otros clientes (por ejemplo la página pública)
+            // puedan estar escuchando. Esto evita inconsistencia entre Realtime DB y Firestore listeners.
+            try {
+                $firestoreService = app(\App\Services\FirebaseRealtimeService::class);
+                $firestoreService->writeWaiterCall($call, 'acknowledged');
+                Log::info('Firestore updated for acknowledged call', ['call_id' => $callId]);
+            } catch (\Exception $e) {
+                Log::warning('Failed to update Firestore for acknowledged call', ['error' => $e->getMessage(), 'call_id' => $callId]);
+            }
+
             // 🔔 PUSH NOTIFICATION AL CLIENTE
             $this->sendClientNotification($call, 'acknowledged', 'Tu mozo recibió la solicitud');
 
