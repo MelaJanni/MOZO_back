@@ -398,6 +398,9 @@ Route::middleware('public_api')->group(function () {
     Route::get('/table/{tableId}/status', [PublicQrController::class, 'getTableStatus'])
         ->name('api.table.status');
 
+    // 🔍 DEBUG: Endpoint para ver llamadas recientes (para testing)
+    Route::get('/debug/recent-calls', [App\Http\Controllers\RealtimeWaiterCallController::class, 'getRecentCalls']);
+    
     // 🔥 FIREBASE DIRECT ROUTE - BYPASS CONTROLLER CACHE
     Route::post('/waiter-notifications', function(\Illuminate\Http\Request $request) {
         // Validar request
