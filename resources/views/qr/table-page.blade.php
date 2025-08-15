@@ -313,6 +313,11 @@
                 @if(session('success'))
                     <div class="status-message status-success" style="display: block;">
                         🎉 {{ session('success') }}
+                        @if(session('notification_id'))
+                            <div style="font-size: 14px; margin-top: 8px; opacity: 0.8;">
+                                ⏳ Te notificaremos cuando el mozo confirme...
+                            </div>
+                        @endif
                     </div>
                 @endif
                 
@@ -328,5 +333,91 @@
             <p>© {{ date('Y') }} {{ $business->name }}. Sistema de llamado QR.</p>
         </footer>
     </div>
+
+    <!-- Firebase SDK para escuchar acknowledged -->
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-database-compat.js"></script>
+
+    <script>
+        // Solo escuchar Firebase si hay una solicitud pendiente
+        const TABLE_ID = {{ $table->id }};
+        let currentNotificationId = null;
+        let firebaseListener = null;
+
+        // Obtener ID de notificación desde la sesión si existe (después de form submit)
+        @if(session('notification_id'))
+            currentNotificationId = '{{ session('notification_id') }}';
+            console.log('🔍 Notification ID desde sesión:', currentNotificationId);
+            startFirebaseListener();
+        @endif
+
+        function startFirebaseListener() {
+            console.log('🔥 Iniciando listener Firebase para acknowledged...');
+            
+            // Configuración Firebase
+            const firebaseConfig = {
+                projectId: "mozoqr-7d32c",
+                apiKey: "AIzaSyDGJJKNfSSxD6YnXnNjwRb6VUtPSyGN5CM",
+                authDomain: "mozoqr-7d32c.firebaseapp.com",
+                databaseURL: "https://mozoqr-7d32c-default-rtdb.firebaseio.com",
+                storageBucket: "mozoqr-7d32c.appspot.com"
+            };
+            
+            // Inicializar Firebase
+            if (!window.firebase || !window.firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+            }
+            
+            const database = firebase.database();
+            
+            // Escuchar cambios en mi solicitud específica
+            const myCallRef = database.ref(`tables/call_status/${currentNotificationId}`);
+            
+            firebaseListener = myCallRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (data && data.status === 'acknowledged') {
+                    console.log('🎉 ACKNOWLEDGED! Mozo confirmó la solicitud');
+                    showAcknowledgedMessage(data.waiter_name);
+                    
+                    // Detener listener
+                    myCallRef.off('value', firebaseListener);
+                    firebaseListener = null;
+                }
+            });
+        }
+
+        function showAcknowledgedMessage(waiterName) {
+            // Actualizar mensaje de éxito para mostrar que el mozo confirmó
+            const successMessage = document.querySelector('.status-success');
+            if (successMessage) {
+                successMessage.innerHTML = `
+                    <div style="font-size: 18px; font-weight: bold; color: #155724;">
+                        🎉 ¡${waiterName || 'El mozo'} confirmó tu solicitud!
+                    </div>
+                    <div style="font-size: 16px; margin-top: 5px;">
+                        🚶‍♂️ Llegará pronto a tu mesa
+                    </div>
+                `;
+                
+                // Hacer que el mensaje sea más visible
+                successMessage.style.border = '2px solid #28a745';
+                successMessage.style.animation = 'pulse 2s ease-in-out 3';
+                
+                // Notificación del navegador
+                if (Notification.permission === 'granted') {
+                    new Notification('¡Mozo confirmado!', {
+                        body: `${waiterName || 'El mozo'} confirmó tu solicitud y está en camino`,
+                        icon: '/favicon.ico',
+                        tag: 'waiter-confirmed'
+                    });
+                }
+            }
+        }
+
+        // Solicitar permisos de notificación
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+    </script>
 </body>
 </html>

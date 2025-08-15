@@ -716,7 +716,12 @@ startxref
             if ($response->successful()) {
                 $data = $response->json();
                 if ($data['success'] ?? false) {
-                    return redirect()->back()->with('success', 'Mozo llamado exitosamente. Te atenderán pronto.');
+                    $notificationId = $data['data']['id'] ?? null;
+                    
+                    // Redirigir con notification_id para que JavaScript pueda escuchar Firebase
+                    return redirect()->back()
+                        ->with('success', 'Mozo llamado exitosamente. Esperando confirmación...')
+                        ->with('notification_id', $notificationId);
                 }
             }
 
