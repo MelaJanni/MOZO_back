@@ -127,6 +127,10 @@ class WaiterCallController extends Controller
                 // Fallback síncrono si no hay queue configurado
                 $call->load(['table', 'waiter']);
                 $this->sendNotificationToWaiter($call);
+                
+                // 🔥 FIREBASE REALTIME DATABASE DIRECTO
+                $this->writeDirectToFirebaseRealtimeDB($call);
+                
                 $this->firebaseRealtimeService->writeWaiterCall($call, 'created');
             }
 
@@ -1930,6 +1934,55 @@ class WaiterCallController extends Controller
                 'success' => false,
                 'message' => 'Error cambiando de negocio'
             ], 500);
+        }
+    }
+
+    /**
+     * 🔥 ESCRIBIR DIRECTO A FIREBASE REALTIME DATABASE
+     */
+    private function writeDirectToFirebaseRealtimeDB($call)
+    {
+        try {
+            $databaseUrl = "https://mozoqr-7d32c-default-rtdb.firebaseio.com";
+            
+            $callData = [
+                'id' => (string)$call->id,
+                'table_id' => (string)$call->table_id,
+                'table_number' => (string)$call->table->number,
+                'table_name' => $call->table->name ?? "Mesa {$call->table->number}",
+                'waiter_id' => (string)$call->waiter_id,
+                'waiter_name' => $call->waiter->name ?? 'Mozo',
+                'status' => $call->status,
+                'message' => $call->message ?? "Mesa {$call->table->number} solicita atención",
+                'urgency' => $call->metadata['urgency'] ?? 'normal',
+                'called_at' => $call->called_at->toIso8601String(),
+                'timestamp' => now()->toIso8601String(),
+                'event_type' => 'created'
+            ];
+
+            // 🔥 ESCRIBIR DIRECTO SIN AUTENTICACIÓN (REGLAS PÚBLICAS)
+            $url = "{$databaseUrl}/waiters/{$call->waiter_id}/calls/{$call->id}.json";
+            
+            $response = \Illuminate\Support\Facades\Http::timeout(3)->put($url, $callData);
+
+            if ($response->successful()) {
+                Log::info("🔥 Firebase Realtime DB write SUCCESS", [
+                    'call_id' => $call->id,
+                    'waiter_id' => $call->waiter_id,
+                    'table_number' => $call->table->number
+                ]);
+                return true;
+            } else {
+                Log::error('Firebase Realtime DB write failed', [
+                    'status' => $response->status(),
+                    'body' => $response->body()
+                ]);
+                return false;
+            }
+
+        } catch (\Exception $e) {
+            Log::error('Firebase Realtime DB write failed: ' . $e->getMessage());
+            return false;
         }
     }
 }
