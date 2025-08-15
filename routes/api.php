@@ -255,6 +255,37 @@ Route::middleware('public_api')->group(function () {
     // 🔥 FIREBASE REAL-TIME DESDE CERO (LIMPIO Y ORGANIZADO)
     Route::post('/tables/{table}/call-waiter', [App\Http\Controllers\RealtimeWaiterCallController::class, 'createCall']);
     
+    // 🔥 TEST DIRECTO FIREBASE (ULTRA SIMPLE)
+    Route::get('/firebase/write-test', function() {
+        try {
+            $testData = [
+                'id' => 'test_' . time(),
+                'message' => 'Test desde backend Laravel',
+                'timestamp' => now()->toIso8601String(),
+                'table_number' => '99'
+            ];
+            
+            $url = "https://mozoqr-7d32c-default-rtdb.firebaseio.com/waiters/2/calls/test_" . time() . ".json";
+            
+            $response = \Illuminate\Support\Facades\Http::timeout(5)->put($url, $testData);
+            
+            return response()->json([
+                'test_write' => true,
+                'url' => $url,
+                'data_sent' => $testData,
+                'firebase_response_status' => $response->status(),
+                'firebase_response_body' => $response->body(),
+                'success' => $response->successful()
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => $e->getMessage(),
+                'line' => $e->getLine()
+            ]);
+        }
+    });
+
     // Test ULTRA RÁPIDO - Realtime Database
     Route::get('/firebase/test', function() {
         try {
