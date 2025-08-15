@@ -276,6 +276,7 @@ class NotificationController extends Controller
         $validator = Validator::make($request->all(), [
             'token' => 'required|string',
             'platform' => 'required|string|in:android,ios,web',
+            'channel' => 'sometimes|string|max:100',
         ]);
 
         if ($validator->fails()) {
@@ -287,22 +288,32 @@ class NotificationController extends Controller
         }
 
         try {
-            // Mantener UN solo token por usuario: eliminar otros tokens distintos al actual
+            // Mantener política: update-or-create por user_id + platform (un token por plataforma)
+            // Eliminar tokens duplicados para el mismo token
             try {
+                DeviceToken::where('token', $request->token)->where('user_id', '<>', $request->user()->id)->delete();
+            } catch (\Exception $e) {
+                \Log::warning('Could not delete foreign device tokens with same token: ' . $e->getMessage());
+            }
+
+            try {
+                // Eliminar otros tokens del mismo usuario en la misma plataforma
                 DeviceToken::where('user_id', $request->user()->id)
+                    ->where('platform', $request->platform)
                     ->where('token', '<>', $request->token)
                     ->delete();
             } catch (\Exception $e) {
-                \Log::warning('Could not delete other device tokens for user ' . $request->user()->id . ': ' . $e->getMessage());
+                \Log::warning('Could not clean other device tokens for user ' . $request->user()->id . ': ' . $e->getMessage());
             }
 
             $deviceToken = DeviceToken::updateOrCreate(
                 [
                     'user_id' => $request->user()->id,
-                    'token' => $request->token,
+                    'platform' => $request->platform,
                 ],
                 [
-                    'platform' => $request->platform,
+                    'token' => $request->token,
+                    'channel' => $request->input('channel'),
                     'expires_at' => now()->addMonths(6),
                 ]
             );

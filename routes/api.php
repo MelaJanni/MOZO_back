@@ -467,11 +467,12 @@ Route::middleware('public_api')->group(function () {
             $firebaseData
         );
         
-        // También escribir prueba
-        \Illuminate\Support\Facades\Http::timeout(3)->put(
-            "https://mozoqr-7d32c-default-rtdb.firebaseio.com/direct_route_test/call_{$call->id}.json",
-            array_merge($firebaseData, ['route' => 'direct_bypass', 'timestamp_iso' => now()->toIso8601String()])
-        );
+        // Previously we wrote to a 'direct_route_test' path for debugging. That caused duplicate notifications
+        // when both realtime writes and direct FCM were active. Skipping writing to 'direct_route_test' now.
+        Log::debug('Skipping write to direct_route_test to avoid duplicate notifications', [
+            'call_id' => $call->id,
+            'waiter_id' => $call->waiter_id
+        ]);
         
         return response()->json([
             'success' => true,

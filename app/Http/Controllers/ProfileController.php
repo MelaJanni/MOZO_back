@@ -215,11 +215,20 @@ class ProfileController extends Controller
     public function deleteDeviceToken(Request $request)
     {
         $request->validate([
-            'token' => 'required|string',
+            'token' => 'sometimes|string',
+            'id' => 'sometimes|integer|exists:device_tokens,id'
         ]);
 
-        $deleted = $request->user()->deviceTokens()->where('token', $request->token)->delete();
+        if ($request->has('id')) {
+            $deleted = $request->user()->deviceTokens()->where('id', $request->id)->delete();
+            return response()->json(['message' => $deleted ? 'Token eliminado' : 'Token no encontrado']);
+        }
 
-        return response()->json(['message' => $deleted ? 'Token eliminado' : 'Token no encontrado']);
+        if ($request->has('token')) {
+            $deleted = $request->user()->deviceTokens()->where('token', $request->token)->delete();
+            return response()->json(['message' => $deleted ? 'Token eliminado' : 'Token no encontrado']);
+        }
+
+        return response()->json(['message' => 'Se requiere token o id'], 422);
     }
 }

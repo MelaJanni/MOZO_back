@@ -25,6 +25,30 @@ messaging.onBackgroundMessage(function(payload) {
   self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
+// Fallback: manejar push events directos (webpush) que no pasen por onBackgroundMessage
+self.addEventListener('push', function(event) {
+  try {
+    const payload = event.data ? event.data.json() : {};
+    console.log('[firebase-messaging-sw.js] Push event received', payload);
+
+    // payload puede venir estructurado como {notification: {title, body, icon}, data: {...}} o como message
+    const notification = payload.notification || (payload.message && payload.message.notification) || {};
+    const data = payload.data || (payload.message && payload.message.data) || {};
+
+    const title = notification.title || 'Notificación';
+    const options = {
+      body: notification.body || '',
+      icon: notification.icon || '/logo192.png',
+      badge: notification.badge || '/badge-72x72.png',
+      data: data
+    };
+
+    event.waitUntil(self.registration.showNotification(title, options));
+  } catch (err) {
+    console.error('[firebase-messaging-sw.js] Error parsing push event', err);
+  }
+});
+
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
   event.waitUntil(clients.openWindow('/'));

@@ -111,6 +111,22 @@ class FirebaseService
                     'body' => $body,
                 ],
                 'data' => $formattedData,
+                // Web push configuration for browsers (ensures proper delivery when app is in background)
+                'webpush' => [
+                    'headers' => [
+                        'Urgency' => $isHighPriority ? 'high' : 'normal'
+                    ],
+                    'notification' => [
+                        'title' => $title,
+                        'body' => $body,
+                        'icon' => '/logo192.png',
+                        'badge' => '/badge-72x72.png'
+                    ],
+                    'fcm_options' => [
+                        // Link opened when user clicks the notification in browser
+                        'link' => rtrim(config('app.url', '/'), '/') . '/'
+                    ]
+                ],
                 'android' => [
                     'priority' => $isHighPriority ? 'high' : 'normal',
                     'notification' => [
@@ -177,8 +193,23 @@ class FirebaseService
         if (!$user) {
             throw new \Exception('User not found');
         }
+        // Filtrado por rol: evitar enviar notificaciones de waiter a usuarios que no sean mozos
+        if (isset($data['only_waiters']) && $data['only_waiters'] === true) {
+            if (!$user->isWaiter()) {
+                Log::warning("Skipping notification: user {$userId} is not a waiter");
+                return false;
+            }
+        }
 
-        $deviceTokens = DeviceToken::where('user_id', $userId)->pluck('token')->toArray();
+        // Si se especifica platform en $data, filtrar tokens por plataforma
+        if (!empty($data['platform'])) {
+            $deviceTokens = DeviceToken::where('user_id', $userId)
+                ->where('platform', $data['platform'])
+                ->pluck('token')
+                ->toArray();
+        } else {
+            $deviceTokens = DeviceToken::where('user_id', $userId)->pluck('token')->toArray();
+        }
         
         if (empty($deviceTokens)) {
             Log::warning("No device tokens found for user ID: {$userId}");
@@ -318,6 +349,20 @@ class FirebaseService
                     'body' => $body,
                 ],
                 'data' => $formattedData,
+                'webpush' => [
+                    'headers' => [
+                        'Urgency' => $isHighPriority ? 'high' : 'normal'
+                    ],
+                    'notification' => [
+                        'title' => $title,
+                        'body' => $body,
+                        'icon' => '/logo192.png',
+                        'badge' => '/badge-72x72.png'
+                    ],
+                    'fcm_options' => [
+                        'link' => rtrim(config('app.url', '/'), '/') . '/'
+                    ]
+                ],
                 'android' => [
                     'priority' => $isHighPriority ? 'high' : 'normal',
                     'notification' => [
