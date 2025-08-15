@@ -254,7 +254,24 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::middleware('public_api')->group(function () {
     // 🔥 FIREBASE REAL-TIME DESDE CERO (LIMPIO Y ORGANIZADO)
     Route::post('/tables/{table}/call-waiter', [App\Http\Controllers\RealtimeWaiterCallController::class, 'createCall']);
-    Route::get('/firebase/test', [App\Http\Controllers\RealtimeWaiterCallController::class, 'testFirebase']);
+    
+    // Test simple sin dependencias
+    Route::get('/firebase/test', function() {
+        try {
+            $service = new \App\Services\FirebaseRealtimeNotificationService();
+            $result = $service->testConnection();
+            return response()->json([
+                'firebase_test' => $result,
+                'timestamp' => now()
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => $e->getMessage(),
+                'line' => $e->getLine(),
+                'file' => $e->getFile()
+            ], 500);
+        }
+    });
     
     // Ruta original (fallback)
     Route::post('/tables/{table}/call-waiter-legacy', [WaiterCallController::class, 'callWaiter']);
