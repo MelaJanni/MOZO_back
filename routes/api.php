@@ -255,13 +255,14 @@ Route::middleware('public_api')->group(function () {
     // 🔥 FIREBASE REAL-TIME DESDE CERO (LIMPIO Y ORGANIZADO)
     Route::post('/tables/{table}/call-waiter', [App\Http\Controllers\RealtimeWaiterCallController::class, 'createCall']);
     
-    // Test simple sin dependencias
+    // Test ULTRA RÁPIDO - Realtime Database
     Route::get('/firebase/test', function() {
         try {
-            $service = new \App\Services\FirebaseRealtimeNotificationService();
+            $service = new \App\Services\FirebaseRealtimeDatabaseService();
             $result = $service->testConnection();
             return response()->json([
-                'firebase_test' => $result,
+                'realtime_database_test' => $result,
+                'type' => 'ULTRA_FAST_REALTIME_DB',
                 'timestamp' => now()
             ]);
         } catch (\Exception $e) {

@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\WaiterCall;
 use App\Models\Table;
-use App\Services\FirebaseRealtimeNotificationService;
+use App\Services\FirebaseRealtimeDatabaseService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -12,7 +12,7 @@ class RealtimeWaiterCallController extends Controller
 {
     private $firebaseService;
 
-    public function __construct(FirebaseRealtimeNotificationService $firebaseService)
+    public function __construct(FirebaseRealtimeDatabaseService $firebaseService)
     {
         $this->firebaseService = $firebaseService;
     }
