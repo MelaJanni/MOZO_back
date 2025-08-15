@@ -27,10 +27,25 @@ class FirebaseRealtimeNotificationService
      */
     private function getAccessToken()
     {
-        $serviceAccountPath = storage_path('app/firebase/mozoqr-7d32c-firebase-adminsdk-fbsvc-0a90bdb0a0.json');
+        // Probar múltiples ubicaciones del service account
+        $possiblePaths = [
+            storage_path('app/firebase/mozoqr-7d32c-firebase-adminsdk-fbsvc-0a90bdb0a0.json'),
+            storage_path('app/firebase/firebase.json'),
+            config('services.firebase.service_account_path')
+        ];
         
-        if (!file_exists($serviceAccountPath)) {
-            Log::warning("Firebase service account file not found: {$serviceAccountPath}");
+        $serviceAccountPath = null;
+        foreach ($possiblePaths as $path) {
+            if ($path && file_exists($path)) {
+                $serviceAccountPath = $path;
+                break;
+            }
+        }
+        
+        if (!$serviceAccountPath) {
+            Log::warning("Firebase service account file not found in any location", [
+                'tried_paths' => $possiblePaths
+            ]);
             return null;
         }
 
