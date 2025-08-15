@@ -5,16 +5,19 @@ namespace App\Http\Controllers;
 use App\Models\WaiterCall;
 use App\Models\Table;
 use App\Services\FirebaseRealtimeDatabaseService;
+use App\Services\PushNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class RealtimeWaiterCallController extends Controller
 {
     private $firebaseService;
+    private $pushService;
 
-    public function __construct(FirebaseRealtimeDatabaseService $firebaseService)
+    public function __construct(FirebaseRealtimeDatabaseService $firebaseService, PushNotificationService $pushService)
     {
         $this->firebaseService = $firebaseService;
+        $this->pushService = $pushService;
     }
 
     /**
@@ -123,16 +126,15 @@ class RealtimeWaiterCallController extends Controller
                 ]
             );
 
-            // 🔥 FIREBASE REAL-TIME PARA CLIENTE (QR PAGE)
+            // 🔥 FIREBASE REAL-TIME PARA CLIENTE (ESTRUCTURA CORRECTA)
             \Illuminate\Support\Facades\Http::timeout(3)->put(
-                "https://mozoqr-7d32c-default-rtdb.firebaseio.com/tables/{$call->table_id}/call_status.json",
+                "https://mozoqr-7d32c-default-rtdb.firebaseio.com/tables/{$call->table_id}/call_status/{$call->id}.json",
                 [
-                    'call_id' => (string)$call->id,
                     'status' => 'acknowledged',
+                    'waiter_id' => (string)$call->waiter_id,
                     'waiter_name' => $call->waiter->name ?? 'Mozo',
-                    'message' => 'Tu mozo recibió la solicitud',
                     'acknowledged_at' => time() * 1000,
-                    'timestamp' => time() * 1000
+                    'message' => 'Tu mozo recibió la solicitud'
                 ]
             );
 
@@ -174,27 +176,23 @@ class RealtimeWaiterCallController extends Controller
                 "https://mozoqr-7d32c-default-rtdb.firebaseio.com/waiters/{$call->waiter_id}/calls/{$call->id}.json"
             );
 
-            // 🔥 FIREBASE REAL-TIME PARA CLIENTE (SERVICIO COMPLETADO)
+            // 🔥 FIREBASE REAL-TIME PARA CLIENTE (ESTRUCTURA CORRECTA)
             \Illuminate\Support\Facades\Http::timeout(3)->put(
-                "https://mozoqr-7d32c-default-rtdb.firebaseio.com/tables/{$call->table_id}/call_status.json",
+                "https://mozoqr-7d32c-default-rtdb.firebaseio.com/tables/{$call->table_id}/call_status/{$call->id}.json",
                 [
-                    'call_id' => (string)$call->id,
                     'status' => 'completed',
+                    'waiter_id' => (string)$call->waiter_id,
                     'waiter_name' => $call->waiter->name ?? 'Mozo',
-                    'message' => 'Servicio completado ✅',
                     'completed_at' => time() * 1000,
-                    'timestamp' => time() * 1000
+                    'message' => 'Servicio completado ✅'
                 ]
             );
 
             // 🔔 PUSH NOTIFICATION AL CLIENTE
             $this->sendClientNotification($call, 'completed', 'Servicio completado ✅');
 
-            // 🕒 AUTO-CLEAR después de 30 segundos para no saturar Firebase
-            \Illuminate\Support\Facades\Http::timeout(3)->put(
-                "https://mozoqr-7d32c-default-rtdb.firebaseio.com/tables/{$call->table_id}/call_status/auto_clear_at.json",
-                time() + 30
-            );
+            // 🕒 AUTO-CLEANUP: Programar eliminación automática después de 30 segundos
+            $this->scheduleCallCleanup($call->table_id, $call->id, 30);
 
             Log::info("Call completed with real-time updates", ['call_id' => $callId]);
 
@@ -268,22 +266,76 @@ class RealtimeWaiterCallController extends Controller
     private function sendClientNotification($call, $status, $message)
     {
         try {
-            // Para futuras implementaciones con FCM tokens de cliente
-            // Por ahora solo notificación en página QR via Firebase Realtime
+            // 🔥 NOTIFICACIÓN EN TIEMPO REAL (ya implementada via Firebase Realtime)
+            // 🔔 PUSH NOTIFICATION PARA CLIENTES OFFLINE
+            $pushSuccess = $this->pushService->sendToTable($call->table_id, [
+                'title' => $status === 'acknowledged' ? 'Tu mozo está en camino' : 'Servicio completado',
+                'body' => $message,
+                'data' => [
+                    'type' => 'waiter_call_update',
+                    'call_id' => (string)$call->id,
+                    'status' => $status,
+                    'waiter_name' => $call->waiter->name ?? 'Mozo',
+                    'table_id' => (string)$call->table_id
+                ]
+            ]);
             
-            // TODO: Implementar FCM push notification cuando cliente tenga app móvil
-            // $this->sendFCMToClient($call->table_id, $message);
-            
-            Log::info("Client notification sent via Firebase Realtime", [
+            Log::info("Client notification sent", [
                 'table_id' => $call->table_id,
                 'status' => $status,
-                'message' => $message
+                'message' => $message,
+                'realtime_via_firebase' => true,
+                'push_notification_sent' => $pushSuccess
             ]);
             
         } catch (\Exception $e) {
             Log::warning('Failed to send client notification', [
                 'error' => $e->getMessage(),
                 'table_id' => $call->table_id
+            ]);
+        }
+    }
+
+    /**
+     * 🕒 PROGRAMAR LIMPIEZA AUTOMÁTICA DE LLAMADA COMPLETADA
+     */
+    private function scheduleCallCleanup($tableId, $callId, $delaySeconds = 30)
+    {
+        try {
+            // Usar dispatch con delay para programar eliminación
+            dispatch(function() use ($tableId, $callId) {
+                try {
+                    // Eliminar de Firebase después del delay
+                    \Illuminate\Support\Facades\Http::timeout(3)->delete(
+                        "https://mozoqr-7d32c-default-rtdb.firebaseio.com/tables/{$tableId}/call_status/{$callId}.json"
+                    );
+                    
+                    Log::info("Auto-cleanup completed for call", [
+                        'table_id' => $tableId,
+                        'call_id' => $callId,
+                        'cleanup_delay_seconds' => 30
+                    ]);
+                    
+                } catch (\Exception $e) {
+                    Log::warning('Auto-cleanup failed', [
+                        'table_id' => $tableId,
+                        'call_id' => $callId,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            })->delay(now()->addSeconds($delaySeconds));
+            
+            Log::info("Auto-cleanup scheduled", [
+                'table_id' => $tableId,
+                'call_id' => $callId,
+                'delay_seconds' => $delaySeconds
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Failed to schedule auto-cleanup', [
+                'table_id' => $tableId,
+                'call_id' => $callId,
+                'error' => $e->getMessage()
             ]);
         }
     }

@@ -362,14 +362,26 @@
             }
             
             const database = firebase.database();
+            
+            // 🎧 ESCUCHAR CAMBIOS EN TIEMPO REAL (ESTRUCTURA CORRECTA)
             const statusRef = database.ref(`tables/${TABLE_ID}/call_status`);
             
-            // 🎧 ESCUCHAR CAMBIOS EN TIEMPO REAL
-            statusRef.on('value', (snapshot) => {
+            statusRef.on('child_added', (snapshot) => {
+                const callId = snapshot.key;
                 const data = snapshot.val();
-                console.log('🔥 Estado actualizado en tiempo real:', data);
+                console.log('🔥 Nueva llamada detectada:', callId, data);
                 
-                if (data && currentNotificationId) {
+                if (data && currentNotificationId && callId == currentNotificationId) {
+                    handleRealTimeStatusUpdate(data);
+                }
+            });
+            
+            statusRef.on('child_changed', (snapshot) => {
+                const callId = snapshot.key;
+                const data = snapshot.val();
+                console.log('🔥 Estado actualizado en tiempo real:', callId, data);
+                
+                if (data && currentNotificationId && callId == currentNotificationId) {
                     handleRealTimeStatusUpdate(data);
                 }
             });
