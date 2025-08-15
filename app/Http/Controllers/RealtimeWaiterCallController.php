@@ -125,19 +125,32 @@ class RealtimeWaiterCallController extends Controller
             );
 
             // 🔥 FIREBASE REAL-TIME PARA CLIENTE (ESTRUCTURA CORRECTA)
-            \Illuminate\Support\Facades\Http::timeout(3)->put(
+            $clientFirebaseData = [
+                'status' => 'acknowledged',
+                'waiter_id' => (string)$call->waiter_id,
+                'waiter_name' => $call->waiter->name ?? 'Mozo',
+                'acknowledged_at' => time() * 1000,
+                'message' => 'Tu mozo recibió la solicitud'
+            ];
+            
+            $clientFirebaseResponse = \Illuminate\Support\Facades\Http::timeout(3)->put(
                 "https://mozoqr-7d32c-default-rtdb.firebaseio.com/tables/{$call->table_id}/call_status/{$call->id}.json",
-                [
-                    'status' => 'acknowledged',
-                    'waiter_id' => (string)$call->waiter_id,
-                    'waiter_name' => $call->waiter->name ?? 'Mozo',
-                    'acknowledged_at' => time() * 1000,
-                    'message' => 'Tu mozo recibió la solicitud'
-                ]
+                $clientFirebaseData
             );
+            
+            Log::info("Firebase client notification sent", [
+                'call_id' => $callId,
+                'table_id' => $call->table_id,
+                'firebase_url' => "tables/{$call->table_id}/call_status/{$call->id}",
+                'firebase_status' => $clientFirebaseResponse->status(),
+                'firebase_success' => $clientFirebaseResponse->successful()
+            ]);
 
             // 🔔 PUSH NOTIFICATION AL CLIENTE
             $this->sendClientNotification($call, 'acknowledged', 'Tu mozo recibió la solicitud');
+
+            // 📋 MARCAR NOTIFICACIONES RELACIONADAS COMO LEÍDAS
+            $this->markRelatedNotificationsAsRead($call);
 
             Log::info("Call acknowledged with real-time updates", ['call_id' => $callId]);
 
@@ -175,19 +188,32 @@ class RealtimeWaiterCallController extends Controller
             );
 
             // 🔥 FIREBASE REAL-TIME PARA CLIENTE (ESTRUCTURA CORRECTA)
-            \Illuminate\Support\Facades\Http::timeout(3)->put(
+            $clientFirebaseData = [
+                'status' => 'completed',
+                'waiter_id' => (string)$call->waiter_id,
+                'waiter_name' => $call->waiter->name ?? 'Mozo',
+                'completed_at' => time() * 1000,
+                'message' => 'Servicio completado ✅'
+            ];
+            
+            $clientFirebaseResponse = \Illuminate\Support\Facades\Http::timeout(3)->put(
                 "https://mozoqr-7d32c-default-rtdb.firebaseio.com/tables/{$call->table_id}/call_status/{$call->id}.json",
-                [
-                    'status' => 'completed',
-                    'waiter_id' => (string)$call->waiter_id,
-                    'waiter_name' => $call->waiter->name ?? 'Mozo',
-                    'completed_at' => time() * 1000,
-                    'message' => 'Servicio completado ✅'
-                ]
+                $clientFirebaseData
             );
+            
+            Log::info("Firebase client notification sent (completed)", [
+                'call_id' => $callId,
+                'table_id' => $call->table_id,
+                'firebase_url' => "tables/{$call->table_id}/call_status/{$call->id}",
+                'firebase_status' => $clientFirebaseResponse->status(),
+                'firebase_success' => $clientFirebaseResponse->successful()
+            ]);
 
             // 🔔 PUSH NOTIFICATION AL CLIENTE
             $this->sendClientNotification($call, 'completed', 'Servicio completado ✅');
+
+            // 📋 MARCAR NOTIFICACIONES RELACIONADAS COMO LEÍDAS
+            $this->markRelatedNotificationsAsRead($call);
 
             // 🕒 AUTO-CLEANUP: Programar eliminación automática después de 30 segundos
             $this->scheduleCallCleanup($call->table_id, $call->id, 30);
@@ -373,6 +399,44 @@ class RealtimeWaiterCallController extends Controller
             Log::error('Failed to schedule auto-cleanup', [
                 'table_id' => $tableId,
                 'call_id' => $callId,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * 📋 MARCAR NOTIFICACIONES RELACIONADAS COMO LEÍDAS
+     */
+    private function markRelatedNotificationsAsRead($call)
+    {
+        try {
+            // Buscar notificaciones del mozo relacionadas con esta llamada
+            $waiter = \App\Models\User::find($call->waiter_id);
+            
+            if ($waiter) {
+                // Buscar notificaciones no leídas que contengan el ID de la llamada o mesa
+                $notifications = $waiter->unreadNotifications()
+                    ->where(function($query) use ($call) {
+                        $query->where('data->call_id', $call->id)
+                              ->orWhere('data->table_id', $call->table_id)
+                              ->orWhere('data->table_number', $call->table->number ?? null);
+                    })
+                    ->get();
+
+                foreach ($notifications as $notification) {
+                    $notification->markAsRead();
+                }
+
+                Log::info("Marked notifications as read", [
+                    'call_id' => $call->id,
+                    'waiter_id' => $call->waiter_id,
+                    'notifications_marked' => $notifications->count()
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            Log::warning('Failed to mark notifications as read', [
+                'call_id' => $call->id,
                 'error' => $e->getMessage()
             ]);
         }
