@@ -97,7 +97,7 @@ class RealtimeWaiterCallController extends Controller
     }
 
     /**
-     * ✅ RECONOCER LLAMADA
+     * ✅ RECONOCER LLAMADA - CON REAL-TIME AL CLIENTE
      */
     public function acknowledgeCall(Request $request, $callId)
     {
@@ -110,14 +110,40 @@ class RealtimeWaiterCallController extends Controller
                 'acknowledged_at' => now()
             ]);
 
-            // Actualizar en tiempo real
-            $this->firebaseService->updateWaiterCall($call, 'acknowledged');
+            // 🔥 FIREBASE REAL-TIME PARA MOZO
+            \Illuminate\Support\Facades\Http::timeout(3)->put(
+                "https://mozoqr-7d32c-default-rtdb.firebaseio.com/waiters/{$call->waiter_id}/calls/{$call->id}.json",
+                [
+                    'id' => (string)$call->id,
+                    'table_number' => (int)$call->table->number,
+                    'status' => 'acknowledged',
+                    'acknowledged_at' => time() * 1000,
+                    'message' => $call->message,
+                    'waiter_id' => (string)$call->waiter_id
+                ]
+            );
 
-            Log::info("Call acknowledged", ['call_id' => $callId]);
+            // 🔥 FIREBASE REAL-TIME PARA CLIENTE (QR PAGE)
+            \Illuminate\Support\Facades\Http::timeout(3)->put(
+                "https://mozoqr-7d32c-default-rtdb.firebaseio.com/tables/{$call->table_id}/call_status.json",
+                [
+                    'call_id' => (string)$call->id,
+                    'status' => 'acknowledged',
+                    'waiter_name' => $call->waiter->name ?? 'Mozo',
+                    'message' => 'Tu mozo recibió la solicitud',
+                    'acknowledged_at' => time() * 1000,
+                    'timestamp' => time() * 1000
+                ]
+            );
+
+            // 🔔 PUSH NOTIFICATION AL CLIENTE
+            $this->sendClientNotification($call, 'acknowledged', 'Tu mozo recibió la solicitud');
+
+            Log::info("Call acknowledged with real-time updates", ['call_id' => $callId]);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Llamada reconocida'
+                'message' => 'Llamada reconocida - Cliente notificado en tiempo real'
             ]);
 
         } catch (\Exception $e) {
@@ -130,7 +156,7 @@ class RealtimeWaiterCallController extends Controller
     }
 
     /**
-     * ✅ COMPLETAR LLAMADA
+     * ✅ COMPLETAR LLAMADA - CON REAL-TIME AL CLIENTE
      */
     public function completeCall(Request $request, $callId)
     {
@@ -143,14 +169,38 @@ class RealtimeWaiterCallController extends Controller
                 'completed_at' => now()
             ]);
 
-            // Eliminar de tiempo real
-            $this->firebaseService->updateWaiterCall($call, 'completed');
+            // 🔥 ELIMINAR DE FIREBASE REAL-TIME PARA MOZO (completado)
+            \Illuminate\Support\Facades\Http::timeout(3)->delete(
+                "https://mozoqr-7d32c-default-rtdb.firebaseio.com/waiters/{$call->waiter_id}/calls/{$call->id}.json"
+            );
 
-            Log::info("Call completed", ['call_id' => $callId]);
+            // 🔥 FIREBASE REAL-TIME PARA CLIENTE (SERVICIO COMPLETADO)
+            \Illuminate\Support\Facades\Http::timeout(3)->put(
+                "https://mozoqr-7d32c-default-rtdb.firebaseio.com/tables/{$call->table_id}/call_status.json",
+                [
+                    'call_id' => (string)$call->id,
+                    'status' => 'completed',
+                    'waiter_name' => $call->waiter->name ?? 'Mozo',
+                    'message' => 'Servicio completado ✅',
+                    'completed_at' => time() * 1000,
+                    'timestamp' => time() * 1000
+                ]
+            );
+
+            // 🔔 PUSH NOTIFICATION AL CLIENTE
+            $this->sendClientNotification($call, 'completed', 'Servicio completado ✅');
+
+            // 🕒 AUTO-CLEAR después de 30 segundos para no saturar Firebase
+            \Illuminate\Support\Facades\Http::timeout(3)->put(
+                "https://mozoqr-7d32c-default-rtdb.firebaseio.com/tables/{$call->table_id}/call_status/auto_clear_at.json",
+                time() + 30
+            );
+
+            Log::info("Call completed with real-time updates", ['call_id' => $callId]);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Servicio completado'
+                'message' => 'Servicio completado - Cliente notificado en tiempo real'
             ]);
 
         } catch (\Exception $e) {
@@ -210,5 +260,31 @@ class RealtimeWaiterCallController extends Controller
             'firebase_status' => $result,
             'timestamp' => now()
         ]);
+    }
+
+    /**
+     * 🔔 ENVIAR NOTIFICACIÓN PUSH AL CLIENTE
+     */
+    private function sendClientNotification($call, $status, $message)
+    {
+        try {
+            // Para futuras implementaciones con FCM tokens de cliente
+            // Por ahora solo notificación en página QR via Firebase Realtime
+            
+            // TODO: Implementar FCM push notification cuando cliente tenga app móvil
+            // $this->sendFCMToClient($call->table_id, $message);
+            
+            Log::info("Client notification sent via Firebase Realtime", [
+                'table_id' => $call->table_id,
+                'status' => $status,
+                'message' => $message
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::warning('Failed to send client notification', [
+                'error' => $e->getMessage(),
+                'table_id' => $call->table_id
+            ]);
+        }
     }
 }

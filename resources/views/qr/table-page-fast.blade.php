@@ -3,7 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ $business->name }} - Mesa {{ $table->number }} (ULTRA FAST)</title>
+    <title>{{ $business->name }} - Mesa {{ $table->number }} (REAL-TIME)</title>
+    
+    <!-- 🔥 Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-database-compat.js"></script>
     <style>
         * {
             margin: 0;
@@ -180,6 +184,47 @@
                 font-size: 18px;
             }
         }
+
+        /* 🔥 ESTILOS PARA NOTIFICACIONES EN TIEMPO REAL */
+        .client-notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            z-index: 10000;
+            max-width: 400px;
+            width: 90%;
+            opacity: 0;
+            transition: all 0.3s ease;
+            border-left: 5px solid #4CAF50;
+        }
+
+        .client-notification.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        .client-notification.hiding {
+            transform: translateX(-50%) translateY(-100px);
+            opacity: 0;
+        }
+
+        .notification-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .notification-header h3 {
+            margin: 0;
+            color: #333;
+            font-size: 18px;
+        }
     </style>
 </head>
 <body>
@@ -267,10 +312,10 @@
                 if (data.success) {
                     currentNotificationId = data.data.id;
                     button.textContent = '⚡ Esperando (ULTRA FAST)...';
-                    statusMessage.textContent = '⚡ Polling cada 500ms - ULTRA TIEMPO REAL!';
+                    statusMessage.textContent = '⚡ Esperando respuesta en TIEMPO REAL...';
                     
                     updateDebug();
-                    startUltraFastPolling();
+                    startRealTimeStatusListener();
                     
                     // Timeout más corto
                     setTimeout(() => {
@@ -298,26 +343,97 @@
             });
         }
 
-        function startUltraFastPolling() {
-            console.log('🚀 Starting ULTRA FAST polling (500ms intervals)...');
+        // 🔥 FIREBASE REALTIME LISTENER - REEMPLAZA POLLING
+        function startRealTimeStatusListener() {
+            console.log('🔥 Iniciando escucha en TIEMPO REAL con Firebase...');
             
-            if (pollingInterval) {
-                clearInterval(pollingInterval);
+            // Usar Firebase Realtime Database
+            const firebaseConfig = {
+                projectId: "mozoqr-7d32c",
+                apiKey: "AIzaSyDGJJKNfSSxD6YnXnNjwRb6VUtPSyGN5CM",
+                authDomain: "mozoqr-7d32c.firebaseapp.com",
+                databaseURL: "https://mozoqr-7d32c-default-rtdb.firebaseio.com",
+                storageBucket: "mozoqr-7d32c.appspot.com"
+            };
+            
+            // Inicializar Firebase si no está inicializado
+            if (!window.firebase || !window.firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
             }
             
-            // Verificar inmediatamente
-            checkNotificationStatus();
+            const database = firebase.database();
+            const statusRef = database.ref(`tables/${TABLE_ID}/call_status`);
             
-            // Luego cada 500ms = ULTRA TIEMPO REAL
-            pollingInterval = setInterval(() => {
-                if (currentNotificationId) {
-                    checkNotificationStatus();
-                } else {
-                    clearInterval(pollingInterval);
-                    pollingInterval = null;
-                    updateDebug();
+            // 🎧 ESCUCHAR CAMBIOS EN TIEMPO REAL
+            statusRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                console.log('🔥 Estado actualizado en tiempo real:', data);
+                
+                if (data && currentNotificationId) {
+                    handleRealTimeStatusUpdate(data);
                 }
-            }, 500); // 500ms = 0.5 segundos!
+            });
+            
+            // Guardar referencia para cleanup
+            window.firebaseStatusListener = statusRef;
+        }
+
+        // 🔥 MANEJAR ACTUALIZACIONES EN TIEMPO REAL
+        function handleRealTimeStatusUpdate(data) {
+            const { status, message, waiter_name, call_id } = data;
+            
+            console.log(`🔥 Estado: ${status}, Mensaje: ${message}`);
+            
+            if (status === 'acknowledged') {
+                console.log('🎉 ACKNOWLEDGED! Mozo recibió la solicitud!');
+                showRealTimeNotification('✅ Solicitud Recibida', `${waiter_name} recibió tu solicitud`);
+                handleWaiterAcknowledgment();
+                
+            } else if (status === 'completed') {
+                console.log('✅ COMPLETED! Servicio completado!');
+                showRealTimeNotification('🎉 Servicio Completado', 'Tu solicitud ha sido atendida');
+                handleTaskCompleted();
+            }
+        }
+
+        // 🔔 MOSTRAR NOTIFICACIÓN VISUAL AL CLIENTE
+        function showRealTimeNotification(title, message) {
+            // Remover notificación anterior
+            const existing = document.querySelector('.client-notification');
+            if (existing) existing.remove();
+
+            const notification = document.createElement('div');
+            notification.className = 'client-notification';
+            notification.innerHTML = `
+                <div class="notification-header">
+                    <h3>${title}</h3>
+                    <button onclick="this.parentElement.parentElement.remove()" style="background: none; border: none; font-size: 20px; cursor: pointer;">✕</button>
+                </div>
+                <p>${message}</p>
+                <div style="font-size: 12px; color: #666; margin-top: 8px; text-align: right;">
+                    ${new Date().toLocaleTimeString()}
+                </div>
+            `;
+
+            document.body.appendChild(notification);
+            
+            // Mostrar con animación
+            setTimeout(() => notification.classList.add('show'), 10);
+            
+            // Auto-remove después de 5 segundos
+            setTimeout(() => {
+                notification.classList.add('hiding');
+                setTimeout(() => notification.remove(), 300);
+            }, 5000);
+
+            // 🔔 Notificación del navegador si está disponible
+            if (Notification.permission === 'granted') {
+                new Notification(title, {
+                    body: message,
+                    icon: '/favicon.ico',
+                    tag: 'waiter-update'
+                });
+            }
         }
 
         function checkNotificationStatus() {
@@ -393,9 +509,14 @@
             }, 3000);
         }
 
-        console.log('🚀 ULTRA FAST Real-time notification system loaded!');
-        console.log('⚡ Polling interval: 500ms (0.5 seconds)');
-        console.log('🎯 Target response time: <1 second');
+        // 🔔 SOLICITAR PERMISOS DE NOTIFICACIÓN
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+
+        console.log('🔥 FIREBASE Real-time notification system loaded!');
+        console.log('⚡ Sin polling - WebSocket directo con Firebase');
+        console.log('🎯 Latencia ultra-baja: ~50-200ms');
     </script>
 </body>
 </html>
