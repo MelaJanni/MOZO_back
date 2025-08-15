@@ -34,10 +34,19 @@ class ProcessWaiterCallNotification implements ShouldQueue
             // Cargar relaciones necesarias
             $this->call->load(['table', 'waiter']);
             
-            // 1. 🔥 FIREBASE REAL-TIME: Escritura INMEDIATA
+            // SOLO para llamadas nuevas (pending) - NO para updates
+            if ($this->call->status !== 'pending') {
+                Log::info('Skipping push notification for non-pending call', [
+                    'call_id' => $this->call->id,
+                    'status' => $this->call->status
+                ]);
+                return;
+            }
+            
+            // 1. 🔥 FIREBASE REAL-TIME: Escritura INMEDIATA (solo para crear)
             $firebaseRealtimeService->writeWaiterCall($this->call, 'created');
             
-            // 2. 🚀 FCM PUSH NOTIFICATION con prioridad alta
+            // 2. 🚀 FCM PUSH NOTIFICATION - SOLO PARA LLAMADAS NUEVAS
             $title = "🔔 Mesa {$this->call->table->number}";
             $body = $this->call->message;
             $data = [
@@ -50,10 +59,10 @@ class ProcessWaiterCallNotification implements ShouldQueue
                 'timestamp' => now()->timestamp
             ];
 
-            // Siempre usar prioridad alta para llamadas de mozo
+            // Una sola notificación push por llamada
             $firebaseService->sendToUser($this->call->waiter_id, $title, $body, $data, 'high');
 
-            Log::info('Waiter call notification processed successfully', [
+            Log::info('NEW waiter call notification sent (push + realtime)', [
                 'call_id' => $this->call->id,
                 'waiter_id' => $this->call->waiter_id,
                 'table_id' => $this->call->table->id,

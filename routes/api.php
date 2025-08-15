@@ -18,6 +18,7 @@ use App\Http\Controllers\FirebaseConfigController;
 use App\Http\Controllers\RealtimeController;
 use App\Http\Controllers\WaiterCallRealtimeController;
 use App\Http\Controllers\WaiterCallRealtimeControllerHTTP;
+use App\Http\Controllers\FcmTokenController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Broadcast;
@@ -272,6 +273,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/profiles/{id}', [WaiterController::class, 'updateProfile']);
         Route::delete('/profiles/{id}', [WaiterController::class, 'deleteProfile']);
         Route::post('/profiles/{id}/activate', [WaiterController::class, 'activateProfile']);
+
+        // 📱 FCM Token Management for Android Waiters
+        Route::post('/fcm/register', [FcmTokenController::class, 'registerToken']);
+        Route::post('/fcm/refresh', [FcmTokenController::class, 'refreshToken']);
+        Route::get('/fcm/status', [FcmTokenController::class, 'getTokenStatus']);
+        Route::post('/fcm/test', [FcmTokenController::class, 'testNotification']);
+        Route::delete('/fcm/token', [FcmTokenController::class, 'deleteToken']);
     });
 
     Route::post('/change-password', [AuthController::class, 'changePassword']);

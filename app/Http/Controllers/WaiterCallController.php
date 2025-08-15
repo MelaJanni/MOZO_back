@@ -187,8 +187,12 @@ class WaiterCallController extends Controller
         // Marcar como reconocida
         $call->acknowledge();
 
-        // 🔥 ESCRIBIR EN FIRESTORE - Mesa verá "mozo llamado"
-        $this->firebaseRealtimeService->writeWaiterCall($call, 'acknowledged');
+        // 🔥 CANCELAR NOTIFICACIÓN PUSH EN ANDROID (acknowledged = ya no necesita notificación)
+        $notificationId = 'waiter_call_' . $call->id;
+        $this->firebaseService->cancelNotification($call->waiter_id, $notificationId, $call->id);
+
+        // 🔥 SOLO ACTUALIZACIÓN EN TIEMPO REAL - NO MÁS PUSH NOTIFICATIONS
+        $this->firebaseRealtimeService->updateWaiterCall($call, 'acknowledged');
         
         return response()->json([
             'success' => true,
@@ -233,8 +237,12 @@ class WaiterCallController extends Controller
         // Marcar como completada
         $call->complete();
 
-        // 🔥 ESCRIBIR EN FIRESTORE - Atención completada
-        $this->firebaseRealtimeService->completeWaiterCall($call);
+        // 🔥 CANCELAR NOTIFICACIÓN PUSH EN ANDROID
+        $notificationId = 'waiter_call_' . $call->id;
+        $this->firebaseService->cancelNotification($call->waiter_id, $notificationId, $call->id);
+
+        // 🔥 SOLO ACTUALIZACIÓN EN TIEMPO REAL - Eliminar de la vista del mozo
+        $this->firebaseRealtimeService->updateWaiterCall($call, 'completed');
 
         return response()->json([
             'success' => true,

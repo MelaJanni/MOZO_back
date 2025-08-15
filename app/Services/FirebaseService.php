@@ -133,10 +133,13 @@ class FirebaseService
                         'priority' => $isHighPriority ? 'high' : 'default',
                         'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
                         'sound' => 'default',
-                        'channel_id' => $isHighPriority ? 'waiter_urgent' : 'waiter_normal',
+                        'channel_id' => isset($data['channel_id']) ? $data['channel_id'] : ($isHighPriority ? 'waiter_urgent' : 'waiter_normal'),
+                        'tag' => isset($data['notification_id']) ? $data['notification_id'] : null,
+                        'notification_id' => isset($data['notification_id']) ? $data['notification_id'] : null
                     ],
                     'data' => [
-                        'priority' => $isHighPriority ? 'high' : 'normal'
+                        'priority' => $isHighPriority ? 'high' : 'normal',
+                        'notification_id' => isset($data['notification_id']) ? $data['notification_id'] : null
                     ]
                 ],
                 'apns' => [
@@ -214,6 +217,12 @@ class FirebaseService
         if (empty($deviceTokens)) {
             Log::warning("No device tokens found for user ID: {$userId}");
             return false;
+        }
+
+        // 🔥 ANDROID ESPECÍFICO: Configurar notification_id único para permitir cancelación
+        if (isset($data['type']) && $data['type'] === 'waiter_call') {
+            $data['notification_id'] = 'waiter_call_' . ($data['call_id'] ?? uniqid());
+            $data['channel_id'] = $priority === 'high' ? 'waiter_urgent' : 'waiter_normal';
         }
 
         // 🚀 OPTIMIZACIÓN 1: Solo FCM inmediato, DB notification solo si es normal priority
@@ -392,5 +401,114 @@ class FirebaseService
         ];
 
         return $this->sendMessage($message);
+    }
+
+    /**
+     * 🔥 CANCELAR NOTIFICACIÓN PUSH EN ANDROID
+     * Envía una notificación "silenciosa" para cancelar la anterior
+     */
+    public function cancelNotification($userId, $notificationId, $callId = null)
+    {
+        try {
+            $user = User::find($userId);
+            if (!$user) {
+                throw new \Exception('User not found');
+            }
+
+            // Obtener tokens Android únicamente
+            $androidTokens = DeviceToken::where('user_id', $userId)
+                ->where('platform', 'android')
+                ->pluck('token')
+                ->toArray();
+            
+            if (empty($androidTokens)) {
+                Log::info("No Android tokens found for user {$userId} to cancel notification");
+                return false;
+            }
+
+            // Data para cancelar la notificación anterior
+            $cancelData = [
+                'action' => 'cancel_notification',
+                'notification_id' => $notificationId,
+                'call_id' => (string)($callId ?? ''),
+                'cancel_previous' => 'true'
+            ];
+
+            // Enviar mensaje de datos únicamente (sin notification payload)
+            foreach ($androidTokens as $token) {
+                $message = [
+                    'message' => [
+                        'token' => $token,
+                        'data' => array_map('strval', $cancelData), // FCM requiere strings
+                        'android' => [
+                            'priority' => 'high',
+                            'data' => array_map('strval', $cancelData)
+                        ]
+                    ]
+                ];
+
+                $this->sendMessage($message);
+            }
+
+            Log::info("Cancel notification sent", [
+                'user_id' => $userId,
+                'notification_id' => $notificationId,
+                'call_id' => $callId,
+                'android_tokens_count' => count($androidTokens)
+            ]);
+
+            return true;
+
+        } catch (\Exception $e) {
+            Log::error('Failed to send cancel notification', [
+                'user_id' => $userId,
+                'notification_id' => $notificationId,
+                'error' => $e->getMessage()
+            ]);
+            return false;
+        }
+    }
+
+    /**
+     * 🔥 REFRESH TOKEN DEL USUARIO
+     * Para manejar tokens expirados o perdidos
+     */
+    public function refreshUserToken($userId, $newToken, $platform = 'android')
+    {
+        try {
+            $user = User::find($userId);
+            if (!$user) {
+                throw new \Exception('User not found');
+            }
+
+            // Eliminar tokens antiguos del mismo usuario y plataforma
+            DeviceToken::where('user_id', $userId)
+                ->where('platform', $platform)
+                ->delete();
+
+            // Crear nuevo token
+            DeviceToken::create([
+                'user_id' => $userId,
+                'token' => $newToken,
+                'platform' => $platform,
+                'expires_at' => now()->addDays(60) // 60 días de validez
+            ]);
+
+            Log::info("User token refreshed", [
+                'user_id' => $userId,
+                'platform' => $platform,
+                'token_preview' => substr($newToken, 0, 20) . '...'
+            ]);
+
+            return true;
+
+        } catch (\Exception $e) {
+            Log::error('Failed to refresh user token', [
+                'user_id' => $userId,
+                'platform' => $platform,
+                'error' => $e->getMessage()
+            ]);
+            return false;
+        }
     }
 }
