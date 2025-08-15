@@ -268,6 +268,7 @@
         let pollingInterval = null;
         let requestCount = 0;
         let debugMode = true; // Enable debug for testing
+        let lastProcessedStatus = null; // Evitar procesar el mismo estado múltiples veces
 
         // Show debug info
         if (debugMode) {
@@ -311,6 +312,8 @@
                 console.log('✅ Notification created:', data);
                 if (data.success) {
                     currentNotificationId = data.data.id;
+                    lastProcessedStatus = null; // Reset para nueva llamada
+                    console.log('🔍 currentNotificationId set to:', currentNotificationId);
                     button.textContent = '⚡ Esperando (ULTRA FAST)...';
                     statusMessage.textContent = '⚡ Esperando respuesta en TIEMPO REAL...';
                     
@@ -370,9 +373,13 @@
                 const callId = snapshot.key;
                 const data = snapshot.val();
                 console.log('🔥 Nueva llamada detectada:', callId, data);
+                console.log('🔍 Comparing:', { callId, currentNotificationId, equal: String(callId) === String(currentNotificationId) });
                 
-                if (data && currentNotificationId && callId == currentNotificationId) {
+                if (data && currentNotificationId && String(callId) === String(currentNotificationId)) {
+                    console.log('✅ Match found - handling update');
                     handleRealTimeStatusUpdate(data);
+                } else if (data && !currentNotificationId) {
+                    console.log('⚠️ No currentNotificationId set, but got data:', data);
                 }
             });
             
@@ -380,9 +387,27 @@
                 const callId = snapshot.key;
                 const data = snapshot.val();
                 console.log('🔥 Estado actualizado en tiempo real:', callId, data);
+                console.log('🔍 Comparing:', { callId, currentNotificationId, equal: String(callId) === String(currentNotificationId) });
                 
-                if (data && currentNotificationId && callId == currentNotificationId) {
+                if (data && currentNotificationId && String(callId) === String(currentNotificationId)) {
+                    console.log('✅ Match found - handling update');
                     handleRealTimeStatusUpdate(data);
+                } else if (data && !currentNotificationId) {
+                    console.log('⚠️ No currentNotificationId set, but got data:', data);
+                }
+            });
+            
+            // 🔥 BACKUP: También escuchar TODOS los cambios en esta mesa (sin filtro)
+            statusRef.on('value', (snapshot) => {
+                const allData = snapshot.val();
+                console.log('🔥 BACKUP listener - All table data:', allData);
+                
+                if (allData && currentNotificationId) {
+                    const myCallData = allData[currentNotificationId];
+                    if (myCallData) {
+                        console.log('🔥 BACKUP found my call:', myCallData);
+                        handleRealTimeStatusUpdate(myCallData);
+                    }
                 }
             });
             
@@ -392,19 +417,30 @@
 
         // 🔥 MANEJAR ACTUALIZACIONES EN TIEMPO REAL
         function handleRealTimeStatusUpdate(data) {
+            console.log('🔥 handleRealTimeStatusUpdate called with:', data);
             const { status, message, waiter_name, call_id } = data;
             
-            console.log(`🔥 Estado: ${status}, Mensaje: ${message}`);
+            console.log(`🔥 Estado: ${status}, Mensaje: ${message}, Waiter: ${waiter_name}`);
+            
+            // Evitar procesar el mismo estado múltiples veces
+            if (lastProcessedStatus === status) {
+                console.log('⚠️ Same status already processed, skipping:', status);
+                return;
+            }
+            
+            lastProcessedStatus = status;
             
             if (status === 'acknowledged') {
                 console.log('🎉 ACKNOWLEDGED! Mozo recibió la solicitud!');
-                showRealTimeNotification('✅ Solicitud Recibida', `${waiter_name} recibió tu solicitud`);
+                showRealTimeNotification('✅ Solicitud Recibida', `${waiter_name || 'Tu mozo'} recibió tu solicitud`);
                 handleWaiterAcknowledgment();
                 
             } else if (status === 'completed') {
                 console.log('✅ COMPLETED! Servicio completado!');
                 showRealTimeNotification('🎉 Servicio Completado', 'Tu solicitud ha sido atendida');
                 handleTaskCompleted();
+            } else {
+                console.log('⚠️ Unknown status received:', status);
             }
         }
 
