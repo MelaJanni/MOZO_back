@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use App\Models\Business;
 use App\Models\Table;
 
@@ -685,85 +686,49 @@ startxref
         }
     }
 
-    /**
-     * Mostrar página QR ULTRA FAST para testing 
-     */
-    public function showTablePageFast($restaurantSlug, $tableCode)
-    {
-        // Reutilizar la lógica de showTablePage pero con vista diferente
-        \Log::info('QR ULTRA FAST Page Request', [
-            'restaurantSlug' => $restaurantSlug,
-            'tableCode' => $tableCode
-        ]);
 
-        // Buscar negocio por múltiples criterios
-        $business = Business::where(function($query) use ($restaurantSlug) {
-            $query->whereRaw('LOWER(name) = ?', [strtolower($restaurantSlug)])
-                  ->orWhereRaw('LOWER(REPLACE(name, " ", "")) = ?', [strtolower(str_replace(' ', '', $restaurantSlug))])
-                  ->orWhere('code', $restaurantSlug);
-        })->first();
-        
-        if (!$business) {
-            abort(404, 'Business not found: ' . $restaurantSlug);
-        }
-
-        // Buscar mesa por código
-        $table = Table::where('code', $tableCode)
-                     ->where('business_id', $business->id)
-                     ->first();
-        
-        if (!$table) {
-            abort(404, 'Table not found: ' . $tableCode);
-        }
-
-        // Obtener menú por defecto
-        $defaultMenu = \App\Models\Menu::where('business_id', $business->id)
-            ->where('is_default', true)
-            ->first();
-
-        // URL base del frontend
-        $frontendUrl = env('FRONTEND_URL', config('app.url'));
-
-        return view('qr.table-page-fast', compact('business', 'table', 'frontendUrl', 'defaultMenu'));
-    }
 
     /**
-     * Mostrar página QR con FIREBASE REAL-TIME para testing
+     * Handle waiter call from QR page form
      */
-    public function showTablePageRealtime($restaurantSlug, $tableCode)
+    public function callWaiter(Request $request)
     {
-        \Log::info('QR Firebase Real-time Page Request', [
-            'restaurantSlug' => $restaurantSlug,
-            'tableCode' => $tableCode
-        ]);
+        try {
+            $request->validate([
+                'restaurant_id' => 'required|integer|exists:businesses,id',
+                'table_id' => 'required|integer|exists:tables,id',
+                'message' => 'required|string|max:255'
+            ]);
 
-        // Buscar negocio
-        $business = Business::where(function($query) use ($restaurantSlug) {
-            $query->whereRaw('LOWER(name) = ?', [strtolower($restaurantSlug)])
-                  ->orWhereRaw('LOWER(REPLACE(name, " ", "")) = ?', [strtolower(str_replace(' ', '', $restaurantSlug))])
-                  ->orWhere('code', $restaurantSlug);
-        })->first();
-        
-        if (!$business) {
-            abort(404, 'Business not found: ' . $restaurantSlug);
+            // Get the table and business for redirect
+            $table = Table::findOrFail($request->table_id);
+            $business = Business::findOrFail($request->restaurant_id);
+
+            // Make API call to frontend to create notification
+            $frontendUrl = env('FRONTEND_URL', config('app.url'));
+            $response = Http::post($frontendUrl . '/api/waiter-notifications', [
+                'restaurant_id' => $request->restaurant_id,
+                'table_id' => $request->table_id,
+                'message' => $request->message,
+                'urgency' => 'high'
+            ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                if ($data['success'] ?? false) {
+                    return redirect()->back()->with('success', 'Mozo llamado exitosamente. Te atenderán pronto.');
+                }
+            }
+
+            throw new \Exception('Error al contactar el sistema de notificaciones');
+
+        } catch (\Exception $e) {
+            \Log::error('Error calling waiter from QR', [
+                'error' => $e->getMessage(),
+                'request' => $request->all()
+            ]);
+
+            return redirect()->back()->with('error', 'Error al llamar al mozo. Inténtalo nuevamente.');
         }
-
-        // Buscar mesa
-        $table = Table::where('code', $tableCode)
-                     ->where('business_id', $business->id)
-                     ->first();
-        
-        if (!$table) {
-            abort(404, 'Table not found: ' . $tableCode);
-        }
-
-        // Obtener menú por defecto
-        $defaultMenu = \App\Models\Menu::where('business_id', $business->id)
-            ->where('is_default', true)
-            ->first();
-
-        $frontendUrl = env('FRONTEND_URL', config('app.url'));
-
-        return view('qr.table-page-realtime', compact('business', 'table', 'frontendUrl', 'defaultMenu'));
     }
 }

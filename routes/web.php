@@ -123,13 +123,10 @@ Route::get('/force-assign-table/{tableId}/{waiterId}', [QrWebController::class, 
 Route::get('/QR/{restaurantSlug}/{tableCode}', [QrWebController::class, 'showTablePage'])
     ->name('qr.table.page');
 
-// Ruta para versión ULTRA FAST de la página QR
-Route::get('/QR/{restaurantSlug}/{tableCode}/fast', [QrWebController::class, 'showTablePageFast'])
-    ->name('qr.table.page.fast');
 
-// Ruta para versión FIREBASE REAL-TIME de la página QR
-Route::get('/QR/{restaurantSlug}/{tableCode}/realtime', [QrWebController::class, 'showTablePageRealtime'])
-    ->name('qr.table.page.realtime');
+// Ruta para llamar al mozo desde QR (PHP form submission)
+Route::post('/QR/call-waiter', [QrWebController::class, 'callWaiter'])
+    ->name('waiter.call');
 
 // Documentación de APIs
 Route::get('/api/docs/qr', [ApiDocumentationController::class, 'qrApis'])
