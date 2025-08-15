@@ -467,11 +467,27 @@ Route::middleware('public_api')->group(function () {
             $firebaseData
         );
         
-        // Previously we wrote to a 'direct_route_test' path for debugging. That caused duplicate notifications
-        // when both realtime writes and direct FCM were active. Skipping writing to 'direct_route_test' now.
-        Log::debug('Skipping write to direct_route_test to avoid duplicate notifications', [
+        // 🔥 TAMBIÉN ESCRIBIR EN EL PATH QUE ESCUCHA EL CLIENTE
+        $clientFirebaseData = [
+            'status' => 'pending',
+            'table_id' => (string)$call->table_id,
+            'waiter_id' => (string)$call->waiter_id,
+            'waiter_name' => $table->activeWaiter->name ?? 'Mozo',
+            'called_at' => time() * 1000,
+            'message' => $call->message
+        ];
+        
+        \Illuminate\Support\Facades\Http::timeout(3)->put(
+            "https://mozoqr-7d32c-default-rtdb.firebaseio.com/tables/call_status/{$call->id}.json",
+            $clientFirebaseData
+        );
+        
+        Log::debug('Firebase writes completed', [
             'call_id' => $call->id,
-            'waiter_id' => $call->waiter_id
+            'waiter_id' => $call->waiter_id,
+            'table_id' => $call->table_id,
+            'waiter_path' => "waiters/{$call->waiter_id}/calls/{$call->id}",
+            'client_path' => "tables/call_status/{$call->id}"
         ]);
         
         return response()->json([

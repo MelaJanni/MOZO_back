@@ -57,6 +57,33 @@ class RealtimeWaiterCallController extends Controller
 
             // 2. 🔥 NOTIFICACIÓN EN TIEMPO REAL
             $realtimeSuccess = $this->firebaseService->writeWaiterCall($call);
+            
+            // 3. 🔥 ESCRIBIR TAMBIÉN EN EL PATH QUE ESCUCHA EL CLIENTE
+            try {
+                $clientFirebaseData = [
+                    'status' => 'pending',
+                    'table_id' => (string)$table->id,
+                    'waiter_id' => (string)$table->activeWaiter->user_id,
+                    'waiter_name' => $table->activeWaiter->name ?? 'Mozo',
+                    'called_at' => time() * 1000,
+                    'message' => $call->message ?? "Mesa {$table->number} solicita atención"
+                ];
+                
+                $clientFirebaseResponse = \Illuminate\Support\Facades\Http::timeout(3)->put(
+                    "https://mozoqr-7d32c-default-rtdb.firebaseio.com/tables/call_status/{$call->id}.json",
+                    $clientFirebaseData
+                );
+                
+                Log::info("Firebase client notification created", [
+                    'call_id' => $call->id,
+                    'table_id' => $table->id,
+                    'firebase_url' => "tables/call_status/{$call->id}",
+                    'firebase_status' => $clientFirebaseResponse->status(),
+                    'firebase_success' => $clientFirebaseResponse->successful()
+                ]);
+            } catch (\Exception $e) {
+                Log::warning('Failed to write to client Firebase path', ['error' => $e->getMessage(), 'call_id' => $call->id]);
+            }
 
             $totalTime = (microtime(true) - $startTime) * 1000;
 
@@ -124,9 +151,10 @@ class RealtimeWaiterCallController extends Controller
                 ]
             );
 
-            // 🔥 FIREBASE REAL-TIME PARA CLIENTE (ESTRUCTURA CORRECTA)
+            // 🔥 FIREBASE REAL-TIME PARA CLIENTE (ESTRUCTURA CORRECTA v2.0)
             $clientFirebaseData = [
                 'status' => 'acknowledged',
+                'table_id' => (string)$call->table_id,
                 'waiter_id' => (string)$call->waiter_id,
                 'waiter_name' => $call->waiter->name ?? 'Mozo',
                 'acknowledged_at' => time() * 1000,
@@ -134,14 +162,14 @@ class RealtimeWaiterCallController extends Controller
             ];
             
             $clientFirebaseResponse = \Illuminate\Support\Facades\Http::timeout(3)->put(
-                "https://mozoqr-7d32c-default-rtdb.firebaseio.com/call_status/{$call->id}.json",
+                "https://mozoqr-7d32c-default-rtdb.firebaseio.com/tables/call_status/{$call->id}.json",
                 $clientFirebaseData
             );
             
             Log::info("Firebase client notification sent", [
                 'call_id' => $callId,
                 'table_id' => $call->table_id,
-                'firebase_url' => "call_status/{$call->id}",
+                'firebase_url' => "tables/call_status/{$call->id}",
                 'firebase_status' => $clientFirebaseResponse->status(),
                 'firebase_success' => $clientFirebaseResponse->successful()
             ]);
@@ -215,9 +243,10 @@ class RealtimeWaiterCallController extends Controller
                 "https://mozoqr-7d32c-default-rtdb.firebaseio.com/waiters/{$call->waiter_id}/calls/{$call->id}.json"
             );
 
-            // 🔥 FIREBASE REAL-TIME PARA CLIENTE (ESTRUCTURA CORRECTA)
+            // 🔥 FIREBASE REAL-TIME PARA CLIENTE (ESTRUCTURA CORRECTA v2.0)
             $clientFirebaseData = [
                 'status' => 'completed',
+                'table_id' => (string)$call->table_id,
                 'waiter_id' => (string)$call->waiter_id,
                 'waiter_name' => $call->waiter->name ?? 'Mozo',
                 'completed_at' => time() * 1000,
@@ -225,14 +254,14 @@ class RealtimeWaiterCallController extends Controller
             ];
             
             $clientFirebaseResponse = \Illuminate\Support\Facades\Http::timeout(3)->put(
-                "https://mozoqr-7d32c-default-rtdb.firebaseio.com/call_status/{$call->id}.json",
+                "https://mozoqr-7d32c-default-rtdb.firebaseio.com/tables/call_status/{$call->id}.json",
                 $clientFirebaseData
             );
             
             Log::info("Firebase client notification sent (completed)", [
                 'call_id' => $callId,
                 'table_id' => $call->table_id,
-                'firebase_url' => "call_status/{$call->id}",
+                'firebase_url' => "tables/call_status/{$call->id}",
                 'firebase_status' => $clientFirebaseResponse->status(),
                 'firebase_success' => $clientFirebaseResponse->successful()
             ]);
@@ -399,7 +428,7 @@ class RealtimeWaiterCallController extends Controller
                 try {
                     // Eliminar de Firebase después del delay
                     \Illuminate\Support\Facades\Http::timeout(3)->delete(
-                        "https://mozoqr-7d32c-default-rtdb.firebaseio.com/call_status/{$callId}.json"
+                        "https://mozoqr-7d32c-default-rtdb.firebaseio.com/tables/call_status/{$callId}.json"
                     );
                     
                     Log::info("Auto-cleanup completed for call", [

@@ -353,7 +353,7 @@
 
         // 🔥 FIREBASE REALTIME LISTENER - DETECTA CAMBIOS DE ESTADO
         function startRealTimeStatusListener() {
-            console.log('🚀🚀🚀 INICIANDO LISTENER CORREGIDO - FIREBASE REALTIME DATABASE 🚀🚀🚀');
+            console.log('🚀🚀🚀 INICIANDO LISTENER CORREGIDO v2.0 - FIREBASE REALTIME DATABASE 🚀🚀🚀');
             console.log('🔍 TABLE_ID:', TABLE_ID);
             console.log('🔍 currentNotificationId al iniciar listener:', currentNotificationId);
             
@@ -377,45 +377,45 @@
             const database = firebase.database();
             console.log('✅ Database reference obtenida');
             
-            // 🎯 LISTENER CORREGIDO: La data está en /call_status/ (root level)
-            const callStatusRef = database.ref('call_status');
-            console.log('🎧 Listener configurado en path CORRECTO: /call_status/');
+            // 🎯 LISTENER CORREGIDO v2.0: La data está en /tables/call_status/ (NO root level)
+            const tablesCallStatusRef = database.ref('tables/call_status');
+            console.log('🎧 Listener configurado en path CORRECTO v2.0: /tables/call_status/');
             
             // Listener para cambios en cualquier call
-            callStatusRef.on('child_added', (snapshot) => {
+            tablesCallStatusRef.on('child_added', (snapshot) => {
                 const callId = snapshot.key;
                 const data = snapshot.val();
-                console.log('🔥 [CALL_STATUS ADDED] Nueva llamada en /call_status/:', { callId, data, currentNotificationId });
+                console.log('🔥 [TABLES_CALL_STATUS ADDED] Nueva llamada en /tables/call_status/:', { callId, data, currentNotificationId });
                 
                 if (data && currentNotificationId && String(callId) === String(currentNotificationId)) {
-                    console.log('✅ [CALL_STATUS ADDED] Match found - handling update');
+                    console.log('✅ [TABLES_CALL_STATUS ADDED] Match found - handling update');
                     handleRealTimeStatusUpdate(data);
                 }
             });
             
-            callStatusRef.on('child_changed', (snapshot) => {
+            tablesCallStatusRef.on('child_changed', (snapshot) => {
                 const callId = snapshot.key;
                 const data = snapshot.val();
-                console.log('🔥 [CALL_STATUS CHANGED] Estado actualizado en /call_status/:', { callId, data, currentNotificationId });
+                console.log('🔥 [TABLES_CALL_STATUS CHANGED] Estado actualizado en /tables/call_status/:', { callId, data, currentNotificationId });
                 
                 if (data && currentNotificationId && String(callId) === String(currentNotificationId)) {
-                    console.log('✅ [CALL_STATUS CHANGED] Match found - handling update');
+                    console.log('✅ [TABLES_CALL_STATUS CHANGED] Match found - handling update');
                     handleRealTimeStatusUpdate(data);
                 }
             });
             
             // Listener específico para mi call
             if (currentNotificationId) {
-                const myCallRef = database.ref(`call_status/${currentNotificationId}`);
-                console.log('🎧 Listener específico para mi call:', `call_status/${currentNotificationId}`);
+                const myCallRef = database.ref(`tables/call_status/${currentNotificationId}`);
+                console.log('🎧 Listener específico para mi call v2.0:', `tables/call_status/${currentNotificationId}`);
                 
                 myCallRef.on('value', (snapshot) => {
                     const data = snapshot.val();
                     if (data) {
-                        console.log('🔥 [MY_CALL] Cambio en mi llamada específica:', data);
+                        console.log('🔥 [MY_CALL v2.0] Cambio en mi llamada específica:', data);
                         handleRealTimeStatusUpdate(data);
                     } else {
-                        console.log('⚠️ [MY_CALL] Mi llamada no existe o fue eliminada');
+                        console.log('⚠️ [MY_CALL v2.0] Mi llamada no existe o fue eliminada');
                     }
                 });
                 
@@ -424,23 +424,29 @@
             }
             
             // Guardar referencias para cleanup
-            window.firebaseCallStatusListener = callStatusRef;
+            window.firebaseTablesCallStatusListener = tablesCallStatusRef;
             
-            console.log('✅ Todos los listeners configurados');
+            console.log('✅ Todos los listeners v2.0 configurados');
         }
 
         // 🧹 FUNCIÓN PARA LIMPIAR LISTENERS DE FIREBASE
         function cleanupFirebaseListeners() {
             try {
-                if (window.firebaseCallStatusListener) {
-                    window.firebaseCallStatusListener.off();
-                    window.firebaseCallStatusListener = null;
-                    console.log('🧹 Firebase call status listener cleaned up');
+                if (window.firebaseTablesCallStatusListener) {
+                    window.firebaseTablesCallStatusListener.off();
+                    window.firebaseTablesCallStatusListener = null;
+                    console.log('🧹 Firebase tables call status listener cleaned up');
                 }
                 if (window.firebaseMyCallListener) {
                     window.firebaseMyCallListener.off();
                     window.firebaseMyCallListener = null;
                     console.log('🧹 Firebase my call listener cleaned up');
+                }
+                // Legacy cleanup
+                if (window.firebaseCallStatusListener) {
+                    window.firebaseCallStatusListener.off();
+                    window.firebaseCallStatusListener = null;
+                    console.log('🧹 Legacy firebase call status listener cleaned up');
                 }
             } catch (e) {
                 console.warn('⚠️ Error cleaning up Firebase listeners:', e);
