@@ -202,8 +202,8 @@ class RealtimeWaiterCallController extends Controller
                 Log::warning('Failed to update Firestore table status for acknowledged call', ['error' => $e->getMessage(), 'call_id' => $callId]);
             }
 
-            // 🔔 PUSH NOTIFICATION AL CLIENTE
-            $this->sendClientNotification($call, 'acknowledged', 'Tu mozo recibió la solicitud');
+            // 🔥 NO PUSH NOTIFICATION - Solo actualización en tiempo real
+            // El cliente verá el cambio via Firebase Realtime Database listener
 
             // 📋 MARCAR NOTIFICACIONES RELACIONADAS COMO LEÍDAS
             $this->markRelatedNotificationsAsRead($call);
@@ -266,8 +266,8 @@ class RealtimeWaiterCallController extends Controller
                 'firebase_success' => $clientFirebaseResponse->successful()
             ]);
 
-            // 🔔 PUSH NOTIFICATION AL CLIENTE
-            $this->sendClientNotification($call, 'completed', 'Servicio completado ✅');
+            // 🔥 NO PUSH NOTIFICATION - Solo actualización en tiempo real
+            // El cliente verá el cambio via Firebase Realtime Database listener
 
             // 📋 MARCAR NOTIFICACIONES RELACIONADAS COMO LEÍDAS
             $this->markRelatedNotificationsAsRead($call);
