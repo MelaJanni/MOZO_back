@@ -346,9 +346,9 @@
             });
         }
 
-        // 🔥 FIREBASE REALTIME LISTENER - REEMPLAZA POLLING
+        // 🔥 FIREBASE REALTIME LISTENER - DETECTA CAMBIOS DE ESTADO
         function startRealTimeStatusListener() {
-            console.log('🔥 Iniciando escucha en TIEMPO REAL con Firebase...');
+            console.log('🚀🚀🚀 INICIANDO SISTEMA CORRECTO - FIREBASE REALTIME DATABASE 🚀🚀🚀');
             
             // Usar Firebase Realtime Database
             const firebaseConfig = {
@@ -367,7 +367,11 @@
             const database = firebase.database();
             
             // 🎧 ESCUCHAR CAMBIOS EN TIEMPO REAL (ESTRUCTURA CORRECTA)
+            // Escuchar en el path donde el backend escribirá los cambios de estado
             const statusRef = database.ref(`tables/${TABLE_ID}/call_status`);
+            
+            // También escuchar en el path de waiters (donde se escriben las llamadas inicialmente)
+            // Necesitamos detectar cuando el waiter cambia el estado de la llamada
             
             statusRef.on('child_added', (snapshot) => {
                 const callId = snapshot.key;
@@ -397,6 +401,25 @@
                 }
             });
             
+            // 🔥 MULTI-PATH LISTENER: Escuchar directamente en /waiters/*/calls/* para detectar cambios
+            // Este listener detectará cuando un waiter cambie el estado de cualquier llamada
+            const waitersRef = database.ref('waiters');
+            waitersRef.on('child_changed', (waiterSnapshot) => {
+                const waiterId = waiterSnapshot.key;
+                const waiterData = waiterSnapshot.val();
+                
+                if (waiterData && waiterData.calls && currentNotificationId) {
+                    const myCall = waiterData.calls[currentNotificationId];
+                    if (myCall) {
+                        console.log('🔥 WAITER PATH: Estado de mi llamada cambió:', myCall);
+                        handleRealTimeStatusUpdate(myCall);
+                        
+                        // También escribir en el path de la mesa para mantener sincronización
+                        database.ref(`tables/${TABLE_ID}/call_status/${currentNotificationId}`).set(myCall);
+                    }
+                }
+            });
+            
             // 🔥 BACKUP: También escuchar TODOS los cambios en esta mesa (sin filtro)
             statusRef.on('value', (snapshot) => {
                 const allData = snapshot.val();
@@ -413,6 +436,25 @@
             
             // Guardar referencia para cleanup
             window.firebaseStatusListener = statusRef;
+            window.firebaseWaitersListener = waitersRef;
+        }
+
+        // 🧹 FUNCIÓN PARA LIMPIAR LISTENERS DE FIREBASE
+        function cleanupFirebaseListeners() {
+            try {
+                if (window.firebaseStatusListener) {
+                    window.firebaseStatusListener.off();
+                    window.firebaseStatusListener = null;
+                    console.log('🧹 Firebase status listener cleaned up');
+                }
+                if (window.firebaseWaitersListener) {
+                    window.firebaseWaitersListener.off();
+                    window.firebaseWaitersListener = null;
+                    console.log('🧹 Firebase waiters listener cleaned up');
+                }
+            } catch (e) {
+                console.warn('⚠️ Error cleaning up Firebase listeners:', e);
+            }
         }
 
         // 🔥 MANEJAR ACTUALIZACIONES EN TIEMPO REAL
@@ -517,33 +559,43 @@
             clearInterval(pollingInterval);
             pollingInterval = null;
             
+            // 🧹 LIMPIAR LISTENERS DE FIREBASE
+            cleanupFirebaseListeners();
+            
             const statusMessage = document.getElementById('statusMessage');
             const button = document.getElementById('callWaiterBtn');
             
+            // 🎉 CAMBIO VISUAL INMEDIATO - BOTÓN SALE DE "ESPERANDO CONFIRMACIÓN"
+            button.disabled = false;
+            button.textContent = '🔔 Llamar Mozo';
+            
             statusMessage.className = 'status-message status-success';
-            statusMessage.textContent = '🎉 ¡ULTRA FAST! El mozo confirmó en tiempo récord!';
+            statusMessage.textContent = '🎉 ¡CONFIRMADO! Tu mozo recibió la solicitud y está en camino';
             
             updateDebug();
             
+            // Cleanup automático después de mostrar el mensaje de éxito
             setTimeout(() => {
-                button.disabled = false;
-                button.textContent = '🔔 Llamar Mozo';
                 statusMessage.style.display = 'none';
                 currentNotificationId = null;
                 requestCount = 0;
+                lastProcessedStatus = null; // Reset para siguiente llamada
                 updateDebug();
-            }, 5000);
+            }, 4000);
         }
 
         function handleTaskCompleted() {
             clearInterval(pollingInterval);
             pollingInterval = null;
             
+            // 🧹 LIMPIAR LISTENERS DE FIREBASE
+            cleanupFirebaseListeners();
+            
             const statusMessage = document.getElementById('statusMessage');
             const button = document.getElementById('callWaiterBtn');
             
             statusMessage.className = 'status-message status-success';
-            statusMessage.textContent = '✅ ¡Tarea completada! Ultra rápido.';
+            statusMessage.textContent = '✅ ¡Servicio completado! Gracias por usar MozoQR';
             
             updateDebug();
             
@@ -553,8 +605,9 @@
                 statusMessage.style.display = 'none';
                 currentNotificationId = null;
                 requestCount = 0;
+                lastProcessedStatus = null; // Reset para siguiente llamada
                 updateDebug();
-            }, 3000);
+            }, 4000);
         }
 
         // 🔔 SOLICITAR PERMISOS DE NOTIFICACIÓN
