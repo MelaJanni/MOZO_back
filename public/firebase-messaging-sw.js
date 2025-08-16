@@ -3,11 +3,11 @@ importScripts('https://www.gstatic.com/firebasejs/9.6.10/firebase-messaging-comp
 
 // Configura con tus credenciales de Firebase (rellenar en deploy)
 firebase.initializeApp({
-  apiKey: 'TU_API_KEY',
-  authDomain: 'TU_AUTH_DOMAIN',
-  projectId: 'TU_PROJECT_ID',
-  messagingSenderId: 'TU_SENDER_ID',
-  appId: 'TU_APP_ID'
+  apiKey: 'AIzaSyCecfSTfyxk3D2X4XsLaSGkckvf-OvhFZA',
+  authDomain: 'mozoqr.com',
+  projectId: 'mozoqr-7d32c',
+  messagingSenderId: '175482362472',
+  appId: '1:175482362472:android:535ff3b2282ad3b8b6b9dd'
 });
 
 const messaging = firebase.messaging();
