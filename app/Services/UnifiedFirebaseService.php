@@ -130,28 +130,27 @@ class UnifiedFirebaseService
     private function updateWaiterIndex(WaiterCall $call): string
     {
         try {
-            // Obtener llamadas actuales del mozo
-            $currentCalls = $this->getWaiterActiveCalls($call->waiter_id);
+            // Obtener todas las llamadas actuales del mozo desde la base de datos
+            $allCalls = \App\Models\WaiterCall::where('waiter_id', $call->waiter_id)
+                ->whereIn('status', ['pending', 'acknowledged'])
+                ->pluck('id')
+                ->map(fn($id) => (string)$id)
+                ->toArray();
             
-            // Agregar/actualizar esta llamada
-            if ($call->status === 'completed') {
-                // Remover de activas
-                $currentCalls = array_filter($currentCalls, fn($id) => $id !== (string)$call->id);
-            } else {
-                // Agregar/mantener en activas
-                if (!in_array((string)$call->id, $currentCalls)) {
-                    $currentCalls[] = (string)$call->id;
-                }
-            }
+            // Contar solo las llamadas pendientes para el pending_count
+            $pendingCallsCount = \App\Models\WaiterCall::where('waiter_id', $call->waiter_id)
+                ->where('status', 'pending')
+                ->count();
 
             // Estadísticas del mozo
             $stats = [
-                'pending_count' => count(array_filter($currentCalls)),
+                'pending_count' => $pendingCallsCount, // Solo pendientes
+                'total_active_calls' => count($allCalls), // Pendientes + Acknowledged
                 'last_update' => now()->timestamp * 1000
             ];
 
             $waiterData = [
-                'active_calls' => array_values($currentCalls),
+                'active_calls' => array_values($allCalls), // Pendientes + Acknowledged
                 'stats' => $stats
             ];
 
@@ -200,21 +199,27 @@ class UnifiedFirebaseService
         try {
             $businessId = $call->table->business_id;
             
-            // Obtener llamadas actuales del negocio
-            $currentCalls = $this->getBusinessActiveCalls($businessId);
+            // Obtener todas las llamadas activas del negocio desde la base de datos
+            $allActiveCalls = \App\Models\WaiterCall::whereHas('table', function($query) use ($businessId) {
+                    $query->where('business_id', $businessId);
+                })
+                ->whereIn('status', ['pending', 'acknowledged'])
+                ->pluck('id')
+                ->map(fn($id) => (string)$id)
+                ->toArray();
             
-            if ($call->status === 'completed') {
-                $currentCalls = array_filter($currentCalls, fn($id) => $id !== (string)$call->id);
-            } else {
-                if (!in_array((string)$call->id, $currentCalls)) {
-                    $currentCalls[] = (string)$call->id;
-                }
-            }
+            // Contar solo las llamadas pendientes para total_pending
+            $pendingCallsCount = \App\Models\WaiterCall::whereHas('table', function($query) use ($businessId) {
+                    $query->where('business_id', $businessId);
+                })
+                ->where('status', 'pending')
+                ->count();
 
             $businessData = [
-                'active_calls' => array_values($currentCalls),
+                'active_calls' => array_values($allActiveCalls), // Pendientes + Acknowledged
                 'stats' => [
-                    'total_pending' => count($currentCalls),
+                    'total_pending' => $pendingCallsCount, // Solo pendientes
+                    'total_active_calls' => count($allActiveCalls), // Pendientes + Acknowledged
                     'last_update' => now()->timestamp * 1000
                 ]
             ];
