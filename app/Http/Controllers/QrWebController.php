@@ -701,36 +701,80 @@ startxref
             ]);
 
             // Get the table and business for redirect
-            $table = Table::findOrFail($request->table_id);
+            $table = Table::with(['activeWaiter', 'business'])->findOrFail($request->table_id);
             $business = Business::findOrFail($request->restaurant_id);
 
-            // Make API call to frontend to create notification
-            $frontendUrl = env('FRONTEND_URL', config('app.url'));
-            $response = Http::post($frontendUrl . '/api/waiter-notifications', [
-                'restaurant_id' => $request->restaurant_id,
-                'table_id' => $request->table_id,
-                'message' => $request->message,
-                'urgency' => 'high'
-            ]);
-
-            if ($response->successful()) {
-                $data = $response->json();
-                if ($data['success'] ?? false) {
-                    $notificationId = $data['data']['id'] ?? null;
-                    
-                    // Redirigir con notification_id para que JavaScript pueda escuchar Firebase
-                    return redirect()->back()
-                        ->with('success', 'Mozo llamado exitosamente. Esperando confirmación...')
-                        ->with('notification_id', $notificationId);
-                }
+            // Verificar si la mesa tiene notificaciones habilitadas
+            if (!$table->notifications_enabled) {
+                return redirect()->back()->with('error', 'Las notificaciones están desactivadas para esta mesa.');
             }
 
-            throw new \Exception('Error al contactar el sistema de notificaciones');
+            // Verificar si la mesa tiene un mozo activo asignado
+            if (!$table->active_waiter_id) {
+                return redirect()->back()->with('error', 'Esta mesa no tiene un mozo asignado actualmente. Por favor, llame manualmente al mozo.');
+            }
+
+            // Verificar si la mesa está silenciada
+            $activeSilence = \App\Models\TableSilence::where('table_id', $table->id)
+                ->active()
+                ->first();
+
+            if ($activeSilence && $activeSilence->isActive()) {
+                return redirect()->back()->with('success', 'Solicitud procesada (mesa silenciada).');
+            }
+
+            // Crear la llamada usando el sistema unificado
+            $call = \App\Models\WaiterCall::create([
+                'table_id' => $table->id,
+                'waiter_id' => $table->active_waiter_id,
+                'status' => 'pending',
+                'message' => $request->input('message', 'Llamada desde mesa ' . $table->number),
+                'called_at' => now(),
+                'metadata' => [
+                    'urgency' => 'high', // QR calls are always high priority
+                    'source' => 'qr_page',
+                    'ip_address' => $request->ip()
+                ]
+            ]);
+
+            // Usar el servicio unificado de Firebase
+            $unifiedService = app(\App\Services\UnifiedFirebaseService::class);
+            $firebaseWritten = $unifiedService->writeCall($call, 'created');
+
+            // Enviar notificación FCM si es posible
+            try {
+                $firebaseService = app(\App\Services\FirebaseService::class);
+                $title = "🔔 Mesa {$table->number}";
+                $body = $call->message;
+                $data = [
+                    'type' => 'waiter_call',
+                    'call_id' => (string)$call->id,
+                    'table_id' => (string)$table->id,
+                    'table_number' => (string)$table->number,
+                    'urgency' => 'high',
+                    'action' => 'acknowledge_call',
+                    'timestamp' => now()->timestamp
+                ];
+                
+                $firebaseService->sendToUser($call->waiter_id, $title, $body, $data, 'high');
+            } catch (\Exception $fcmError) {
+                \Log::warning('FCM notification failed but call created', [
+                    'call_id' => $call->id,
+                    'error' => $fcmError->getMessage()
+                ]);
+            }
+
+            // Redirigir con notification_id para que JavaScript pueda escuchar Firebase
+            return redirect()->back()
+                ->with('success', 'Mozo llamado exitosamente. Esperando confirmación...')
+                ->with('notification_id', $call->id)
+                ->with('firebase_written', $firebaseWritten);
 
         } catch (\Exception $e) {
             \Log::error('Error calling waiter from QR', [
                 'error' => $e->getMessage(),
-                'request' => $request->all()
+                'request' => $request->all(),
+                'trace' => $e->getTraceAsString()
             ]);
 
             return redirect()->back()->with('error', 'Error al llamar al mozo. Inténtalo nuevamente.');

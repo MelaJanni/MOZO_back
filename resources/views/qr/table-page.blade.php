@@ -370,14 +370,23 @@
             
             const database = firebase.database();
             
-            // Escuchar cambios en mi solicitud específica
-            const myCallRef = database.ref(`tables/call_status/${currentNotificationId}`);
+            // Escuchar cambios en mi solicitud específica usando estructura unificada
+            const myCallRef = database.ref(`active_calls/${currentNotificationId}`);
             
             firebaseListener = myCallRef.on('value', (snapshot) => {
                 const data = snapshot.val();
+                console.log('🔍 Firebase data received:', data);
+                
                 if (data && data.status === 'acknowledged') {
                     console.log('🎉 ACKNOWLEDGED! Mozo confirmó la solicitud');
-                    showAcknowledgedMessage(data.waiter_name);
+                    showAcknowledgedMessage(data.waiter?.name || data.waiter_name);
+                    
+                    // Detener listener
+                    myCallRef.off('value', firebaseListener);
+                    firebaseListener = null;
+                } else if (data && data.status === 'completed') {
+                    console.log('✅ COMPLETED! Llamada completada');
+                    showCompletedMessage(data.waiter?.name || data.waiter_name);
                     
                     // Detener listener
                     myCallRef.off('value', firebaseListener);
@@ -409,6 +418,34 @@
                         body: `${waiterName || 'El mozo'} confirmó tu solicitud y está en camino`,
                         icon: '/favicon.ico',
                         tag: 'waiter-confirmed'
+                    });
+                }
+            }
+        }
+
+        function showCompletedMessage(waiterName) {
+            // Actualizar mensaje para mostrar que la llamada fue completada
+            const successMessage = document.querySelector('.status-success');
+            if (successMessage) {
+                successMessage.innerHTML = `
+                    <div style="font-size: 18px; font-weight: bold; color: #155724;">
+                        ✅ ¡${waiterName || 'El mozo'} completó tu solicitud!
+                    </div>
+                    <div style="font-size: 16px; margin-top: 5px;">
+                        👍 Servicio finalizado
+                    </div>
+                `;
+                
+                // Hacer que el mensaje sea más visible
+                successMessage.style.border = '2px solid #28a745';
+                successMessage.style.background = '#d4edda';
+                
+                // Notificación del navegador
+                if (Notification.permission === 'granted') {
+                    new Notification('¡Servicio completado!', {
+                        body: `${waiterName || 'El mozo'} completó tu solicitud`,
+                        icon: '/favicon.ico',
+                        tag: 'waiter-completed'
                     });
                 }
             }
