@@ -764,6 +764,25 @@ startxref
                 ]);
             }
 
+            // 🔥 ENVIAR NOTIFICACIÓN UNIFIED PARA ANDROID (app cerrada)
+            try {
+                $pushService = app(\App\Services\PushNotificationService::class);
+                $waiterTokens = $pushService->getWaiterTokens($business->id);
+                
+                if (!empty($waiterTokens)) {
+                    $pushService->sendUnifiedNotification(
+                        $waiterTokens, 
+                        $table->number, 
+                        $call->message
+                    );
+                }
+            } catch (\Exception $unifiedError) {
+                \Log::warning('UNIFIED notification failed but call created', [
+                    'call_id' => $call->id,
+                    'error' => $unifiedError->getMessage()
+                ]);
+            }
+
             // Redirigir con notification_id para que JavaScript pueda escuchar Firebase
             return redirect()->back()
                 ->with('success', 'Mozo llamado exitosamente. Esperando confirmación...')

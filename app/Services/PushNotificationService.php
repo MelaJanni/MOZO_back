@@ -67,6 +67,108 @@ class PushNotificationService
     }
     
     /**
+     * 🔥 ENVIAR NOTIFICACIÓN UNIFIED (para app Android con FCM)
+     */
+    public function sendUnifiedNotification($waiterTokens, $tableNumber, $message = null)
+    {
+        if (empty($waiterTokens)) {
+            Log::info("No FCM tokens found for UNIFIED notification");
+            return false;
+        }
+
+        try {
+            $title = "Mesa {$tableNumber} solicita mozo";
+            $body = $message ?: "Nueva llamada UNIFIED";
+            
+            // Payload específico para notificaciones UNIFIED
+            $data = [
+                'type' => 'unified',
+                'source' => 'unified',
+                'title' => $title,
+                'message' => $body,
+                'table_number' => (string)$tableNumber,
+                'timestamp' => time() * 1000
+            ];
+
+            $success = 0;
+            foreach ($waiterTokens as $token) {
+                // Para Android: enviar solo DATA (sin notification) para manejar en background
+                if ($this->sendUnifiedToDevice($token, $data)) {
+                    $success++;
+                }
+            }
+            
+            Log::info("UNIFIED notifications sent", [
+                'table_number' => $tableNumber,
+                'total_tokens' => count($waiterTokens),
+                'successful_sends' => $success
+            ]);
+            
+            return $success > 0;
+            
+        } catch (\Exception $e) {
+            Log::error('Failed to send UNIFIED notification', [
+                'table_number' => $tableNumber,
+                'error' => $e->getMessage()
+            ]);
+            return false;
+        }
+    }
+
+    /**
+     * 🔥 ENVIAR NOTIFICACIÓN UNIFIED A DISPOSITIVO ESPECÍFICO
+     */
+    private function sendUnifiedToDevice($token, $data)
+    {
+        if (empty($this->serverKey)) {
+            Log::warning('Firebase server key not configured');
+            return false;
+        }
+        
+        try {
+            // Para notificaciones UNIFIED: solo enviar DATA sin notification
+            // Esto permite que MyFirebaseMessagingService.java maneje la notificación
+            $response = Http::withHeaders([
+                'Authorization' => 'key=' . $this->serverKey,
+                'Content-Type' => 'application/json'
+            ])->timeout(10)->post($this->fcmUrl, [
+                'to' => $token,
+                'data' => $data, // Solo data, sin notification
+                'priority' => 'high',
+                'android' => [
+                    'priority' => 'high'
+                ]
+            ]);
+            
+            if ($response->successful()) {
+                $result = $response->json();
+                if (isset($result['success']) && $result['success'] === 1) {
+                    return true;
+                } else {
+                    Log::warning('FCM UNIFIED send partially failed', [
+                        'token' => substr($token, 0, 20) . '...',
+                        'response' => $result
+                    ]);
+                }
+            } else {
+                Log::error('FCM UNIFIED HTTP request failed', [
+                    'status' => $response->status(),
+                    'response' => $response->body()
+                ]);
+            }
+            
+            return false;
+            
+        } catch (\Exception $e) {
+            Log::error('FCM UNIFIED send exception', [
+                'error' => $e->getMessage(),
+                'token' => substr($token, 0, 20) . '...'
+            ]);
+            return false;
+        }
+    }
+
+    /**
      * 📱 ENVIAR PUSH NOTIFICATION A UN DISPOSITIVO ESPECÍFICO
      */
     public function sendToDevice($token, $notification, $data = [])
@@ -165,5 +267,73 @@ class PushNotificationService
         ]);
         
         return true;
+    }
+
+    /**
+     * 🔍 OBTENER TOKENS FCM DE MOZOS DE UN NEGOCIO
+     */
+    public function getWaiterTokens($businessId)
+    {
+        try {
+            // Obtener tokens FCM de mozos activos del negocio
+            $tokens = \App\Models\DeviceToken::whereHas('user', function($query) use ($businessId) {
+                $query->whereHas('businesses', function($businessQuery) use ($businessId) {
+                    $businessQuery->where('business_id', $businessId);
+                })->where('role', 'waiter');
+            })
+            ->where('is_active', true)
+            ->where('created_at', '>', now()->subDays(30)) // Tokens recientes
+            ->pluck('fcm_token')
+            ->filter() // Eliminar tokens nulos/vacíos
+            ->unique()
+            ->values()
+            ->toArray();
+            
+            Log::info("Retrieved waiter FCM tokens", [
+                'business_id' => $businessId,
+                'token_count' => count($tokens)
+            ]);
+            
+            return $tokens;
+            
+        } catch (\Exception $e) {
+            Log::error('Failed to get waiter tokens', [
+                'business_id' => $businessId,
+                'error' => $e->getMessage()
+            ]);
+            return [];
+        }
+    }
+
+    /**
+     * 🧪 TESTEAR ENVÍO DE NOTIFICACIÓN UNIFIED
+     */
+    public function testUnifiedNotification($businessId, $tableNumber = 99)
+    {
+        try {
+            $tokens = $this->getWaiterTokens($businessId);
+            
+            if (empty($tokens)) {
+                return [
+                    'status' => 'error',
+                    'message' => 'No waiter tokens found for business ' . $businessId
+                ];
+            }
+            
+            $result = $this->sendUnifiedNotification($tokens, $tableNumber, 'Test UNIFIED notification');
+            
+            return [
+                'status' => $result ? 'success' : 'failed',
+                'message' => $result ? 'Test UNIFIED notification sent' : 'Failed to send test notification',
+                'token_count' => count($tokens),
+                'table_number' => $tableNumber
+            ];
+            
+        } catch (\Exception $e) {
+            return [
+                'status' => 'error',
+                'message' => 'Test failed: ' . $e->getMessage()
+            ];
+        }
     }
 }
