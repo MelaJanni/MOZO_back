@@ -15,11 +15,32 @@ const messaging = firebase.messaging();
 // Manejar mensajes en background
 messaging.onBackgroundMessage(function(payload) {
   console.log('[firebase-messaging-sw.js] Background message ', payload);
-  const notificationTitle = payload.notification?.title || 'Notificación';
+  
+  const data = payload.data || {};
+  const notification = payload.notification || {};
+  
+  // Detectar notificaciones UNIFIED
+  if (data.type === 'unified' || data.source === 'unified') {
+    const notificationTitle = data.title || notification.title || 'Nueva llamada UNIFIED';
+    const notificationOptions = {
+      body: data.message || notification.body || `Mesa ${data.table_number || 'N/A'} solicita mozo`,
+      icon: '/logo192.png',
+      badge: '/badge-72x72.png',
+      tag: 'unified-notification',
+      requireInteraction: true,
+      data: data
+    };
+    
+    console.log('[firebase-messaging-sw.js] Showing UNIFIED notification', notificationOptions);
+    return self.registration.showNotification(notificationTitle, notificationOptions);
+  }
+  
+  // Manejo de otras notificaciones
+  const notificationTitle = notification.title || data.title || 'Notificación';
   const notificationOptions = {
-    body: payload.notification?.body || '',
-    icon: payload.notification?.icon || '/logo192.png',
-    data: payload.data || {}
+    body: notification.body || data.message || '',
+    icon: notification.icon || '/logo192.png',
+    data: data
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);
@@ -35,9 +56,24 @@ self.addEventListener('push', function(event) {
     const notification = payload.notification || (payload.message && payload.message.notification) || {};
     const data = payload.data || (payload.message && payload.message.data) || {};
 
-    const title = notification.title || 'Notificación';
+    // Detectar notificaciones UNIFIED en push events
+    if (data.type === 'unified' || data.source === 'unified') {
+      const title = data.title || notification.title || 'Nueva llamada UNIFIED';
+      const options = {
+        body: data.message || notification.body || `Mesa ${data.table_number || 'N/A'} solicita mozo`,
+        icon: '/logo192.png',
+        badge: '/badge-72x72.png',
+        tag: 'unified-notification',
+        requireInteraction: true,
+        data: data
+      };
+      
+      return event.waitUntil(self.registration.showNotification(title, options));
+    }
+
+    const title = notification.title || data.title || 'Notificación';
     const options = {
-      body: notification.body || '',
+      body: notification.body || data.message || '',
       icon: notification.icon || '/logo192.png',
       badge: notification.badge || '/badge-72x72.png',
       data: data
