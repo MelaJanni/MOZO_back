@@ -511,4 +511,71 @@ class FirebaseService
             return false;
         }
     }
+
+    /**
+     * 🚀 UNIFIED: Enviar notificación (notification + data) a múltiples tokens usando HTTP v1.
+     * Garantiza que aparezca aun con la app cerrada.
+     * Mantiene el formato de datos previo (type=unified, table_number, message...)
+     */
+    public function sendUnifiedNotificationToTokens(array $tokens, int $tableNumber, string $message, array $extraData = []): array
+    {
+        if (empty($tokens)) {
+            Log::info('Unified notification skipped: empty token list', [
+                'table_number' => $tableNumber
+            ]);
+            return [
+                'sent' => 0,
+                'total' => 0,
+                'results' => []
+            ];
+        }
+
+        $title = "🔔 Mesa {$tableNumber}";
+        $body = $message ?: 'Nueva llamada';
+
+        // Data base obligatoria
+        $baseData = [
+            'type' => 'unified',
+            'source' => 'unified',
+            'title' => $title,
+            'message' => $body,
+            'table_number' => (string)$tableNumber,
+            'timestamp' => (string) now()->timestamp,
+        ];
+
+        // Mezclar y asegurar strings en sendToDevice (ya se formatea allí)
+        $data = array_merge($baseData, $extraData);
+
+        $sent = 0;
+        $results = [];
+        foreach ($tokens as $token) {
+            try {
+                $resp = $this->sendToDevice($token, $title, $body, $data, 'high');
+                $results[] = [
+                    'token' => substr($token, 0, 15) . '...',
+                    'success' => true,
+                    'id' => $resp['name'] ?? null
+                ];
+                $sent++;
+            } catch (\Exception $e) {
+                $results[] = [
+                    'token' => substr($token, 0, 15) . '...',
+                    'success' => false,
+                    'error' => $e->getMessage()
+                ];
+            }
+        }
+
+        Log::info('Unified notifications dispatched', [
+            'table_number' => $tableNumber,
+            'sent' => $sent,
+            'total' => count($tokens)
+        ]);
+
+        return [
+            'sent' => $sent,
+            'total' => count($tokens),
+            'results' => $results
+        ];
+    }
 }

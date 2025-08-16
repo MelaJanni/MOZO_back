@@ -71,43 +71,17 @@ class PushNotificationService
      */
     public function sendUnifiedNotification($waiterTokens, $tableNumber, $message = null)
     {
-        if (empty($waiterTokens)) {
-            Log::info("No FCM tokens found for UNIFIED notification");
-            return false;
-        }
-
+        // 🔄 Migrado a FirebaseService (HTTP v1). Este método se mantiene por compatibilidad.
         try {
-            $title = "Mesa {$tableNumber} solicita mozo";
-            $body = $message ?: "Nueva llamada UNIFIED";
-            
-            // Payload específico para notificaciones UNIFIED
-            $data = [
-                'type' => 'unified',
-                'source' => 'unified',
-                'title' => $title,
-                'message' => $body,
-                'table_number' => (string)$tableNumber,
-                'timestamp' => time() * 1000
-            ];
-
-            $success = 0;
-            foreach ($waiterTokens as $token) {
-                // Para Android: enviar solo DATA (sin notification) para manejar en background
-                if ($this->sendUnifiedToDevice($token, $data)) {
-                    $success++;
-                }
-            }
-            
-            Log::info("UNIFIED notifications sent", [
-                'table_number' => $tableNumber,
-                'total_tokens' => count($waiterTokens),
-                'successful_sends' => $success
-            ]);
-            
-            return $success > 0;
-            
+            $firebaseService = app(\App\Services\FirebaseService::class);
+            $result = $firebaseService->sendUnifiedNotificationToTokens(
+                $waiterTokens ?? [],
+                (int)$tableNumber,
+                $message ?: 'Nueva llamada UNIFIED'
+            );
+            return $result['sent'] > 0;
         } catch (\Exception $e) {
-            Log::error('Failed to send UNIFIED notification', [
+            Log::error('Unified notification delegation failed', [
                 'table_number' => $tableNumber,
                 'error' => $e->getMessage()
             ]);
@@ -275,27 +249,26 @@ class PushNotificationService
     public function getWaiterTokens($businessId)
     {
         try {
-            // Obtener tokens FCM de mozos activos del negocio
             $tokens = \App\Models\DeviceToken::whereHas('user', function($query) use ($businessId) {
-                $query->whereHas('businesses', function($businessQuery) use ($businessId) {
-                    $businessQuery->where('business_id', $businessId);
-                })->where('role', 'waiter');
+                $query->where('role', 'waiter')
+                      ->whereHas('businesses', function($b) use ($businessId) {
+                          $b->where('business_id', $businessId);
+                      });
             })
-            ->where('is_active', true)
-            ->where('created_at', '>', now()->subDays(30)) // Tokens recientes
-            ->pluck('fcm_token')
-            ->filter() // Eliminar tokens nulos/vacíos
+            ->orderByDesc('updated_at')
+            ->limit(500) // seguridad
+            ->pluck('token')
+            ->filter()
             ->unique()
             ->values()
             ->toArray();
-            
-            Log::info("Retrieved waiter FCM tokens", [
+
+            Log::info('Retrieved waiter tokens (unified)', [
                 'business_id' => $businessId,
-                'token_count' => count($tokens)
+                'count' => count($tokens)
             ]);
-            
+
             return $tokens;
-            
         } catch (\Exception $e) {
             Log::error('Failed to get waiter tokens', [
                 'business_id' => $businessId,
