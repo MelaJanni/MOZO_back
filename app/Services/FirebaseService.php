@@ -522,9 +522,9 @@ class FirebaseService
     }
 
     /**
-     * 🚀 UNIFIED: Enviar notificación (notification + data) a múltiples tokens usando HTTP v1.
-     * Garantiza que aparezca aun con la app cerrada.
-     * Mantiene el formato de datos previo (type=unified, table_number, message...)
+     * 🚀 UNIFIED: Enviar notificación a múltiples tokens usando HTTP v1.
+     * WEB: Solo data (para que se ejecute onBackgroundMessage)
+     * MÓVIL: notification + data (para mejor UX móvil)
      */
     public function sendUnifiedNotificationToTokens(array $tokens, int $tableNumber, string $message, array $extraData = []): array
     {
@@ -541,7 +541,7 @@ class FirebaseService
 
         $title = "🔔 Mesa {$tableNumber}";
         $body = $message ?: 'Nueva llamada';
-
+        
         // Data base obligatoria
         $baseData = [
             'type' => 'unified',
@@ -550,14 +550,12 @@ class FirebaseService
             'message' => $body,
             'table_number' => (string)$tableNumber,
             'timestamp' => (string) now()->timestamp,
-            // Canal unificado explícito
             'channel_id' => 'mozo_waiter',
         ];
-
-        // Mezclar y asegurar strings en sendToDevice (ya se formatea allí)
+        
         $data = array_merge($baseData, $extraData);
-
-        // Normalizar call_id si viene callId o viceversa
+        
+        // Normalizar call_id
         if (isset($data['callId']) && !isset($data['call_id'])) {
             $data['call_id'] = $data['callId'];
         }
@@ -565,13 +563,49 @@ class FirebaseService
             $data['callId'] = $data['call_id'];
         }
 
+        // 🎯 SEPARAR TOKENS POR PLATAFORMA
+        $tokensByPlatform = DeviceToken::whereIn('token', $tokens)
+            ->get()
+            ->groupBy('platform');
+        
         $sent = 0;
         $results = [];
-        foreach ($tokens as $token) {
+        
+        // WEB: Solo data (para service worker background)
+        if (isset($tokensByPlatform['web'])) {
+            foreach ($tokensByPlatform['web'] as $deviceToken) {
+                try {
+                    $resp = $this->sendDataOnlyToDevice($deviceToken->token, $data);
+                    $results[] = [
+                        'token' => substr($deviceToken->token, 0, 15) . '...',
+                        'platform' => 'web',
+                        'success' => true,
+                        'id' => $resp['name'] ?? null
+                    ];
+                    $sent++;
+                } catch (\Exception $e) {
+                    $results[] = [
+                        'token' => substr($deviceToken->token, 0, 15) . '...',
+                        'platform' => 'web',
+                        'success' => false,
+                        'error' => $e->getMessage()
+                    ];
+                }
+            }
+        }
+        
+        // MÓVIL (Android/iOS): notification + data
+        $mobileTokens = collect(['android', 'ios'])
+            ->flatMap(fn($platform) => $tokensByPlatform[$platform] ?? [])
+            ->pluck('token')
+            ->toArray();
+            
+        foreach ($mobileTokens as $token) {
             try {
                 $resp = $this->sendToDevice($token, $title, $body, $data, 'high');
                 $results[] = [
                     'token' => substr($token, 0, 15) . '...',
+                    'platform' => 'mobile',
                     'success' => true,
                     'id' => $resp['name'] ?? null
                 ];
@@ -579,6 +613,7 @@ class FirebaseService
             } catch (\Exception $e) {
                 $results[] = [
                     'token' => substr($token, 0, 15) . '...',
+                    'platform' => 'mobile',
                     'success' => false,
                     'error' => $e->getMessage()
                 ];
@@ -588,13 +623,49 @@ class FirebaseService
         Log::info('Unified notifications dispatched', [
             'table_number' => $tableNumber,
             'sent' => $sent,
-            'total' => count($tokens)
+            'total' => count($tokens),
+            'web_tokens' => count($tokensByPlatform['web'] ?? []),
+            'mobile_tokens' => count($mobileTokens)
         ]);
-
+        
         return [
             'sent' => $sent,
             'total' => count($tokens),
             'results' => $results
         ];
+    }
+
+    /**
+     * 🌐 Enviar SOLO data a token web (para service worker background)
+     * Sin campo notification, para que Firebase no maneje automáticamente
+     */
+    private function sendDataOnlyToDevice($token, array $data = [])
+    {
+        // FCM HTTP v1 API requiere que todos los valores en 'data' sean strings
+        $formattedData = (object)[];
+        if (!empty($data) && is_array($data)) {
+            foreach ($data as $key => $value) {
+                $formattedData->{$key} = is_array($value) || is_object($value) ? json_encode($value) : (string)$value;
+            }
+        }
+
+        $message = [
+            'message' => [
+                'token' => $token,
+                // 🎯 SOLO DATA - Sin notification para forzar service worker
+                'data' => $formattedData,
+                'webpush' => [
+                    'headers' => [
+                        'Urgency' => 'high'
+                    ],
+                    // 🎯 SIN notification en webpush tampoco
+                    'fcm_options' => [
+                        'link' => rtrim(config('app.url', '/'), '/') . '/'
+                    ]
+                ]
+            ]
+        ];
+
+        return $this->sendMessage($message);
     }
 }
