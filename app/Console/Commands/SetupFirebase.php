@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
-use App\Services\FirebaseRealtimeService;
+use App\Services\UnifiedFirebaseService;
 
 class SetupFirebase extends Command
 {
@@ -82,42 +82,12 @@ class SetupFirebase extends Command
         $this->line('');
 
         try {
-            $firebaseService = app(FirebaseRealtimeService::class);
-            $this->info("✅ FirebaseRealtimeService instantiated");
+            $unified = app(UnifiedFirebaseService::class);
+            $this->info("✅ UnifiedFirebaseService instantiated");
 
-            // Test write operation
-            $testData = [
-                'test' => true,
-                'timestamp' => now()->toISOString(),
-                'message' => 'Firebase connection test from artisan'
-            ];
-
-            // Create a test call object
-            $testCall = new \stdClass();
-            $testCall->id = 'test_' . uniqid();
-            $testCall->table_id = 1;
-            $testCall->waiter_id = 1;
-            $testCall->status = 'pending';
-            $testCall->message = 'Test call';
-            $testCall->called_at = now();
-            $testCall->acknowledged_at = null;
-            $testCall->completed_at = null;
-
-            // Mock relationships
-            $testCall->table = new \stdClass();
-            $testCall->table->number = 999;
-            $testCall->table->business_id = 1;
-            
-            $testCall->waiter = new \stdClass();
-            $testCall->waiter->name = 'Test Waiter';
-
-            $result = $firebaseService->writeWaiterCall($testCall, 'test');
-            
-            if ($result) {
-                $this->info("✅ Firebase write test successful");
-            } else {
-                $this->warn("⚠️  Firebase write test returned false (check logs)");
-            }
+            // Test unified connection
+            $result = $unified->testConnection();
+            $this->info("Estado: " . ($result['status'] ?? 'unknown'));
 
         } catch (\Exception $e) {
             $this->error("❌ Firebase test failed: " . $e->getMessage());

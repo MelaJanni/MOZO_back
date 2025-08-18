@@ -741,47 +741,7 @@ startxref
             $unifiedService = app(\App\Services\UnifiedFirebaseService::class);
             $firebaseWritten = $unifiedService->writeCall($call, 'created');
 
-            // Enviar notificación FCM si es posible
-            try {
-                $firebaseService = app(\App\Services\FirebaseService::class);
-                $title = "🔔 Mesa {$table->number}";
-                $body = $call->message;
-                $data = [
-                    'type' => 'waiter_call',
-                    'call_id' => (string)$call->id,
-                    'table_id' => (string)$table->id,
-                    'table_number' => (string)$table->number,
-                    'urgency' => 'high',
-                    'action' => 'acknowledge_call',
-                    'timestamp' => now()->timestamp
-                ];
-                
-                $firebaseService->sendToUser($call->waiter_id, $title, $body, $data, 'high');
-            } catch (\Exception $fcmError) {
-                \Log::warning('FCM notification failed but call created', [
-                    'call_id' => $call->id,
-                    'error' => $fcmError->getMessage()
-                ]);
-            }
-
-            // 🔥 ENVIAR NOTIFICACIÓN UNIFIED PARA ANDROID (app cerrada)
-            try {
-                $pushService = app(\App\Services\PushNotificationService::class);
-                $waiterTokens = $pushService->getWaiterTokens($business->id);
-                
-                if (!empty($waiterTokens)) {
-                    $pushService->sendUnifiedNotification(
-                        $waiterTokens, 
-                        $table->number, 
-                        $call->message
-                    );
-                }
-            } catch (\Exception $unifiedError) {
-                \Log::warning('UNIFIED notification failed but call created', [
-                    'call_id' => $call->id,
-                    'error' => $unifiedError->getMessage()
-                ]);
-            }
+            // Notificaciones push: ahora se envían dentro de writeCall() via UnifiedFirebaseService
 
             // Redirigir con notification_id para que JavaScript pueda escuchar Firebase
             return redirect()->back()

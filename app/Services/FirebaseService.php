@@ -103,7 +103,11 @@ class FirebaseService
         // 🚀 OPTIMIZACIÓN: Configuración de prioridad para delivery inmediato
         $isHighPriority = $priority === 'high';
         
-        $message = [
+    // Detectar si es notificación unified para forzar canal estándar
+    $isUnified = isset($data['type']) && $data['type'] === 'unified';
+    $forcedChannel = $isUnified ? 'mozo_waiter' : null;
+
+    $message = [
             'message' => [
                 'token' => $token,
                 'notification' => [
@@ -129,17 +133,22 @@ class FirebaseService
                 ],
                 'android' => [
                     'priority' => $isHighPriority ? 'high' : 'normal',
+                    // collapse_key y ttl ayudan a evitar duplicados y descartar mensajes viejos
+                    'collapse_key' => isset($data['call_id']) ? 'call_' . $data['call_id'] : (isset($data['notification_id']) ? $data['notification_id'] : null),
+                    'ttl' => '60s',
                     'notification' => [
                         'priority' => $isHighPriority ? 'high' : 'default',
                         'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
                         'sound' => 'default',
-                        'channel_id' => isset($data['channel_id']) ? $data['channel_id'] : ($isHighPriority ? 'waiter_urgent' : 'waiter_normal'),
-                        'tag' => isset($data['notification_id']) ? $data['notification_id'] : null,
-                        'notification_id' => isset($data['notification_id']) ? $data['notification_id'] : null
+                        // Canal unificado para type=unified; mantiene compatibilidad waiter_* para resto
+                        'channel_id' => $forcedChannel ?? (isset($data['channel_id']) ? $data['channel_id'] : ($isHighPriority ? 'waiter_urgent' : 'waiter_normal')),
+                        'tag' => isset($data['notification_id']) ? $data['notification_id'] : (isset($data['call_id']) ? $data['call_id'] : null),
+                        'notification_id' => isset($data['notification_id']) ? $data['notification_id'] : (isset($data['call_id']) ? $data['call_id'] : null)
                     ],
                     'data' => [
                         'priority' => $isHighPriority ? 'high' : 'normal',
-                        'notification_id' => isset($data['notification_id']) ? $data['notification_id'] : null
+                        'notification_id' => isset($data['notification_id']) ? $data['notification_id'] : (isset($data['call_id']) ? $data['call_id'] : null),
+                        'channel_id' => $forcedChannel ?? (isset($data['channel_id']) ? $data['channel_id'] : null)
                     ]
                 ],
                 'apns' => [
@@ -541,10 +550,20 @@ class FirebaseService
             'message' => $body,
             'table_number' => (string)$tableNumber,
             'timestamp' => (string) now()->timestamp,
+            // Canal unificado explícito
+            'channel_id' => 'mozo_waiter',
         ];
 
         // Mezclar y asegurar strings en sendToDevice (ya se formatea allí)
         $data = array_merge($baseData, $extraData);
+
+        // Normalizar call_id si viene callId o viceversa
+        if (isset($data['callId']) && !isset($data['call_id'])) {
+            $data['call_id'] = $data['callId'];
+        }
+        if (isset($data['call_id']) && !isset($data['callId'])) {
+            $data['callId'] = $data['call_id'];
+        }
 
         $sent = 0;
         $results = [];

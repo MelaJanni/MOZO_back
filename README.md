@@ -7,19 +7,98 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
-## About Laravel
+## MOZO Back-end (Unificación Firebase / FCM)
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+Este proyecto Laravel provee la API y lógica de notificaciones en tiempo real para el ecosistema MOZO.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+### Arquitectura de Notificaciones (Estado Actual)
+1. FUENTE ÚNICA: `UnifiedFirebaseService` escribe la llamada en estructura unificada Realtime Database:
+	 - `active_calls/{call_id}` (datos completos)
+	 - Índices: `waiters/{waiter_id}`, `tables/{table_id}`, `businesses/{business_id}`
+2. FCM HTTP v1: Se envía push (visible con app cerrada) con payload estándar:
+	 - channel: `mozo_waiter`
+	 - data: `{ type: new_call|acknowledged|completed, call_id, table_number, urgency, status }`
+	 - collapse_key: por `call_id` para evitar duplicados
+	 - ttl: 60s (dedupe rápido)
+3. Estados subsecuentes (acknowledged / completed) también via `UnifiedFirebaseService` (update o remove + FCM).
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+### Eliminado (Legacy Eliminado) ✅
+Se removieron completamente servicios anteriores:
+- `FirebaseRealtimeService` (Firestore REST multi-path)
+- `FirebaseRealtimeDatabaseService`
+- `FirebaseRealtimeNotificationService`
+- `PushNotificationService` (server key legacy)
+
+Ahora SOLO se utiliza `FirebaseService` (FCM HTTP v1) + `UnifiedFirebaseService` (estructura unificada y disparo de eventos).
+
+### Flujo Básico
+1. Mesa genera llamada -> crea `WaiterCall` en BD.
+2. `UnifiedFirebaseService::writeCall()` escribe datos + envía FCM `new_call`.
+3. Mozo reconoce -> `writeCall(...,'acknowledged')` + FCM `acknowledged`.
+4. Mozo completa -> `removeCall()` + FCM `completed` + cleanup índices.
+
+### Estructura de Datos Unificada (Ejemplo `active_calls/{id}`)
+```json
+{
+	"id": "123",
+	"table_id": "7",
+	"table_number": 7,
+	"waiter_id": "42",
+	"status": "pending",
+	"message": "Mesa 7 solicita atención",
+	"urgency": "normal",
+	"called_at": 1734567890000,
+	"acknowledged_at": null,
+	"completed_at": null,
+	"business_id": "5",
+	"table": { "id": "7", "number": 7, "name": "Mesa 7", "notifications_enabled": true },
+	"waiter": { "id": "42", "name": "Carlos", "is_online": true, "last_seen": 1734567900000 },
+	"last_updated": 1734567900000,
+	"event_type": "created"
+}
+```
+
+### Payload FCM (ejemplo new_call)
+```json
+{
+	"notification": {
+		"title": "Mesa 7",
+		"body": "Mesa 7 solicita atención"
+	},
+	"data": {
+		"type": "new_call",
+		"call_id": "123",
+		"table_number": "7",
+		"waiter_id": "42",
+		"urgency": "normal",
+		"status": "pending",
+		"source": "unified"
+	},
+	"android": {
+		"notification": { "channel_id": "mozo_waiter" },
+		"collapse_key": "call_123",
+		"ttl": "60s"
+	}
+}
+```
+
+### Migraciones Pendientes (Opcional Futuro)
+- Propagar silencios de mesa a estructura unificada (campo `table.stats` o `table_state`).
+- Topic FCM por negocio para métricas globales en dashboards.
+- Optimizar escrituras paralelas reales (Guzzle Pool) si la carga aumenta.
+
+### Variables de Entorno Clave
+```
+FIREBASE_PROJECT_ID=mozoqr-7d32c
+FIREBASE_SERVICE_ACCOUNT_PATH=storage/app/firebase/firebase.json
+FIREBASE_WEB_API_KEY=...
+```
+
+### Comando de Diagnóstico
+`php artisan firebase:setup --test` (ajustar para unified si se desea ampliar)
+
+---
+Documentación genérica de Laravel omitida para mantener claridad en la arquitectura específica de MOZO.
 
 ## Learning Laravel
 

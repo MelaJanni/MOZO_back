@@ -1,0 +1,148 @@
+{
+  "info": {
+    "name": "MOZO Unified Backend Tests",
+    "description": "Colección para probar el flujo unificado de llamadas de mozo (creación -> acknowledge -> complete) + endpoints de diagnóstico y utilidades.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "https://mozoqr.com" },
+    { "key": "email", "value": "test@example.com" },
+    { "key": "password", "value": "secret" },
+    { "key": "token", "value": "" },
+    { "key": "table_id", "value": "12" },
+    { "key": "call_id", "value": "" },
+    { "key": "fcm_token", "value": "demo_token_123" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [ {"key":"Accept","value":"application/json"} ],
+            "url": { "raw": "{{base_url}}/api/login", "host": ["{{base_url}}"], "path":["api","login"] },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {"key": "email", "value": "{{email}}", "type": "text"},
+                {"key": "password", "value": "{{password}}", "type": "text"}
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let json = {};",
+                  "try { json = pm.response.json(); } catch(e) {}",
+                  "if(json.access_token){ pm.collectionVariables.set('token', json.access_token); }",
+                  "pm.test('Login OK', function(){ pm.expect(pm.response.code).to.be.oneOf([200]); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+            "request": {
+              "method": "POST",
+              "header": [
+                {"key":"Accept","value":"application/json"},
+                {"key":"Authorization","value":"Bearer {{token}}"}
+              ],
+              "url": { "raw": "{{base_url}}/api/logout", "host": ["{{base_url}}"], "path":["api","logout"] }
+            }
+        }
+      ]
+    },
+    {
+      "name": "Firebase / Diagnóstico",
+      "item": [
+        {
+          "name": "Firebase Status",
+          "request": {"method":"GET","header":[],"url":{"raw":"{{base_url}}/api/firebase/status","host":["{{base_url}}"],"path":["api","firebase","status"]}}
+        },
+        {
+          "name": "Firebase Write Test",
+          "request": {"method":"GET","header":[],"url":{"raw":"{{base_url}}/api/firebase/write-test","host":["{{base_url}}"],"path":["api","firebase","write-test"]}}
+        }
+      ]
+    },
+    {
+      "name": "Tables",
+      "item": [
+        {
+          "name": "Create Table",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key":"Accept","value":"application/json"},
+              {"key":"Authorization","value":"Bearer {{token}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"number\": {{table_id}},\n  \"name\": \"Terraza\"\n}"
+            },
+            "url": {"raw":"{{base_url}}/api/tables","host":["{{base_url}}"],"path":["api","tables"]}
+          }
+        },
+        {
+          "name": "List Tables",
+          "request": {"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":{"raw":"{{base_url}}/api/tables","host":["{{base_url}}"],"path":["api","tables"]}}
+        }
+      ]
+    },
+    {
+      "name": "Waiter Calls Flow",
+      "item": [
+        {
+          "name": "Public Create Call",
+          "request": {
+            "method": "POST",
+            "header": [ {"key":"Accept","value":"application/json"} ],
+            "body": {"mode":"raw","raw":"{\n  \"message\": \"Necesito carta\",\n  \"urgency\": \"high\"\n}"},
+            "url": {"raw":"{{base_url}}/api/tables/{{table_id}}/call-waiter","host":["{{base_url}}"],"path":["api","tables","{{table_id}}","call-waiter"]}
+          },
+          "event":[{
+            "listen":"test",
+            "script":{"type":"text/javascript","exec":[
+              "let json={}; try{json=pm.response.json();}catch(e){}",
+              "if(json.call && json.call.id){ pm.collectionVariables.set('call_id', json.call.id); }",
+              "if(json.id){ pm.collectionVariables.set('call_id', json.id); }",
+              "pm.test('Call created', function(){ pm.expect(pm.response.code).to.be.oneOf([200,201]); });"
+            ]}
+          }]
+        },
+        {
+          "name": "Get Pending Calls",
+          "request": {"method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":{"raw":"{{base_url}}/api/waiter/calls/pending","host":["{{base_url}}"],"path":["api","waiter","calls","pending"]}}
+        },
+        {
+          "name": "Acknowledge Call",
+          "request": {"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":{"raw":"{{base_url}}/api/waiter/calls/{{call_id}}/acknowledge","host":["{{base_url}}"],"path":["api","waiter","calls","{{call_id}}","acknowledge"]}}
+        },
+        {
+          "name": "Complete Call",
+          "request": {"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":{"raw":"{{base_url}}/api/waiter/calls/{{call_id}}/complete","host":["{{base_url}}"],"path":["api","waiter","calls","{{call_id}}","complete"]}}
+        }
+      ]
+    },
+    {
+      "name": "FCM Tokens",
+      "item": [
+        {
+          "name": "Register FCM Token",
+          "request": {"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"token\": \"{{fcm_token}}\"\n}"},"url":{"raw":"{{base_url}}/api/waiter/fcm/register","host":["{{base_url}}"],"path":["api","waiter","fcm","register"]}}
+        },
+        {
+          "name": "Test FCM Notification",
+          "request": {"method":"POST","header":[{"key":"Authorization","value":"Bearer {{token}}"}],"url":{"raw":"{{base_url}}/api/waiter/fcm/test","host":["{{base_url}}"],"path":["api","waiter","fcm","test"]}}
+        }
+      ]
+    }
+  ]
+}

@@ -7,7 +7,7 @@ use App\Models\Table;
 use App\Models\TableSilence;
 use App\Models\Business;
 use App\Services\FirebaseService;
-use App\Services\FirebaseRealtimeService;
+use App\Services\UnifiedFirebaseService;
 use App\Notifications\FcmDatabaseNotification;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -19,12 +19,12 @@ use Carbon\Carbon;
 class WaiterCallController extends Controller
 {
     private $firebaseService;
-    private $firebaseRealtimeService;
+    private $unifiedFirebaseService;
 
-    public function __construct(FirebaseService $firebaseService, FirebaseRealtimeService $firebaseRealtimeService)
+    public function __construct(FirebaseService $firebaseService, UnifiedFirebaseService $unifiedFirebaseService)
     {
         $this->firebaseService = $firebaseService;
-        $this->firebaseRealtimeService = $firebaseRealtimeService;
+        $this->unifiedFirebaseService = $unifiedFirebaseService;
     }
 
     /**
@@ -131,7 +131,8 @@ class WaiterCallController extends Controller
                 // 🔥 FIREBASE REALTIME DATABASE DIRECTO
                 $this->writeDirectToFirebaseRealtimeDB($call);
                 
-                $this->firebaseRealtimeService->writeWaiterCall($call, 'created');
+                // Nueva estructura unificada (escritura + FCM)
+                $this->unifiedFirebaseService->writeCall($call, 'created');
             }
 
             return response()->json([
@@ -192,7 +193,7 @@ class WaiterCallController extends Controller
         $this->firebaseService->cancelNotification($call->waiter_id, $notificationId, $call->id);
 
         // 🔥 SOLO ACTUALIZACIÓN EN TIEMPO REAL - NO MÁS PUSH NOTIFICATIONS
-        $this->firebaseRealtimeService->updateWaiterCall($call, 'acknowledged');
+    $this->unifiedFirebaseService->writeCall($call, 'acknowledged');
         
         return response()->json([
             'success' => true,
@@ -242,7 +243,7 @@ class WaiterCallController extends Controller
         $this->firebaseService->cancelNotification($call->waiter_id, $notificationId, $call->id);
 
         // 🔥 SOLO ACTUALIZACIÓN EN TIEMPO REAL - Eliminar de la vista del mozo
-        $this->firebaseRealtimeService->updateWaiterCall($call, 'completed');
+    $this->unifiedFirebaseService->removeCall($call);
 
         return response()->json([
             'success' => true,
@@ -403,11 +404,7 @@ class WaiterCallController extends Controller
         ]);
 
         // 🔥 ESCRIBIR EN FIRESTORE - Mesa silenciada
-        $this->firebaseRealtimeService->writeTableStatus($table, 'silenced', [
-            'silenced_by' => $waiter->name,
-            'duration_minutes' => $durationMinutes,
-            'notes' => $request->input('notes')
-        ]);
+    // (Opcional) Podríamos reflejar silencio en unified structure si se requiere en el futuro
 
         return response()->json([
             'success' => true,
@@ -440,9 +437,7 @@ class WaiterCallController extends Controller
         $silence->unsilence();
 
         // 🔥 ESCRIBIR EN FIRESTORE - Mesa des-silenciada
-        $this->firebaseRealtimeService->writeTableStatus($table, 'unsilenced', [
-            'unsilenced_by' => Auth::user()->name
-        ]);
+    // (Opcional) Actualización de estado de mesa unificada futuro
 
         return response()->json([
             'success' => true,

@@ -4,22 +4,17 @@ namespace App\Http\Controllers;
 
 use App\Models\WaiterCall;
 use App\Models\Table;
-use App\Services\FirebaseRealtimeDatabaseService;
-use App\Services\PushNotificationService;
 use App\Services\UnifiedFirebaseService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class RealtimeWaiterCallController extends Controller
 {
-    private $firebaseService;
     private $unifiedFirebaseService;
 
     public function __construct(
-        FirebaseRealtimeDatabaseService $firebaseService,
         UnifiedFirebaseService $unifiedFirebaseService
     ) {
-        $this->firebaseService = $firebaseService;
         $this->unifiedFirebaseService = $unifiedFirebaseService;
     }
 
@@ -60,30 +55,8 @@ class RealtimeWaiterCallController extends Controller
                 ]
             ]);
 
-            // 2. 🔥 ESTRUCTURA UNIFICADA - Una sola escritura para todas las vistas
+            // 2. 🔥 ESTRUCTURA UNIFICADA - Una sola escritura para todas las vistas (sin fallback legacy)
             $realtimeSuccess = $this->unifiedFirebaseService->writeCall($call, 'created');
-            
-            // 3. 🔥 FALLBACK - Mantener compatibilidad con estructura anterior
-            if (!$realtimeSuccess) {
-                Log::warning('Unified Firebase failed, using fallback', ['call_id' => $call->id]);
-                
-                // Fallback a estructura anterior
-                $this->firebaseService->writeWaiterCall($call);
-                
-                $clientFirebaseData = [
-                    'status' => 'pending',
-                    'table_id' => (string)$table->id,
-                    'waiter_id' => (string)$table->activeWaiter->user_id,
-                    'waiter_name' => $table->activeWaiter->name ?? 'Mozo',
-                    'called_at' => time() * 1000,
-                    'message' => $call->message ?? "Mesa {$table->number} solicita atención"
-                ];
-                
-                \Illuminate\Support\Facades\Http::timeout(3)->put(
-                    "https://mozoqr-7d32c-default-rtdb.firebaseio.com/tables/call_status/{$call->id}.json",
-                    $clientFirebaseData
-                );
-            }
 
             $totalTime = (microtime(true) - $startTime) * 1000;
 
@@ -139,53 +112,7 @@ class RealtimeWaiterCallController extends Controller
             ]);
 
             // 🔥 ESTRUCTURA UNIFICADA - Una sola actualización para todas las vistas
-            $updateSuccess = $this->unifiedFirebaseService->writeCall($call, 'acknowledged');
-            
-            if (!$updateSuccess) {
-                Log::warning('Unified Firebase update failed, using fallback', ['call_id' => $callId]);
-                
-                // 🔥 FALLBACK - Mantener compatibilidad con estructura anterior
-                \Illuminate\Support\Facades\Http::timeout(3)->put(
-                    "https://mozoqr-7d32c-default-rtdb.firebaseio.com/waiters/{$call->waiter_id}/calls/{$call->id}.json",
-                    [
-                        'id' => (string)$call->id,
-                        'table_number' => (int)$call->table->number,
-                        'status' => 'acknowledged',
-                        'acknowledged_at' => time() * 1000,
-                        'message' => $call->message,
-                        'waiter_id' => (string)$call->waiter_id
-                    ]
-                );
-
-                $clientFirebaseData = [
-                    'status' => 'acknowledged',
-                    'table_id' => (string)$call->table_id,
-                    'waiter_id' => (string)$call->waiter_id,
-                    'waiter_name' => $call->waiter->name ?? 'Mozo',
-                    'acknowledged_at' => time() * 1000,
-                    'message' => 'Tu mozo recibió la solicitud'
-                ];
-                
-                \Illuminate\Support\Facades\Http::timeout(3)->put(
-                    "https://mozoqr-7d32c-default-rtdb.firebaseio.com/tables/call_status/{$call->id}.json",
-                    $clientFirebaseData
-                );
-                
-                // Firestore fallback
-                try {
-                    $firestoreService = app(\App\Services\FirebaseRealtimeService::class);
-                    $firestoreService->writeWaiterCall($call, 'acknowledged');
-                    $firestoreService->writeTableStatus($call->table, 'acknowledged', [
-                        'status' => 'acknowledged',
-                        'waiter_id' => (string)$call->waiter_id,
-                        'waiter_name' => $call->waiter->name ?? 'Mozo',
-                        'acknowledged_at' => time() * 1000,
-                        'message' => 'Tu mozo recibió la solicitud'
-                    ]);
-                } catch (\Exception $e) {
-                    Log::warning('Firestore fallback failed', ['error' => $e->getMessage(), 'call_id' => $callId]);
-                }
-            }
+            $this->unifiedFirebaseService->writeCall($call, 'acknowledged');
 
             // 🔥 NO PUSH NOTIFICATION - Solo actualización en tiempo real
             // El cliente verá el cambio via Firebase Realtime Database listener
@@ -224,30 +151,7 @@ class RealtimeWaiterCallController extends Controller
             ]);
 
             // 🔥 ESTRUCTURA UNIFICADA - Marcar como completada y remover automáticamente
-            $removeSuccess = $this->unifiedFirebaseService->removeCall($call);
-            
-            if (!$removeSuccess) {
-                Log::warning('Unified Firebase removal failed, using fallback', ['call_id' => $callId]);
-                
-                // 🔥 FALLBACK - Eliminar usando estructura anterior
-                \Illuminate\Support\Facades\Http::timeout(3)->delete(
-                    "https://mozoqr-7d32c-default-rtdb.firebaseio.com/waiters/{$call->waiter_id}/calls/{$call->id}.json"
-                );
-
-                $clientFirebaseData = [
-                    'status' => 'completed',
-                    'table_id' => (string)$call->table_id,
-                    'waiter_id' => (string)$call->waiter_id,
-                    'waiter_name' => $call->waiter->name ?? 'Mozo',
-                    'completed_at' => time() * 1000,
-                    'message' => 'Servicio completado ✅'
-                ];
-                
-                \Illuminate\Support\Facades\Http::timeout(3)->put(
-                    "https://mozoqr-7d32c-default-rtdb.firebaseio.com/tables/call_status/{$call->id}.json",
-                    $clientFirebaseData
-                );
-            }
+            $this->unifiedFirebaseService->removeCall($call);
 
             // 🔥 NO PUSH NOTIFICATION - Solo actualización en tiempo real
             // El cliente verá el cambio via Firebase Realtime Database listener
@@ -316,8 +220,7 @@ class RealtimeWaiterCallController extends Controller
      */
     public function testFirebase()
     {
-        $result = $this->firebaseService->testConnection();
-        
+        $result = $this->unifiedFirebaseService->testConnection();
         return response()->json([
             'firebase_status' => $result,
             'timestamp' => now()
@@ -366,39 +269,6 @@ class RealtimeWaiterCallController extends Controller
     /**
      * 🔔 ENVIAR NOTIFICACIÓN PUSH AL CLIENTE
      */
-    private function sendClientNotification($call, $status, $message)
-    {
-        try {
-            // 🔥 NOTIFICACIÓN EN TIEMPO REAL (ya implementada via Firebase Realtime)
-            // 🔔 PUSH NOTIFICATION PARA CLIENTES OFFLINE
-            $pushService = new PushNotificationService();
-            $pushSuccess = $pushService->sendToTable($call->table_id, [
-                'title' => $status === 'acknowledged' ? 'Tu mozo está en camino' : 'Servicio completado',
-                'body' => $message,
-                'data' => [
-                    'type' => 'waiter_call_update',
-                    'call_id' => (string)$call->id,
-                    'status' => $status,
-                    'waiter_name' => $call->waiter->name ?? 'Mozo',
-                    'table_id' => (string)$call->table_id
-                ]
-            ]);
-            
-            Log::info("Client notification sent", [
-                'table_id' => $call->table_id,
-                'status' => $status,
-                'message' => $message,
-                'realtime_via_firebase' => true,
-                'push_notification_sent' => $pushSuccess
-            ]);
-            
-        } catch (\Exception $e) {
-            Log::warning('Failed to send client notification', [
-                'error' => $e->getMessage(),
-                'table_id' => $call->table_id
-            ]);
-        }
-    }
 
     /**
      * 🕒 PROGRAMAR LIMPIEZA AUTOMÁTICA DE LLAMADA COMPLETADA

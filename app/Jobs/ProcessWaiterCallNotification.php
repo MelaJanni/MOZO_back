@@ -4,7 +4,7 @@ namespace App\Jobs;
 
 use App\Models\WaiterCall;
 use App\Services\FirebaseService;
-use App\Services\FirebaseRealtimeService;
+use App\Services\UnifiedFirebaseService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -28,7 +28,7 @@ class ProcessWaiterCallNotification implements ShouldQueue
         $this->onQueue('high-priority');
     }
 
-    public function handle(FirebaseService $firebaseService, FirebaseRealtimeService $firebaseRealtimeService)
+    public function handle(FirebaseService $firebaseService, UnifiedFirebaseService $unifiedFirebaseService)
     {
         try {
             // Cargar relaciones necesarias
@@ -43,26 +43,10 @@ class ProcessWaiterCallNotification implements ShouldQueue
                 return;
             }
             
-            // 1. 🔥 FIREBASE REAL-TIME: Escritura INMEDIATA (solo para crear)
-            $firebaseRealtimeService->writeWaiterCall($this->call, 'created');
-            
-            // 2. 🚀 FCM PUSH NOTIFICATION - SOLO PARA LLAMADAS NUEVAS
-            $title = "🔔 Mesa {$this->call->table->number}";
-            $body = $this->call->message;
-            $data = [
-                'type' => 'waiter_call',
-                'call_id' => (string)$this->call->id,
-                'table_id' => (string)$this->call->table->id,
-                'table_number' => (string)$this->call->table->number,
-                'urgency' => $this->call->metadata['urgency'] ?? 'normal',
-                'action' => 'acknowledge_call',
-                'timestamp' => now()->timestamp
-            ];
+            // 1. 🔥 UNIFIED STRUCTURE + FCM (internamente en el servicio)
+            $unifiedFirebaseService->writeCall($this->call, 'created');
 
-            // Una sola notificación push por llamada
-            $firebaseService->sendToUser($this->call->waiter_id, $title, $body, $data, 'high');
-
-            Log::info('NEW waiter call notification sent (push + realtime)', [
+            Log::info('NEW waiter call processed (unified)', [
                 'call_id' => $this->call->id,
                 'waiter_id' => $this->call->waiter_id,
                 'table_id' => $this->call->table->id,

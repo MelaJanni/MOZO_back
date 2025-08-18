@@ -10,6 +10,14 @@ use Illuminate\Support\Facades\Cache;
 class UnifiedFirebaseService
 {
     private $baseUrl = 'https://mozoqr-7d32c-default-rtdb.firebaseio.com';
+    /**
+     * Mapeo de eventType interno -> tipo de data en FCM
+     */
+    private const EVENT_TYPE_MAP = [
+        'created' => 'new_call',
+        'acknowledged' => 'acknowledged',
+        'completed' => 'completed',
+    ];
     
     /**
      * 🔥 CREAR/ACTUALIZAR LLAMADA EN ESTRUCTURA UNIFICADA
@@ -82,6 +90,9 @@ class UnifiedFirebaseService
                 'results' => array_count_values($results)
             ]);
 
+            // 3. 📡 ENVIAR FCM UNIFICADO (solo para eventos soportados)
+            $this->sendUnifiedFcmEvent($call, $eventType);
+
             return true;
 
         } catch (\Exception $e) {
@@ -100,6 +111,10 @@ class UnifiedFirebaseService
     public function removeCall(WaiterCall $call): bool
     {
         try {
+            // Enviar evento de completado antes de eliminar (si status completed)
+            if ($call->status === 'completed') {
+                $this->sendUnifiedFcmEvent($call, 'completed');
+            }
             $promises = [
                 // Eliminar datos principales
                 $this->deleteFromPath("active_calls/{$call->id}"),
@@ -369,6 +384,83 @@ class UnifiedFirebaseService
                 'error' => $e->getMessage(),
                 'timestamp' => now()->toISOString()
             ];
+        }
+    }
+
+    /**
+     * 📡 Enviar evento FCM UNIFIED (new_call / acknowledged / completed)
+     */
+    private function sendUnifiedFcmEvent(WaiterCall $call, string $eventType): void
+    {
+        if (!isset(self::EVENT_TYPE_MAP[$eventType])) {
+            return; // Ignorar eventos no mapeados
+        }
+
+        try {
+            $firebaseService = app(\App\Services\FirebaseService::class);
+
+            // Tokens de mozo (receptor principal). En futuro: también tokens de clientes si existen.
+            $waiterTokens = \App\Models\DeviceToken::where('user_id', $call->waiter_id)
+                ->pluck('token')
+                ->filter()
+                ->unique()
+                ->values()
+                ->toArray();
+
+            if (empty($waiterTokens)) {
+                \Log::info('Unified FCM skipped (no waiter tokens)', [
+                    'call_id' => $call->id,
+                    'event_type' => $eventType
+                ]);
+                return;
+            }
+
+            $data = [
+                'type' => self::EVENT_TYPE_MAP[$eventType],
+                'call_id' => (string)$call->id,
+                'table_id' => (string)$call->table_id,
+                'table_number' => (string)$call->table->number,
+                'waiter_id' => (string)$call->waiter_id,
+                'urgency' => $call->metadata['urgency'] ?? 'normal',
+                'status' => $call->status,
+                'timestamp' => (string) now()->timestamp,
+                'source' => 'unified'
+            ];
+
+            // Mensajes diferenciados
+            switch ($eventType) {
+                case 'created':
+                    $body = $call->message ?: "Mesa {$call->table->number} solicita atención";
+                    break;
+                case 'acknowledged':
+                    $body = "Mesa {$call->table->number} reconocida";
+                    break;
+                case 'completed':
+                    $body = "Mesa {$call->table->number} completada";
+                    break;
+                default:
+                    $body = $call->message ?: 'Actualización de llamada';
+            }
+
+            $firebaseService->sendUnifiedNotificationToTokens(
+                $waiterTokens,
+                (int)$call->table->number,
+                $body,
+                $data
+            );
+
+            \Log::info('Unified FCM event dispatched', [
+                'call_id' => $call->id,
+                'event_type' => $eventType,
+                'tokens' => count($waiterTokens)
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::warning('Failed to send unified FCM event', [
+                'call_id' => $call->id ?? null,
+                'event_type' => $eventType,
+                'error' => $e->getMessage()
+            ]);
         }
     }
 }
