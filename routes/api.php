@@ -168,6 +168,11 @@ Route::middleware('auth:sanctum')->group(function () {
         
         // Estado de mesas
         Route::get('/tables/silenced', [WaiterCallController::class, 'getSilencedTables']);
+        
+        // Gestión de IPs bloqueadas (anti-spam)
+        Route::post('/ip/block', [WaiterCallController::class, 'blockIp']);
+        Route::post('/ip/unblock', [WaiterCallController::class, 'unblockIp']);
+        Route::get('/ip/blocked', [WaiterCallController::class, 'getBlockedIps']);
 
         // Perfiles de mesa - CRUD completo
         Route::get('/table-profiles', [App\Http\Controllers\TableProfileController::class, 'index']);

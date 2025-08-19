@@ -375,13 +375,13 @@
             </section>
 
             <section class="call-waiter-section">
-                <form method="POST" action="{{ route('waiter.call') }}">
+                <form method="POST" action="{{ route('waiter.call') }}" id="call-waiter-form">
                     @csrf
                     <input type="hidden" name="restaurant_id" value="{{ $business->id }}">
                     <input type="hidden" name="table_id" value="{{ $table->id }}">
                     <input type="hidden" name="message" value="Cliente solicita atención">
                     
-                    <button type="submit" class="call-button">
+                    <button type="submit" class="call-button" id="call-waiter-btn">
                         🔔 Llamar Mozo
                     </button>
                 </form>
@@ -415,6 +415,12 @@
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-database-compat.js"></script>
 
     <script>
+        // 🔍 DEBUG: Mostrar IP del cliente en consola
+        const CLIENT_IP = '{{ $clientIp }}';
+        console.log('🌐 IP del cliente que está viendo la página:', CLIENT_IP);
+        console.log('📍 Mesa:', '{{ $table->number }}', '(ID: {{ $table->id }})');
+        console.log('🏪 Restaurante:', '{{ $business->name }}', '(ID: {{ $business->id }})');
+        
         // Solo escuchar Firebase si hay una solicitud pendiente
         const TABLE_ID = {{ $table->id }};
         let currentNotificationId = null;
@@ -531,6 +537,20 @@
         if ('Notification' in window && Notification.permission === 'default') {
             Notification.requestPermission();
         }
+
+        // 🔍 DEBUG: Detectar cuando se hace click en "Llamar Mozo"
+        document.getElementById('call-waiter-form').addEventListener('submit', function(e) {
+            console.log('🔔 LLAMANDO AL MOZO desde IP:', CLIENT_IP);
+            console.log('📋 Datos que se enviarán:', {
+                restaurant_id: {{ $business->id }},
+                table_id: {{ $table->id }},
+                message: 'Cliente solicita atención',
+                ip_address: CLIENT_IP,
+                timestamp: new Date().toISOString()
+            });
+            
+            // El formulario se enviará normalmente después de este log
+        });
 
         // 📋 MANEJO DE ERRORES DEL PDF
         let pdfLoadAttempts = 0;

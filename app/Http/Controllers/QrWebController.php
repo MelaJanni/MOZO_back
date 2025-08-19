@@ -9,12 +9,13 @@ use App\Models\Table;
 
 class QrWebController extends Controller
 {
-    public function showTablePage($restaurantSlug, $tableCode)
+    public function showTablePage(Request $request, $restaurantSlug, $tableCode)
     {
         // Debug: Log what we're looking for
         \Log::info('QR Page Request', [
             'restaurantSlug' => $restaurantSlug,
-            'tableCode' => $tableCode
+            'tableCode' => $tableCode,
+            'client_ip' => $request->ip()
         ]);
 
         // Buscar negocio por múltiples criterios
@@ -91,7 +92,10 @@ class QrWebController extends Controller
             'menu_path' => $defaultMenu ? $defaultMenu->file_path : null
         ]);
         
-        return view('qr.table-page', compact('business', 'table', 'frontendUrl', 'defaultMenu'));
+        // Obtener IP del cliente para mostrar en la página
+        $clientIp = $request->ip();
+        
+        return view('qr.table-page', compact('business', 'table', 'frontendUrl', 'defaultMenu', 'clientIp'));
     }
 
     public function testQr()
