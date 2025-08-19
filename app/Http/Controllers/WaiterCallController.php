@@ -2125,21 +2125,45 @@ class WaiterCallController extends Controller
                 ], 409);
             }
 
-            // Crear el bloqueo
+            // Crear (o reactivar) el bloqueo
             $durationHours = $request->input('duration_hours', 24);
             $expiresAt = $durationHours ? now()->addHours($durationHours) : null;
+            // Si existe un bloqueo previo (histórico) para esta IP (ya desbloqueado) lo reactivamos
+            $historicalBlock = IpBlock::where('ip_address', $ipAddress)
+                ->where('business_id', $call->table->business_id)
+                ->whereNotNull('unblocked_at')
+                ->orderByDesc('blocked_at')
+                ->first();
 
-            $block = IpBlock::blockIp($ipAddress, $call->table->business_id, $waiter->id, [
-                'reason' => $request->input('reason', 'spam'),
-                'notes' => $request->input('notes', "Bloqueado por spam desde mesa {$call->table->number}"),
-                'expires_at' => $expiresAt,
-                'metadata' => [
-                    'call_id' => $call->id,
-                    'table_id' => $call->table_id,
-                    'user_agent' => request()->userAgent(),
-                    'blocked_from_call' => true
-                ]
-            ]);
+            if ($historicalBlock) {
+                $historicalBlock->update([
+                    'reason' => $request->input('reason', 'spam'),
+                    'notes' => $request->input('notes', "Bloqueado por spam desde mesa {$call->table->number}"),
+                    'blocked_at' => now(),
+                    'expires_at' => $expiresAt,
+                    'unblocked_at' => null,
+                    'metadata' => array_merge($historicalBlock->metadata ?? [], [
+                        'reactivated_at' => now()->toIso8601String(),
+                        'reactivated_call_id' => $call->id,
+                        'table_id' => $call->table_id,
+                        'user_agent' => request()->userAgent(),
+                        'blocked_from_call' => true
+                    ])
+                ]);
+                $block = $historicalBlock->fresh();
+            } else {
+                $block = IpBlock::blockIp($ipAddress, $call->table->business_id, $waiter->id, [
+                    'reason' => $request->input('reason', 'spam'),
+                    'notes' => $request->input('notes', "Bloqueado por spam desde mesa {$call->table->number}"),
+                    'expires_at' => $expiresAt,
+                    'metadata' => [
+                        'call_id' => $call->id,
+                        'table_id' => $call->table_id,
+                        'user_agent' => request()->userAgent(),
+                        'blocked_from_call' => true
+                    ]
+                ]);
+            }
 
             // También silenciar la mesa automáticamente si no está silenciada
             $activeSilence = TableSilence::where('table_id', $call->table_id)->active()->first();
@@ -2411,7 +2435,15 @@ class WaiterCallController extends Controller
 
         try {
             $ipAddress = $request->input('ip_address', $request->ip());
-            $businessId = $request->input('business_id', 1); // Default McDonalds
+            $waiter = Auth::user();
+            $businessId = $request->input('business_id', $waiter?->active_business_id);
+
+            if (!$businessId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se pudo determinar el business_id (proporcione business_id o seleccione un negocio activo)'
+                ], 400);
+            }
 
             // 1. Verificar todos los registros de bloqueo para esta IP
             $allBlocks = IpBlock::where('ip_address', $ipAddress)
@@ -2486,7 +2518,15 @@ class WaiterCallController extends Controller
 
         try {
             $ipAddress = $request->ip_address;
-            $businessId = $request->input('business_id', 1); // Default McDonalds
+            $waiter = Auth::user();
+            $businessId = $request->input('business_id', $waiter?->active_business_id);
+
+            if (!$businessId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se pudo determinar el business_id para desbloquear (proporcione business_id o seleccione un negocio activo)'
+                ], 400);
+            }
 
             // 1. Encontrar TODOS los bloqueos activos para esta IP
             $activeBlocks = IpBlock::where('ip_address', $ipAddress)
