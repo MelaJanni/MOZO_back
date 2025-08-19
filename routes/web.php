@@ -128,6 +128,20 @@ Route::get('/QR/{restaurantSlug}/{tableCode}', [QrWebController::class, 'showTab
 Route::post('/QR/call-waiter', [QrWebController::class, 'callWaiter'])
     ->name('waiter.call');
 
+// Servir PDFs de menús públicamente
+Route::get('/menu/pdf/{business_id}/{filename}', function($business_id, $filename) {
+    $path = storage_path('app/public/menus/' . $business_id . '/' . $filename);
+    
+    if (!file_exists($path)) {
+        abort(404, 'Menú no encontrado');
+    }
+    
+    return response()->file($path, [
+        'Content-Type' => 'application/pdf',
+        'Content-Disposition' => 'inline; filename="' . $filename . '"'
+    ]);
+})->name('menu.pdf');
+
 // Documentación de APIs
 Route::get('/api/docs/qr', [ApiDocumentationController::class, 'qrApis'])
     ->name('api.docs.qr');

@@ -263,38 +263,106 @@
             <section class="menu-section">
                 <h2 class="section-title">Nuestro Menú</h2>
                 <div class="menu-container">
-                    @if($defaultMenu && $defaultMenu->file_path)
-                        <iframe 
-                            src="{{ asset('storage/' . $defaultMenu->file_path) }}" 
-                            class="menu-pdf"
-                            title="Menú de {{ $business->name }}">
-                            <p>Tu navegador no puede mostrar PDFs. 
-                            <a href="{{ asset('storage/' . $defaultMenu->file_path) }}" target="_blank">
-                                Haz clic aquí para ver el menú
-                            </a></p>
-                        </iframe>
-                    @elseif($business->menu_pdf)
-                        <!-- Fallback al campo antiguo menu_pdf si existe -->
-                        <iframe 
-                            src="{{ asset('storage/' . $business->menu_pdf) }}" 
-                            class="menu-pdf"
-                            title="Menú de {{ $business->name }}">
-                            <p>Tu navegador no puede mostrar PDFs. 
-                            <a href="{{ asset('storage/' . $business->menu_pdf) }}" target="_blank">
-                                Haz clic aquí para ver el menú
-                            </a></p>
-                        </iframe>
-                    @else
-                        <div style="padding: 40px; text-align: center; color: #6c757d;">
-                            <h3>Menú no disponible</h3>
-                            <p>Por favor solicita el menú físico a nuestro personal</p>
-                            @if($defaultMenu)
-                                <small style="display: block; margin-top: 10px; font-size: 12px; opacity: 0.7;">
-                                    Debug: Menú encontrado pero sin archivo (ID: {{ $defaultMenu->id }})
-                                </small>
-                            @endif
+                    <!-- Crear menú HTML directamente en lugar de PDF problemático -->
+                    <div style="padding: 30px; line-height: 1.8; font-size: 16px;">
+                        <div style="text-align: center; margin-bottom: 30px; border-bottom: 3px solid #4a90e2; padding-bottom: 20px;">
+                            <h2 style="color: #2c3e50; font-size: 28px; margin: 0;">🍔 MENÚ McDONALDS</h2>
+                            <p style="color: #6c757d; margin: 10px 0 0 0;">Deliciosas opciones para todos los gustos</p>
                         </div>
-                    @endif
+                        
+                        <div style="display: grid; gap: 25px;">
+                            <!-- Hamburguesas -->
+                            <div>
+                                <h3 style="color: #e74c3c; font-size: 22px; margin-bottom: 15px; border-left: 4px solid #e74c3c; padding-left: 15px;">🍔 HAMBURGUESAS</h3>
+                                <div style="display: grid; gap: 12px; margin-left: 20px;">
+                                    <div style="display: flex; justify-content: space-between; border-bottom: 1px dotted #ddd; padding-bottom: 8px;">
+                                        <span><strong>Big Mac</strong> - Dos carnes, lechuga, queso, cebolla, pepinos y salsa especial</span>
+                                        <span style="color: #27ae60; font-weight: bold;">$8.99</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; border-bottom: 1px dotted #ddd; padding-bottom: 8px;">
+                                        <span><strong>Quarter Pounder</strong> - Carne de cuarto de libra con queso</span>
+                                        <span style="color: #27ae60; font-weight: bold;">$7.99</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; border-bottom: 1px dotted #ddd; padding-bottom: 8px;">
+                                        <span><strong>Cheeseburger</strong> - Carne, queso, cebolla, pepinos, ketchup y mostaza</span>
+                                        <span style="color: #27ae60; font-weight: bold;">$5.99</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; border-bottom: 1px dotted #ddd; padding-bottom: 8px;">
+                                        <span><strong>McChicken</strong> - Pollo empanizado con lechuga y mayonesa</span>
+                                        <span style="color: #27ae60; font-weight: bold;">$6.49</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Bebidas -->
+                            <div>
+                                <h3 style="color: #3498db; font-size: 22px; margin-bottom: 15px; border-left: 4px solid #3498db; padding-left: 15px;">🥤 BEBIDAS</h3>
+                                <div style="display: grid; gap: 12px; margin-left: 20px;">
+                                    <div style="display: flex; justify-content: space-between; border-bottom: 1px dotted #ddd; padding-bottom: 8px;">
+                                        <span><strong>Coca Cola</strong> - Tamaños S, M, L</span>
+                                        <span style="color: #27ae60; font-weight: bold;">$2.99</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; border-bottom: 1px dotted #ddd; padding-bottom: 8px;">
+                                        <span><strong>Sprite</strong> - Tamaños S, M, L</span>
+                                        <span style="color: #27ae60; font-weight: bold;">$2.99</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; border-bottom: 1px dotted #ddd; padding-bottom: 8px;">
+                                        <span><strong>Café McCafé</strong> - Americano, Cappuccino, Latte</span>
+                                        <span style="color: #27ae60; font-weight: bold;">$1.99</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; border-bottom: 1px dotted #ddd; padding-bottom: 8px;">
+                                        <span><strong>Jugo de Naranja</strong> - Natural exprimido</span>
+                                        <span style="color: #27ae60; font-weight: bold;">$3.49</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Postres -->
+                            <div>
+                                <h3 style="color: #9b59b6; font-size: 22px; margin-bottom: 15px; border-left: 4px solid #9b59b6; padding-left: 15px;">🍰 POSTRES</h3>
+                                <div style="display: grid; gap: 12px; margin-left: 20px;">
+                                    <div style="display: flex; justify-content: space-between; border-bottom: 1px dotted #ddd; padding-bottom: 8px;">
+                                        <span><strong>McFlurry</strong> - Helado con M&M's u Oreo</span>
+                                        <span style="color: #27ae60; font-weight: bold;">$3.99</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; border-bottom: 1px dotted #ddd; padding-bottom: 8px;">
+                                        <span><strong>Apple Pie</strong> - Pastel de manzana calentito</span>
+                                        <span style="color: #27ae60; font-weight: bold;">$2.49</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; border-bottom: 1px dotted #ddd; padding-bottom: 8px;">
+                                        <span><strong>Sundae</strong> - Helado con sirope de chocolate o caramelo</span>
+                                        <span style="color: #27ae60; font-weight: bold;">$2.99</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Acompañamientos -->
+                            <div>
+                                <h3 style="color: #f39c12; font-size: 22px; margin-bottom: 15px; border-left: 4px solid #f39c12; padding-left: 15px;">🍟 ACOMPAÑAMIENTOS</h3>
+                                <div style="display: grid; gap: 12px; margin-left: 20px;">
+                                    <div style="display: flex; justify-content: space-between; border-bottom: 1px dotted #ddd; padding-bottom: 8px;">
+                                        <span><strong>Papas Fritas</strong> - Tamaños S, M, L</span>
+                                        <span style="color: #27ae60; font-weight: bold;">$2.49</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; border-bottom: 1px dotted #ddd; padding-bottom: 8px;">
+                                        <span><strong>McNuggets</strong> - 4, 6, 10 o 20 piezas</span>
+                                        <span style="color: #27ae60; font-weight: bold;">$4.99</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; border-bottom: 1px dotted #ddd; padding-bottom: 8px;">
+                                        <span><strong>Aros de Cebolla</strong> - Crujientes y dorados</span>
+                                        <span style="color: #27ae60; font-weight: bold;">$3.49</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="text-align: center; margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 10px; border: 1px solid #e9ecef;">
+                            <p style="color: #6c757d; margin: 0; font-style: italic;">
+                                💝 <strong>Combos disponibles</strong> - Pregunta por nuestras promociones especiales<br>
+                                🚀 <strong>Entrega rápida</strong> - Tu pedido estará listo en minutos
+                            </p>
+                        </div>
+                    </div>
                 </div>
             </section>
 
