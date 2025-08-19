@@ -137,13 +137,11 @@ class FirebaseService
                     'collapse_key' => isset($data['call_id']) ? 'call_' . $data['call_id'] : (isset($data['notification_id']) ? $data['notification_id'] : null),
                     'ttl' => '60s',
                     'notification' => [
-                        'priority' => $isHighPriority ? 'high' : 'default',
                         'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
                         'sound' => 'default',
                         // Canal unificado para type=unified; mantiene compatibilidad waiter_* para resto
                         'channel_id' => $forcedChannel ?? (isset($data['channel_id']) ? $data['channel_id'] : ($isHighPriority ? 'waiter_urgent' : 'waiter_normal')),
-                        'tag' => isset($data['notification_id']) ? $data['notification_id'] : (isset($data['call_id']) ? $data['call_id'] : null),
-                        'notification_id' => isset($data['notification_id']) ? $data['notification_id'] : (isset($data['call_id']) ? $data['call_id'] : null)
+                        'tag' => isset($data['notification_id']) ? $data['notification_id'] : (isset($data['call_id']) ? $data['call_id'] : null)
                     ],
                     'data' => [
                         'priority' => $isHighPriority ? 'high' : 'normal',
