@@ -464,6 +464,18 @@
                 const data = snapshot.val();
                 console.log('🔍 Firebase data received:', data);
                 
+                // 🛡️ DEBUG: Mostrar info de seguridad de Firebase
+                if (data && data.client_info) {
+                    console.log('🛡️ INFO DE SEGURIDAD EN FIREBASE:', data.client_info);
+                    
+                    // Verificar si es una IP potencialmente spam
+                    if (data.client_info.ip_address) {
+                        console.log('📍 IP de origen de la llamada:', data.client_info.ip_address);
+                        console.log('🖥️ User Agent:', data.client_info.user_agent);
+                        console.log('🎯 Fuente:', data.client_info.source_type || data.client_info.source);
+                    }
+                }
+                
                 if (data && data.status === 'acknowledged') {
                     console.log('🎉 ACKNOWLEDGED! Mozo confirmó la solicitud');
                     showAcknowledgedMessage(data.waiter?.name || data.waiter_name);
@@ -585,6 +597,17 @@
                 console.log('📡 Respuesta del servidor:', data);
                 
                 if (response.ok && data.success) {
+                    // 🛡️ DEBUG: Mostrar info de seguridad
+                    if (data.data && data.data.client_info) {
+                        console.log('🛡️ INFO DE SEGURIDAD GUARDADA:', data.data.client_info);
+                        console.log('📊 DATOS COMPLETOS DE LA LLAMADA:', data.data);
+                        
+                        // Si es un dispositivo bloqueado, mostrar advertencia
+                        if (data.blocked_ip) {
+                            console.warn('🚫 ATENCIÓN: Esta IP está bloqueada por spam');
+                        }
+                    }
+                    
                     // Éxito - mostrar mensaje y empezar Firebase listener
                     showStatusMessage('success', '🎉 ' + (data.message || 'Mozo llamado exitosamente'));
                     

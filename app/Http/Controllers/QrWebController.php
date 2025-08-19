@@ -772,7 +772,10 @@ startxref
                 'metadata' => [
                     'urgency' => 'high', // QR calls are always high priority
                     'source' => 'qr_page',
-                    'ip_address' => $request->ip()
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $request->userAgent(),
+                    'referer' => $request->headers->get('referer'),
+                    'ajax_call' => $request->expectsJson() || $request->ajax()
                 ]
             ]);
 
@@ -794,7 +797,13 @@ startxref
                         'table_number' => $table->number,
                         'waiter_name' => $table->activeWaiter->name ?? 'Mozo',
                         'called_at' => $call->called_at,
-                        'status' => 'pending'
+                        'status' => 'pending',
+                        // 🛡️ Info de seguridad para debug frontend
+                        'client_info' => [
+                            'ip_address' => $call->metadata['ip_address'] ?? null,
+                            'user_agent' => $call->metadata['user_agent'] ?? null,
+                            'source' => $call->metadata['source'] ?? 'qr_page'
+                        ]
                     ]
                 ]);
             }

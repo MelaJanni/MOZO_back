@@ -134,7 +134,9 @@ class WaiterCallController extends Controller
                 'metadata' => [
                     'client_info' => $request->input('client_info'),
                     'urgency' => $request->input('urgency', 'normal'),
-                    'ip_address' => $request->ip()
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $request->userAgent(),
+                    'source' => 'api_call'
                 ]
             ]);
 
@@ -1168,7 +1170,9 @@ class WaiterCallController extends Controller
                 'metadata' => [
                     'urgency' => $request->input('urgency', 'normal'),
                     'restaurant_id' => $request->input('restaurant_id'),
-                    'source' => 'legacy_frontend'
+                    'source' => 'legacy_frontend',
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $request->userAgent()
                 ]
             ]);
 
@@ -1184,7 +1188,13 @@ class WaiterCallController extends Controller
                     'status' => 'pending',
                     'timestamp' => time() * 1000,
                     'called_at' => time() * 1000,
-                    'waiter_id' => (string)$call->waiter_id
+                    'waiter_id' => (string)$call->waiter_id,
+                    // 🛡️ Información de seguridad
+                    'client_info' => [
+                        'ip_address' => $call->metadata['ip_address'] ?? null,
+                        'user_agent' => $call->metadata['user_agent'] ?? null,
+                        'source' => $call->metadata['source'] ?? 'legacy_frontend'
+                    ]
                 ]
             );
             
@@ -1196,7 +1206,13 @@ class WaiterCallController extends Controller
                     'waiter_id' => $call->waiter_id,
                     'table_number' => $table->number,
                     'message' => $call->message,
-                    'created_at' => now()->toIso8601String()
+                    'created_at' => now()->toIso8601String(),
+                    // 🛡️ Información de seguridad
+                    'client_info' => [
+                        'ip_address' => $call->metadata['ip_address'] ?? null,
+                        'user_agent' => $call->metadata['user_agent'] ?? null,
+                        'source' => $call->metadata['source'] ?? 'legacy_frontend'
+                    ]
                 ]
             );
             

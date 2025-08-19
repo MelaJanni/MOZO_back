@@ -49,6 +49,14 @@ class UnifiedFirebaseService
                 'source' => $call->metadata['source'] ?? 'qr_page',
                 'business_id' => (string)$call->table->business_id,
                 
+                // 🛡️ Información de seguridad y tracking
+                'client_info' => [
+                    'ip_address' => $call->metadata['ip_address'] ?? null,
+                    'user_agent' => $call->metadata['user_agent'] ?? null,
+                    'source_type' => $call->metadata['source'] ?? 'unknown',
+                    'timestamp' => $call->called_at->timestamp * 1000
+                ],
+                
                 // Información completa de mesa
                 'table' => [
                     'id' => (string)$call->table->id,
