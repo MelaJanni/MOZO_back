@@ -263,106 +263,114 @@
             <section class="menu-section">
                 <h2 class="section-title">Nuestro Menú</h2>
                 <div class="menu-container">
-                    <!-- Crear menú HTML directamente en lugar de PDF problemático -->
-                    <div style="padding: 30px; line-height: 1.8; font-size: 16px;">
-                        <div style="text-align: center; margin-bottom: 30px; border-bottom: 3px solid #4a90e2; padding-bottom: 20px;">
-                            <h2 style="color: #2c3e50; font-size: 28px; margin: 0;">🍔 MENÚ McDONALDS</h2>
-                            <p style="color: #6c757d; margin: 10px 0 0 0;">Deliciosas opciones para todos los gustos</p>
-                        </div>
+                    @if($defaultMenu && $defaultMenu->file_path)
+                        @php
+                            // Usar la ruta Laravel para servir PDFs
+                            $filename = basename($defaultMenu->file_path);
+                            $menuUrl = route('menu.pdf', ['business_id' => $business->id, 'filename' => $filename]);
+                        @endphp
                         
-                        <div style="display: grid; gap: 25px;">
-                            <!-- Hamburguesas -->
-                            <div>
-                                <h3 style="color: #e74c3c; font-size: 22px; margin-bottom: 15px; border-left: 4px solid #e74c3c; padding-left: 15px;">🍔 HAMBURGUESAS</h3>
-                                <div style="display: grid; gap: 12px; margin-left: 20px;">
-                                    <div style="display: flex; justify-content: space-between; border-bottom: 1px dotted #ddd; padding-bottom: 8px;">
-                                        <span><strong>Big Mac</strong> - Dos carnes, lechuga, queso, cebolla, pepinos y salsa especial</span>
-                                        <span style="color: #27ae60; font-weight: bold;">$8.99</span>
-                                    </div>
-                                    <div style="display: flex; justify-content: space-between; border-bottom: 1px dotted #ddd; padding-bottom: 8px;">
-                                        <span><strong>Quarter Pounder</strong> - Carne de cuarto de libra con queso</span>
-                                        <span style="color: #27ae60; font-weight: bold;">$7.99</span>
-                                    </div>
-                                    <div style="display: flex; justify-content: space-between; border-bottom: 1px dotted #ddd; padding-bottom: 8px;">
-                                        <span><strong>Cheeseburger</strong> - Carne, queso, cebolla, pepinos, ketchup y mostaza</span>
-                                        <span style="color: #27ae60; font-weight: bold;">$5.99</span>
-                                    </div>
-                                    <div style="display: flex; justify-content: space-between; border-bottom: 1px dotted #ddd; padding-bottom: 8px;">
-                                        <span><strong>McChicken</strong> - Pollo empanizado con lechuga y mayonesa</span>
-                                        <span style="color: #27ae60; font-weight: bold;">$6.49</span>
-                                    </div>
-                                </div>
+                        <!-- Mostrar PDF dinámico del admin -->
+                        <div id="menu-pdf-container" style="position: relative; height: 600px; overflow: hidden;">
+                            <iframe 
+                                id="menu-pdf-iframe"
+                                src="{{ $menuUrl }}"
+                                class="menu-pdf"
+                                title="Menú de {{ $business->name }}"
+                                onload="handlePdfLoad()"
+                                onerror="handlePdfError()">
+                            </iframe>
+                            
+                            <!-- Botón para abrir en nueva pestaña -->
+                            <div style="position: absolute; bottom: 10px; right: 10px; z-index: 10;">
+                                <a href="{{ $menuUrl }}" 
+                                   target="_blank" 
+                                   style="background: #4a90e2; color: white; padding: 8px 16px; border-radius: 20px; text-decoration: none; font-size: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+                                    📱 Abrir menú
+                                </a>
                             </div>
+                        </div>
 
-                            <!-- Bebidas -->
-                            <div>
-                                <h3 style="color: #3498db; font-size: 22px; margin-bottom: 15px; border-left: 4px solid #3498db; padding-left: 15px;">🥤 BEBIDAS</h3>
-                                <div style="display: grid; gap: 12px; margin-left: 20px;">
-                                    <div style="display: flex; justify-content: space-between; border-bottom: 1px dotted #ddd; padding-bottom: 8px;">
-                                        <span><strong>Coca Cola</strong> - Tamaños S, M, L</span>
-                                        <span style="color: #27ae60; font-weight: bold;">$2.99</span>
-                                    </div>
-                                    <div style="display: flex; justify-content: space-between; border-bottom: 1px dotted #ddd; padding-bottom: 8px;">
-                                        <span><strong>Sprite</strong> - Tamaños S, M, L</span>
-                                        <span style="color: #27ae60; font-weight: bold;">$2.99</span>
-                                    </div>
-                                    <div style="display: flex; justify-content: space-between; border-bottom: 1px dotted #ddd; padding-bottom: 8px;">
-                                        <span><strong>Café McCafé</strong> - Americano, Cappuccino, Latte</span>
-                                        <span style="color: #27ae60; font-weight: bold;">$1.99</span>
-                                    </div>
-                                    <div style="display: flex; justify-content: space-between; border-bottom: 1px dotted #ddd; padding-bottom: 8px;">
-                                        <span><strong>Jugo de Naranja</strong> - Natural exprimido</span>
-                                        <span style="color: #27ae60; font-weight: bold;">$3.49</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Postres -->
-                            <div>
-                                <h3 style="color: #9b59b6; font-size: 22px; margin-bottom: 15px; border-left: 4px solid #9b59b6; padding-left: 15px;">🍰 POSTRES</h3>
-                                <div style="display: grid; gap: 12px; margin-left: 20px;">
-                                    <div style="display: flex; justify-content: space-between; border-bottom: 1px dotted #ddd; padding-bottom: 8px;">
-                                        <span><strong>McFlurry</strong> - Helado con M&M's u Oreo</span>
-                                        <span style="color: #27ae60; font-weight: bold;">$3.99</span>
-                                    </div>
-                                    <div style="display: flex; justify-content: space-between; border-bottom: 1px dotted #ddd; padding-bottom: 8px;">
-                                        <span><strong>Apple Pie</strong> - Pastel de manzana calentito</span>
-                                        <span style="color: #27ae60; font-weight: bold;">$2.49</span>
-                                    </div>
-                                    <div style="display: flex; justify-content: space-between; border-bottom: 1px dotted #ddd; padding-bottom: 8px;">
-                                        <span><strong>Sundae</strong> - Helado con sirope de chocolate o caramelo</span>
-                                        <span style="color: #27ae60; font-weight: bold;">$2.99</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Acompañamientos -->
-                            <div>
-                                <h3 style="color: #f39c12; font-size: 22px; margin-bottom: 15px; border-left: 4px solid #f39c12; padding-left: 15px;">🍟 ACOMPAÑAMIENTOS</h3>
-                                <div style="display: grid; gap: 12px; margin-left: 20px;">
-                                    <div style="display: flex; justify-content: space-between; border-bottom: 1px dotted #ddd; padding-bottom: 8px;">
-                                        <span><strong>Papas Fritas</strong> - Tamaños S, M, L</span>
-                                        <span style="color: #27ae60; font-weight: bold;">$2.49</span>
-                                    </div>
-                                    <div style="display: flex; justify-content: space-between; border-bottom: 1px dotted #ddd; padding-bottom: 8px;">
-                                        <span><strong>McNuggets</strong> - 4, 6, 10 o 20 piezas</span>
-                                        <span style="color: #27ae60; font-weight: bold;">$4.99</span>
-                                    </div>
-                                    <div style="display: flex; justify-content: space-between; border-bottom: 1px dotted #ddd; padding-bottom: 8px;">
-                                        <span><strong>Aros de Cebolla</strong> - Crujientes y dorados</span>
-                                        <span style="color: #27ae60; font-weight: bold;">$3.49</span>
-                                    </div>
+                        <!-- Mensaje de fallback si el PDF no carga -->
+                        <div id="menu-fallback" style="display: none; padding: 40px; text-align: center; color: #6c757d;">
+                            <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 10px; padding: 30px; margin: 20px 0;">
+                                <h3 style="color: #856404; margin-bottom: 15px;">📋 Menú no disponible temporalmente</h3>
+                                <p style="color: #856404; margin-bottom: 20px; font-size: 16px;">
+                                    No pudimos cargar el menú digital en este momento.
+                                </p>
+                                <div style="background: #e3f2fd; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                                    <p style="color: #1976d2; font-weight: 600; margin-bottom: 10px;">
+                                        💡 ¿Qué puedes hacer?
+                                    </p>
+                                    <p style="color: #1976d2; margin: 0;">
+                                        Llama a nuestro mozo usando el botón de abajo y te traeremos el menú físico de inmediato.
+                                    </p>
                                 </div>
                             </div>
                         </div>
 
-                        <div style="text-align: center; margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 10px; border: 1px solid #e9ecef;">
-                            <p style="color: #6c757d; margin: 0; font-style: italic;">
-                                💝 <strong>Combos disponibles</strong> - Pregunta por nuestras promociones especiales<br>
-                                🚀 <strong>Entrega rápida</strong> - Tu pedido estará listo en minutos
-                            </p>
+                    @elseif($business->menu_pdf)
+                        @php
+                            // Fallback al campo menu_pdf antiguo
+                            $filename = basename($business->menu_pdf);
+                            $menuUrl = route('menu.pdf', ['business_id' => $business->id, 'filename' => $filename]);
+                        @endphp
+                        
+                        <div id="menu-pdf-container" style="position: relative; height: 600px; overflow: hidden;">
+                            <iframe 
+                                id="menu-pdf-iframe"
+                                src="{{ $menuUrl }}"
+                                class="menu-pdf"
+                                title="Menú de {{ $business->name }}"
+                                onload="handlePdfLoad()"
+                                onerror="handlePdfError()">
+                            </iframe>
+                            
+                            <div style="position: absolute; bottom: 10px; right: 10px; z-index: 10;">
+                                <a href="{{ $menuUrl }}" 
+                                   target="_blank" 
+                                   style="background: #4a90e2; color: white; padding: 8px 16px; border-radius: 20px; text-decoration: none; font-size: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+                                    📱 Abrir menú
+                                </a>
+                            </div>
                         </div>
-                    </div>
+
+                        <div id="menu-fallback" style="display: none; padding: 40px; text-align: center; color: #6c757d;">
+                            <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 10px; padding: 30px; margin: 20px 0;">
+                                <h3 style="color: #856404; margin-bottom: 15px;">📋 Menú no disponible temporalmente</h3>
+                                <p style="color: #856404; margin-bottom: 20px; font-size: 16px;">
+                                    No pudimos cargar el menú digital en este momento.
+                                </p>
+                                <div style="background: #e3f2fd; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                                    <p style="color: #1976d2; font-weight: 600; margin-bottom: 10px;">
+                                        💡 ¿Qué puedes hacer?
+                                    </p>
+                                    <p style="color: #1976d2; margin: 0;">
+                                        Llama a nuestro mozo usando el botón de abajo y te traeremos el menú físico de inmediato.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                    @else
+                        <!-- No hay menú configurado -->
+                        <div style="padding: 40px; text-align: center; color: #6c757d;">
+                            <div style="background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 10px; padding: 30px; margin: 20px 0;">
+                                <h3 style="color: #721c24; margin-bottom: 15px;">📋 Menú no configurado</h3>
+                                <p style="color: #721c24; margin-bottom: 20px; font-size: 16px;">
+                                    Este restaurante aún no ha subido su menú digital.
+                                </p>
+                                <div style="background: #e3f2fd; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                                    <p style="color: #1976d2; font-weight: 600; margin-bottom: 10px;">
+                                        💡 Solicita el menú físico
+                                    </p>
+                                    <p style="color: #1976d2; margin: 0;">
+                                        Llama a nuestro mozo y te traerá el menú físico para que puedas revisar todas nuestras opciones.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
                 </div>
             </section>
 
@@ -523,6 +531,57 @@
         if ('Notification' in window && Notification.permission === 'default') {
             Notification.requestPermission();
         }
+
+        // 📋 MANEJO DE ERRORES DEL PDF
+        let pdfLoadAttempts = 0;
+        const maxPdfLoadAttempts = 3;
+
+        function handlePdfLoad() {
+            console.log('✅ PDF cargado correctamente');
+            // El PDF se cargó bien, no hacer nada
+        }
+
+        function handlePdfError() {
+            console.log('❌ Error cargando PDF, intento:', pdfLoadAttempts + 1);
+            pdfLoadAttempts++;
+            
+            if (pdfLoadAttempts >= maxPdfLoadAttempts) {
+                showPdfFallback();
+            }
+        }
+
+        function showPdfFallback() {
+            console.log('📋 Mostrando mensaje de fallback del menú');
+            
+            // Ocultar el iframe del PDF
+            const pdfContainer = document.getElementById('menu-pdf-container');
+            const fallbackContainer = document.getElementById('menu-fallback');
+            
+            if (pdfContainer && fallbackContainer) {
+                pdfContainer.style.display = 'none';
+                fallbackContainer.style.display = 'block';
+            }
+        }
+
+        // Detectar si el PDF no carga después de un tiempo
+        setTimeout(() => {
+            const iframe = document.getElementById('menu-pdf-iframe');
+            if (iframe) {
+                // Verificar si el iframe está realmente mostrando contenido
+                try {
+                    // Si el iframe no tiene contenido válido después de 5 segundos, mostrar fallback
+                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                    if (!iframeDoc || iframeDoc.body.innerHTML.trim() === '') {
+                        console.log('⏰ Timeout: PDF no cargó en 5 segundos');
+                        showPdfFallback();
+                    }
+                } catch (e) {
+                    // Si hay un error de CORS o acceso, asumimos que el PDF no cargó
+                    console.log('🔒 No se puede acceder al contenido del iframe, probablemente PDF no disponible');
+                    // No mostrar fallback inmediatamente por CORS, solo si realmente falla
+                }
+            }
+        }, 5000); // 5 segundos de timeout
     </script>
 </body>
 </html>

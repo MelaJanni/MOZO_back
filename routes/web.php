@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\QrWebController;
 use App\Http\Controllers\ApiDocumentationController;
 
@@ -130,16 +131,70 @@ Route::post('/QR/call-waiter', [QrWebController::class, 'callWaiter'])
 
 // Servir PDFs de menús públicamente
 Route::get('/menu/pdf/{business_id}/{filename}', function($business_id, $filename) {
-    $path = storage_path('app/public/menus/' . $business_id . '/' . $filename);
-    
-    if (!file_exists($path)) {
-        abort(404, 'Menú no encontrado');
+    try {
+        // Validar que business_id sea numérico
+        if (!is_numeric($business_id)) {
+            abort(404, 'Negocio no válido');
+        }
+
+        // Sanitizar el nombre del archivo para prevenir path traversal
+        $filename = basename($filename);
+        $path = storage_path('app/public/menus/' . $business_id . '/' . $filename);
+        
+        // Verificar que el archivo existe
+        if (!file_exists($path)) {
+            Log::warning('PDF menú no encontrado', [
+                'business_id' => $business_id,
+                'filename' => $filename,
+                'path' => $path
+            ]);
+            abort(404, 'Menú no encontrado');
+        }
+
+        // Verificar que es realmente un PDF
+        $mimeType = mime_content_type($path);
+        if ($mimeType !== 'application/pdf') {
+            Log::warning('Archivo de menú no es PDF válido', [
+                'business_id' => $business_id,
+                'filename' => $filename,
+                'mime_type' => $mimeType
+            ]);
+            abort(415, 'Archivo no es un PDF válido');
+        }
+
+        // Verificar tamaño del archivo (máximo 50MB)
+        $fileSize = filesize($path);
+        if ($fileSize > 50 * 1024 * 1024) {
+            Log::warning('PDF menú demasiado grande', [
+                'business_id' => $business_id,
+                'filename' => $filename,
+                'size_mb' => round($fileSize / 1024 / 1024, 2)
+            ]);
+            abort(413, 'Archivo demasiado grande');
+        }
+
+        Log::info('Sirviendo PDF de menú', [
+            'business_id' => $business_id,
+            'filename' => $filename,
+            'size_kb' => round($fileSize / 1024, 2)
+        ]);
+        
+        return response()->file($path, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $filename . '"',
+            'Cache-Control' => 'public, max-age=3600', // Cache por 1 hora
+            'X-Content-Type-Options' => 'nosniff',
+            'X-Frame-Options' => 'SAMEORIGIN'
+        ]);
+
+    } catch (\Exception $e) {
+        Log::error('Error sirviendo PDF de menú', [
+            'business_id' => $business_id,
+            'filename' => $filename,
+            'error' => $e->getMessage()
+        ]);
+        abort(500, 'Error interno del servidor');
     }
-    
-    return response()->file($path, [
-        'Content-Type' => 'application/pdf',
-        'Content-Disposition' => 'inline; filename="' . $filename . '"'
-    ]);
 })->name('menu.pdf');
 
 // Documentación de APIs
