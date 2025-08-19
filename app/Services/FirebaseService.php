@@ -568,6 +568,17 @@ class FirebaseService
             ->get()
             ->groupBy('platform');
         
+        // 🧪 DEBUG: Verificar tokens encontrados por plataforma
+        Log::info('🧪 DEBUG: Tokens separated by platform', [
+            'table_number' => $tableNumber,
+            'input_tokens_count' => count($tokens),
+            'found_tokens_count' => $tokensByPlatform->sum->count(),
+            'web_found' => count($tokensByPlatform['web'] ?? []),
+            'android_found' => count($tokensByPlatform['android'] ?? []),
+            'ios_found' => count($tokensByPlatform['ios'] ?? []),
+            'platforms_detected' => $tokensByPlatform->keys()->toArray()
+        ]);
+        
         $sent = 0;
         $results = [];
         

@@ -407,6 +407,21 @@ class UnifiedFirebaseService
                 ->values()
                 ->toArray();
 
+            // 🧪 DEBUG: Verificar tokens por plataforma
+            $tokensByPlatform = \App\Models\DeviceToken::where('user_id', $call->waiter_id)
+                ->get()
+                ->groupBy('platform');
+            
+            \Log::info('🧪 DEBUG: Waiter tokens by platform', [
+                'call_id' => $call->id,
+                'waiter_id' => $call->waiter_id,
+                'total_tokens' => count($waiterTokens),
+                'web_tokens' => count($tokensByPlatform['web'] ?? []),
+                'android_tokens' => count($tokensByPlatform['android'] ?? []),
+                'ios_tokens' => count($tokensByPlatform['ios'] ?? []),
+                'token_previews' => array_map(fn($t) => substr($t, 0, 20) . '...', $waiterTokens)
+            ]);
+
             if (empty($waiterTokens)) {
                 \Log::info('Unified FCM skipped (no waiter tokens)', [
                     'call_id' => $call->id,
