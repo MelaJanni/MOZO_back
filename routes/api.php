@@ -673,3 +673,95 @@ Route::middleware('public_api')->group(function () {
         }
     });
 });
+
+// 🔧 DIAGNÓSTICO TEMPORAL: Endpoint para debuggear subida de archivos
+Route::middleware('auth:sanctum')->post('/debug/upload-test', function(Illuminate\Http\Request $request) {
+    try {
+        $user = $request->user();
+        
+        // Verificar autenticación
+        if (!$user) {
+            return response()->json(['error' => 'Usuario no autenticado'], 401);
+        }
+        
+        // Información del usuario
+        $userInfo = [
+            'id' => $user->id,
+            'name' => $user->name,
+            'business_id' => $user->business_id,
+            'email' => $user->email
+        ];
+        
+        // Verificar si el archivo fue enviado
+        $fileInfo = [];
+        if ($request->hasFile('file')) {
+            $file = $request->file('file');
+            $fileInfo = [
+                'name' => $file->getClientOriginalName(),
+                'size' => $file->getSize(),
+                'mime_type' => $file->getMimeType(),
+                'extension' => $file->getClientOriginalExtension(),
+                'is_valid' => $file->isValid(),
+                'error' => $file->getError(),
+                'error_message' => $file->getErrorMessage(),
+                'temp_path' => $file->getRealPath()
+            ];
+        } else {
+            $fileInfo['error'] = 'No file uploaded';
+        }
+        
+        // Verificar directorio storage
+        $storagePath = storage_path('app/public/menus/' . $user->business_id);
+        $storageInfo = [
+            'path' => $storagePath,
+            'exists' => file_exists($storagePath),
+            'writable' => is_writable(dirname($storagePath)),
+            'parent_writable' => is_writable(storage_path('app/public')),
+        ];
+        
+        // Intentar crear directorio si no existe
+        if (!file_exists($storagePath)) {
+            try {
+                mkdir($storagePath, 0755, true);
+                $storageInfo['created'] = true;
+            } catch (\Exception $e) {
+                $storageInfo['create_error'] = $e->getMessage();
+            }
+        }
+        
+        // Información de espacio en disco
+        $diskInfo = [
+            'free_space' => disk_free_space(storage_path()),
+            'total_space' => disk_total_space(storage_path()),
+        ];
+        
+        // Límites PHP
+        $phpInfo = [
+            'upload_max_filesize' => ini_get('upload_max_filesize'),
+            'post_max_size' => ini_get('post_max_size'),
+            'memory_limit' => ini_get('memory_limit'),
+            'file_uploads' => ini_get('file_uploads'),
+            'upload_tmp_dir' => ini_get('upload_tmp_dir'),
+        ];
+        
+        return response()->json([
+            'success' => true,
+            'debug_info' => [
+                'user' => $userInfo,
+                'file' => $fileInfo,
+                'storage' => $storageInfo,
+                'disk' => $diskInfo,
+                'php' => $phpInfo,
+                'request_data' => $request->all()
+            ]
+        ]);
+        
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'error' => $e->getMessage(),
+            'line' => $e->getLine(),
+            'file' => $e->getFile()
+        ], 500);
+    }
+});
