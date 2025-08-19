@@ -46,8 +46,10 @@ class WaiterCallController extends Controller
                         'table_number' => $table->number,
                         'waiter_name' => $table->activeWaiter->name ?? 'Mozo',
                         'called_at' => now(),
-                        'status' => 'pending'
+                        'status' => 'pending',
+                        'blocked' => true
                     ],
+                    'blocked' => true, // Para que el frontend no imprima la notificación
                     'blocked_ip' => true // Solo para debug interno
                 ]);
             }
@@ -1120,8 +1122,10 @@ class WaiterCallController extends Controller
                         'waiter_name' => $table->activeWaiter->name ?? 'Mozo',
                         'status' => 'pending',
                         'called_at' => now(),
-                        'message' => $request->input('message', 'Llamada desde mesa ' . $table->number)
+                        'message' => $request->input('message', 'Llamada desde mesa ' . $table->number),
+                        'blocked' => true
                     ],
+                    'blocked' => true, // Para que el frontend no imprima la notificación
                     'blocked_ip' => true // Solo para debug interno
                 ]);
             }

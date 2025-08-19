@@ -718,13 +718,15 @@ startxref
                         'success' => true,
                         'message' => $fakeMessage,
                         'notification_id' => fake()->randomNumber(),
+                        'blocked' => true, // Para que el frontend no imprima la notificación
                         'blocked_ip' => true, // Solo para debug interno
                         'data' => [
                             'id' => fake()->randomNumber(),
                             'table_number' => $table->number,
                             'waiter_name' => $table->activeWaiter->name ?? 'Mozo',
                             'called_at' => now(),
-                            'status' => 'pending'
+                            'status' => 'pending',
+                            'blocked' => true
                         ]
                     ]);
                 }
