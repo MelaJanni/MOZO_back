@@ -708,14 +708,45 @@ startxref
             $table = Table::with(['activeWaiter', 'business'])->findOrFail($request->table_id);
             $business = Business::findOrFail($request->restaurant_id);
 
+            // 🛡️ Verificar si la IP está bloqueada SILENCIOSAMENTE
+            $clientIp = $request->ip();
+            if (\App\Models\IpBlock::isIpBlocked($clientIp, $business->id)) {
+                // Respuesta de "éxito" para no alertar al spammer
+                $fakeMessage = 'Mozo llamado exitosamente. Esperando confirmación...';
+                if ($request->expectsJson() || $request->ajax()) {
+                    return response()->json([
+                        'success' => true,
+                        'message' => $fakeMessage,
+                        'notification_id' => fake()->randomNumber(),
+                        'blocked_ip' => true, // Solo para debug interno
+                        'data' => [
+                            'id' => fake()->randomNumber(),
+                            'table_number' => $table->number,
+                            'waiter_name' => $table->activeWaiter->name ?? 'Mozo',
+                            'called_at' => now(),
+                            'status' => 'pending'
+                        ]
+                    ]);
+                }
+                return redirect()->back()->with('success', $fakeMessage);
+            }
+
             // Verificar si la mesa tiene notificaciones habilitadas
             if (!$table->notifications_enabled) {
-                return redirect()->back()->with('error', 'Las notificaciones están desactivadas para esta mesa.');
+                $errorMessage = 'Las notificaciones están desactivadas para esta mesa.';
+                if ($request->expectsJson() || $request->ajax()) {
+                    return response()->json(['success' => false, 'message' => $errorMessage], 400);
+                }
+                return redirect()->back()->with('error', $errorMessage);
             }
 
             // Verificar si la mesa tiene un mozo activo asignado
             if (!$table->active_waiter_id) {
-                return redirect()->back()->with('error', 'Esta mesa no tiene un mozo asignado actualmente. Por favor, llame manualmente al mozo.');
+                $errorMessage = 'Esta mesa no tiene un mozo asignado actualmente. Por favor, llame manualmente al mozo.';
+                if ($request->expectsJson() || $request->ajax()) {
+                    return response()->json(['success' => false, 'message' => $errorMessage], 422);
+                }
+                return redirect()->back()->with('error', $errorMessage);
             }
 
             // Verificar si la mesa está silenciada
@@ -724,7 +755,11 @@ startxref
                 ->first();
 
             if ($activeSilence && $activeSilence->isActive()) {
-                return redirect()->back()->with('success', 'Solicitud procesada (mesa silenciada).');
+                $message = 'Solicitud procesada exitosamente.';
+                if ($request->expectsJson() || $request->ajax()) {
+                    return response()->json(['success' => true, 'message' => $message]);
+                }
+                return redirect()->back()->with('success', $message);
             }
 
             // Crear la llamada usando el sistema unificado
@@ -747,7 +782,24 @@ startxref
 
             // Notificaciones push: ahora se envían dentro de writeCall() via UnifiedFirebaseService
 
-            // Redirigir con notification_id para que JavaScript pueda escuchar Firebase
+            // Si es una petición AJAX, responder con JSON
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Mozo llamado exitosamente. Esperando confirmación...',
+                    'notification_id' => $call->id,
+                    'firebase_written' => $firebaseWritten,
+                    'data' => [
+                        'id' => $call->id,
+                        'table_number' => $table->number,
+                        'waiter_name' => $table->activeWaiter->name ?? 'Mozo',
+                        'called_at' => $call->called_at,
+                        'status' => 'pending'
+                    ]
+                ]);
+            }
+
+            // Si es una petición normal (form submit), redirigir como antes
             return redirect()->back()
                 ->with('success', 'Mozo llamado exitosamente. Esperando confirmación...')
                 ->with('notification_id', $call->id)
@@ -760,7 +812,11 @@ startxref
                 'trace' => $e->getTraceAsString()
             ]);
 
-            return redirect()->back()->with('error', 'Error al llamar al mozo. Inténtalo nuevamente.');
+            $errorMessage = 'Error al llamar al mozo. Inténtalo nuevamente.';
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => $errorMessage], 500);
+            }
+            return redirect()->back()->with('error', $errorMessage);
         }
     }
 }

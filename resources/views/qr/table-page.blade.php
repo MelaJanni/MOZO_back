@@ -162,6 +162,11 @@
             transform: none;
             box-shadow: 0 4px 15px rgba(149, 165, 166, 0.3);
         }
+        
+        .call-button.loading {
+            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+            animation: pulse 1.5s infinite;
+        }
 
         .status-message {
             margin-top: 15px;
@@ -375,16 +380,16 @@
             </section>
 
             <section class="call-waiter-section">
-                <form method="POST" action="{{ route('waiter.call') }}" id="call-waiter-form">
-                    @csrf
-                    <input type="hidden" name="restaurant_id" value="{{ $business->id }}">
-                    <input type="hidden" name="table_id" value="{{ $table->id }}">
-                    <input type="hidden" name="message" value="Cliente solicita atención">
-                    
-                    <button type="submit" class="call-button" id="call-waiter-btn">
+                <div id="call-waiter-form">
+                    <button type="button" class="call-button" id="call-waiter-btn" onclick="callWaiter()">
                         🔔 Llamar Mozo
                     </button>
-                </form>
+                </div>
+                
+                <!-- Mensajes dinámicos sin recarga -->
+                <div id="status-message" style="display: none;" class="status-message">
+                    <!-- Los mensajes se mostrarán aquí vía JavaScript -->
+                </div>
                 
                 @if(session('success'))
                     <div class="status-message status-success" style="display: block;">
@@ -538,8 +543,11 @@
             Notification.requestPermission();
         }
 
-        // 🔍 DEBUG: Detectar cuando se hace click en "Llamar Mozo"
-        document.getElementById('call-waiter-form').addEventListener('submit', function(e) {
+        // 🔔 FUNCIÓN AJAX PARA LLAMAR AL MOZO (sin recarga)
+        async function callWaiter() {
+            const button = document.getElementById('call-waiter-btn');
+            const statusDiv = document.getElementById('status-message');
+            
             console.log('🔔 LLAMANDO AL MOZO desde IP:', CLIENT_IP);
             console.log('📋 Datos que se enviarán:', {
                 restaurant_id: {{ $business->id }},
@@ -549,8 +557,78 @@
                 timestamp: new Date().toISOString()
             });
             
-            // El formulario se enviará normalmente después de este log
-        });
+            // Deshabilitar botón mientras se procesa
+            button.disabled = true;
+            button.classList.add('loading');
+            button.innerHTML = '⏳ Llamando...';
+            
+            // Ocultar mensajes de sesión anteriores
+            const sessionMessages = document.querySelectorAll('.status-message:not(#status-message)');
+            sessionMessages.forEach(msg => msg.style.display = 'none');
+            
+            try {
+                const response = await fetch('{{ route("waiter.call") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        restaurant_id: {{ $business->id }},
+                        table_id: {{ $table->id }},
+                        message: 'Cliente solicita atención'
+                    })
+                });
+                
+                const data = await response.json();
+                console.log('📡 Respuesta del servidor:', data);
+                
+                if (response.ok && data.success) {
+                    // Éxito - mostrar mensaje y empezar Firebase listener
+                    showStatusMessage('success', '🎉 ' + (data.message || 'Mozo llamado exitosamente'));
+                    
+                    if (data.notification_id) {
+                        currentNotificationId = data.notification_id;
+                        startFirebaseListener();
+                        
+                        // Agregar mensaje de espera
+                        setTimeout(() => {
+                            const currentMsg = statusDiv.innerHTML;
+                            statusDiv.innerHTML = currentMsg + '<div style="font-size: 14px; margin-top: 8px; opacity: 0.8;">⏳ Esperando confirmación del mozo...</div>';
+                        }, 500);
+                    }
+                    
+                } else {
+                    // Error del servidor
+                    showStatusMessage('error', '❌ ' + (data.message || 'Error al llamar al mozo'));
+                }
+                
+            } catch (error) {
+                console.error('💥 Error en la llamada AJAX:', error);
+                showStatusMessage('error', '❌ Error de conexión. Intenta nuevamente.');
+            } finally {
+                // Rehabilitar botón
+                button.disabled = false;
+                button.classList.remove('loading');
+                button.innerHTML = '🔔 Llamar Mozo';
+            }
+        }
+        
+        // 🎨 FUNCIÓN PARA MOSTRAR MENSAJES DE ESTADO
+        function showStatusMessage(type, message) {
+            const statusDiv = document.getElementById('status-message');
+            statusDiv.className = `status-message status-${type}`;
+            statusDiv.innerHTML = message;
+            statusDiv.style.display = 'block';
+            
+            // Auto-ocultar errores después de 5 segundos
+            if (type === 'error') {
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 5000);
+            }
+        }
 
         // 📋 MANEJO DE ERRORES DEL PDF
         let pdfLoadAttempts = 0;
