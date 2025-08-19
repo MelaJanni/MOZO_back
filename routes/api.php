@@ -765,3 +765,103 @@ Route::middleware('auth:sanctum')->post('/debug/upload-test', function(Illuminat
         ], 500);
     }
 });
+
+// 🔧 DIAGNÓSTICO: Endpoint para arreglar límites PHP
+Route::middleware('auth:sanctum')->post('/debug/fix-php-limits', function(Illuminate\Http\Request $request) {
+    try {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['error' => 'Usuario no autenticado'], 401);
+        }
+        
+        $results = [];
+        
+        // Intentar modificar límites via ini_set (solo funciona para algunos valores)
+        $limits = [
+            'memory_limit' => '512M',
+            'max_execution_time' => '300',
+            'max_input_time' => '300'
+        ];
+        
+        foreach ($limits as $setting => $value) {
+            $oldValue = ini_get($setting);
+            $success = ini_set($setting, $value);
+            $newValue = ini_get($setting);
+            
+            $results[$setting] = [
+                'old_value' => $oldValue,
+                'attempted_value' => $value,
+                'new_value' => $newValue,
+                'success' => $success !== false && $newValue === $value
+            ];
+        }
+        
+        // Crear archivo .htaccess con límites de upload
+        $htaccessPath = public_path('.htaccess');
+        $htaccessExists = file_exists($htaccessPath);
+        $htaccessContent = '';
+        
+        if ($htaccessExists) {
+            $htaccessContent = file_get_contents($htaccessPath);
+        }
+        
+        // Verificar si ya tiene configuración de upload
+        $hasUploadConfig = strpos($htaccessContent, 'php_value upload_max_filesize') !== false;
+        
+        if (!$hasUploadConfig) {
+            $uploadConfig = "\n# File Upload Limits\n";
+            $uploadConfig .= "php_value upload_max_filesize 50M\n";
+            $uploadConfig .= "php_value post_max_size 60M\n";
+            $uploadConfig .= "php_value memory_limit 512M\n";
+            $uploadConfig .= "php_value max_execution_time 300\n";
+            $uploadConfig .= "php_value max_input_time 300\n\n";
+            
+            try {
+                file_put_contents($htaccessPath, $htaccessContent . $uploadConfig);
+                $results['htaccess'] = [
+                    'created' => true,
+                    'path' => $htaccessPath,
+                    'content_added' => $uploadConfig
+                ];
+            } catch (\Exception $e) {
+                $results['htaccess'] = [
+                    'created' => false,
+                    'error' => $e->getMessage()
+                ];
+            }
+        } else {
+            $results['htaccess'] = [
+                'already_configured' => true,
+                'path' => $htaccessPath
+            ];
+        }
+        
+        // Verificar límites actuales después de los cambios
+        $currentLimits = [
+            'upload_max_filesize' => ini_get('upload_max_filesize'),
+            'post_max_size' => ini_get('post_max_size'),
+            'memory_limit' => ini_get('memory_limit'),
+            'max_execution_time' => ini_get('max_execution_time'),
+            'max_input_time' => ini_get('max_input_time'),
+        ];
+        
+        return response()->json([
+            'success' => true,
+            'results' => $results,
+            'current_limits' => $currentLimits,
+            'recommendations' => [
+                'If .htaccess method fails, contact your hosting provider',
+                'Alternative: Create php.ini file in public directory',
+                'Plesk users: Check PHP Settings in control panel'
+            ]
+        ]);
+        
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'error' => $e->getMessage(),
+            'line' => $e->getLine(),
+            'file' => $e->getFile()
+        ], 500);
+    }
+});
