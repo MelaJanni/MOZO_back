@@ -173,6 +173,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/ip/block', [WaiterCallController::class, 'blockIp']);
         Route::post('/ip/unblock', [WaiterCallController::class, 'unblockIp']);
         Route::get('/ip/blocked', [WaiterCallController::class, 'getBlockedIps']);
+        Route::get('/ip/debug', [WaiterCallController::class, 'debugIpStatus']);
+        Route::post('/ip/force-unblock', [WaiterCallController::class, 'forceUnblockIp']);
 
         // Perfiles de mesa - CRUD completo
         Route::get('/table-profiles', [App\Http\Controllers\TableProfileController::class, 'index']);

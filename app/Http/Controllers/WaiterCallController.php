@@ -2398,4 +2398,143 @@ class WaiterCallController extends Controller
             return false;
         }
     }
+
+    /**
+     * 🚨 DEBUG: Verificar estado de IP específica
+     */
+    public function debugIpStatus(Request $request): JsonResponse
+    {
+        $request->validate([
+            'ip_address' => 'sometimes|ip',
+            'business_id' => 'sometimes|integer|exists:businesses,id'
+        ]);
+
+        try {
+            $ipAddress = $request->input('ip_address', $request->ip());
+            $businessId = $request->input('business_id', 1); // Default McDonalds
+
+            // 1. Verificar todos los registros de bloqueo para esta IP
+            $allBlocks = IpBlock::where('ip_address', $ipAddress)
+                ->where('business_id', $businessId)
+                ->orderBy('created_at', 'desc')
+                ->get(['id', 'blocked_at', 'unblocked_at', 'expires_at', 'reason', 'notes']);
+
+            // 2. Verificar específicamente si está bloqueada
+            $isBlocked = IpBlock::isIpBlocked($ipAddress, $businessId);
+
+            // 3. Obtener el bloqueo activo si existe
+            $activeBlock = IpBlock::where('ip_address', $ipAddress)
+                ->where('business_id', $businessId)
+                ->active()
+                ->first();
+
+            // 4. Verificar manualmente las condiciones del scope active
+            $manualActiveBlocks = IpBlock::where('ip_address', $ipAddress)
+                ->where('business_id', $businessId)
+                ->get()
+                ->map(function($block) {
+                    return [
+                        'id' => $block->id,
+                        'unblocked_at' => $block->unblocked_at,
+                        'expires_at' => $block->expires_at,
+                        'is_unblocked' => !is_null($block->unblocked_at),
+                        'is_expired' => $block->expires_at && $block->expires_at->isPast(),
+                        'should_be_active' => is_null($block->unblocked_at) && (is_null($block->expires_at) || $block->expires_at->isFuture()),
+                        'isActive_method' => $block->isActive()
+                    ];
+                });
+
+            return response()->json([
+                'debug_info' => [
+                    'checked_ip' => $ipAddress,
+                    'business_id' => $businessId,
+                    'current_timestamp' => now()->toISOString(),
+                    'is_blocked_result' => $isBlocked,
+                    'total_blocks_found' => $allBlocks->count(),
+                    'active_block_found' => $activeBlock ? true : false,
+                    'active_block_id' => $activeBlock?->id
+                ],
+                'all_blocks' => $allBlocks,
+                'active_block' => $activeBlock,
+                'manual_analysis' => $manualActiveBlocks,
+                'scope_sql' => [
+                    'active_scope' => IpBlock::where('ip_address', $ipAddress)
+                        ->where('business_id', $businessId)
+                        ->active()
+                        ->toSql()
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ], 500);
+        }
+    }
+
+    /**
+     * 🔧 FORCE UNBLOCK: Desbloquear IP específica forzadamente (DEBUG)
+     */
+    public function forceUnblockIp(Request $request): JsonResponse
+    {
+        $request->validate([
+            'ip_address' => 'required|ip',
+            'business_id' => 'sometimes|integer|exists:businesses,id'
+        ]);
+
+        try {
+            $ipAddress = $request->ip_address;
+            $businessId = $request->input('business_id', 1); // Default McDonalds
+
+            // 1. Encontrar TODOS los bloqueos activos para esta IP
+            $activeBlocks = IpBlock::where('ip_address', $ipAddress)
+                ->where('business_id', $businessId)
+                ->whereNull('unblocked_at')
+                ->get();
+
+            if ($activeBlocks->isEmpty()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Esta IP ya no está bloqueada',
+                    'found_blocks' => 0
+                ]);
+            }
+
+            // 2. Desbloquear todos los registros activos
+            $unblocked = 0;
+            foreach ($activeBlocks as $block) {
+                $block->update(['unblocked_at' => now()]);
+                $unblocked++;
+            }
+
+            // 3. Verificar que efectivamente se desbloqueó
+            $stillBlocked = IpBlock::isIpBlocked($ipAddress, $businessId);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Se desbloquearon {$unblocked} registros para la IP {$ipAddress}",
+                'details' => [
+                    'ip_address' => $ipAddress,
+                    'business_id' => $businessId,
+                    'blocks_unblocked' => $unblocked,
+                    'still_blocked_after_unblock' => $stillBlocked,
+                    'unblocked_at' => now(),
+                    'unblocked_blocks' => $activeBlocks->map(fn($block) => [
+                        'id' => $block->id,
+                        'originally_blocked_at' => $block->blocked_at,
+                        'reason' => $block->reason
+                    ])
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ], 500);
+        }
+    }
 }
