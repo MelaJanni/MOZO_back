@@ -145,12 +145,8 @@ class WaiterCallController extends Controller
             } else {
                 // Fallback síncrono si no hay queue configurado
                 $call->load(['table', 'waiter']);
-                $this->sendNotificationToWaiter($call);
                 
-                // 🔥 FIREBASE REALTIME DATABASE DIRECTO
-                $this->writeDirectToFirebaseRealtimeDB($call);
-                
-                // Nueva estructura unificada (escritura + FCM)
+                // 🔥 SOLO USAR UNIFIED SERVICE (evitar duplicación)
                 $this->unifiedFirebaseService->writeCall($call, 'created');
             }
 
@@ -1228,11 +1224,11 @@ class WaiterCallController extends Controller
                 // Usar queue de alta prioridad para máxima velocidad
                 dispatch(new \App\Jobs\ProcessWaiterCallNotification($call))->onQueue('high-priority');
             } else {
-                // Fallback síncrono inmediato
+                // Fallback síncrono inmediato - SOLO UNIFIED SERVICE
                 try {
-                    $this->sendNotificationToWaiter($call);
+                    $this->unifiedFirebaseService->writeCall($call, 'created');
                 } catch (\Exception $e) {
-                    Log::warning('FCM notification failed but continuing', [
+                    Log::warning('Unified Firebase service failed but continuing', [
                         'call_id' => $call->id,
                         'error' => $e->getMessage()
                     ]);

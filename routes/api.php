@@ -414,7 +414,8 @@ Route::middleware('public_api')->group(function () {
     // 🔍 DEBUG: Endpoint para ver llamadas recientes (para testing)
     Route::get('/debug/recent-calls', [App\Http\Controllers\RealtimeWaiterCallController::class, 'getRecentCalls']);
     
-    // 🔥 FIREBASE DIRECT ROUTE - BYPASS CONTROLLER CACHE
+    // 🔥 FIREBASE DIRECT ROUTE - BYPASS CONTROLLER CACHE - TEMPORARILY DISABLED TO AVOID DUPLICATES
+    /*
     Route::post('/waiter-notifications', function(\Illuminate\Http\Request $request) {
         // Validar request
         $request->validate([
@@ -518,6 +519,7 @@ Route::middleware('public_api')->group(function () {
             ]
         ]);
     });
+    */
     
     Route::get('/waiter-notifications/{id}', [WaiterCallController::class, 'getNotificationStatus']);
     
