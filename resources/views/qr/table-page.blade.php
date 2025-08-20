@@ -63,6 +63,11 @@
             <small style="opacity:.7;">Mesa {{ $table->number }} • {{ $business->name }}</small>
         </div>
     </div>
+    <div id="pageIndicator" class="page-indicator" aria-live="polite">
+        <span class="curr" id="pageNumTop">-</span>
+        <span class="sep">/</span>
+        <span id="pageCountTop">-</span>
+    </div>
     
     <!-- Área principal del PDF -->
     <div class="pdf-workspace">
@@ -187,12 +192,14 @@
     const btnZoomOut=document.getElementById('btnZoomOut');
     const pageNumSpan=document.getElementById('pageNum');
     const pageCountSpan=document.getElementById('pageCount');
+    const pageNumTop=document.getElementById('pageNumTop');
+    const pageCountTop=document.getElementById('pageCountTop');
     let zoomLevel=document.getElementById('zoomLevel');
     if(!zoomLevel){
         // fallback: intenta crear un indicador flotante minimal si no existe en DOM
         const zl=document.createElement('div');
         zl.id='zoomLevel';
-        zl.style.cssText='position:fixed;bottom:8px;left:8px;background:rgba(0,0,0,.55);color:#fff;font:12px/1 system-ui;padding:4px 6px;border-radius:6px;z-index:9999;pointer-events:none;';
+        zl.style.cssText='position:fixed;bottom:8px;left:8px;background:rgba(0,0,0,.55);color:#fff;font:12px/1 system-ui;padding:4px 6px;border-radius:6px;z-index:999;pointer-events:none;';
         zl.textContent='100%';
         document.body.appendChild(zl);
         zoomLevel=zl;
@@ -223,7 +230,13 @@
         }
         rendering=false; if(pendingPage){const p=pendingPage; pendingPage=null; renderPage(p);} }
     function queueRender(p, anchor){rendering?pendingPage=p:renderPage(p, anchor);}  
-    function update(){pageNumSpan.textContent=currentPage;pageCountSpan.textContent=pdfDoc.numPages;btnPrev.disabled=currentPage<=1;btnNext.disabled=currentPage>=pdfDoc.numPages;[...thumbsPanel.querySelectorAll('.thumb')].forEach(el=>el.classList.toggle('active',+el.dataset.page===currentPage));}
+    function update(){
+        pageNumSpan.textContent=currentPage; pageCountSpan.textContent=pdfDoc.numPages;
+        if(pageNumTop) pageNumTop.textContent=currentPage;
+        if(pageCountTop) pageCountTop.textContent=pdfDoc.numPages;
+        btnPrev.disabled=currentPage<=1; btnNext.disabled=currentPage>=pdfDoc.numPages;
+        [...thumbsPanel.querySelectorAll('.thumb')].forEach(el=>el.classList.toggle('active',+el.dataset.page===currentPage));
+    }
     function change(delta){const t=currentPage+delta;if(t>=1&&t<=pdfDoc.numPages){currentPage=t;update();queueRender(currentPage);}}  
     function setScale(s, anchor){
         scale=Math.min(6,Math.max(.2,s));

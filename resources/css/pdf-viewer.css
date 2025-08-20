@@ -254,6 +254,49 @@ body {
   display: none;
 }
 
+/* Indicador de página centrado bajo header */
+.page-indicator {
+  position: absolute;
+  top: 52px; /* ajusta según altura header */
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(17, 24, 39, 0.78);
+  -webkit-backdrop-filter: blur(10px) saturate(1.2);
+          backdrop-filter: blur(10px) saturate(1.2);
+  color: #fff;
+  font: 600 13px/1.2 var(--font-sans);
+  letter-spacing: 0.5px;
+  padding: 6px 12px 6px 12px;
+  border: 1px solid rgba(139, 92, 246, 0.45);
+  border-radius: 22px;
+  box-shadow: 0 4px 14px -4px rgba(0, 0, 0, 0.55), 0 0 0 2px rgba(139, 92, 246, 0.15);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+  animation: fadeInUp 0.5s ease;
+}
+
+.page-indicator .sep {
+  opacity: 0.45;
+}
+
+.page-indicator .curr {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -6px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
 .loupe canvas {
   width: 100%;
   height: 100%;
