@@ -148,14 +148,27 @@
 </section>
 
 <!-- Scripts -->
-<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-database-compat.js"></script>
 <script>
 const menuUrl=@json($menuUrl);
+// Inicializar visor sólo si hay URL y PDF.js cargó; usar versión 3.x confiable
 if(menuUrl){
-    const pdfjsLib=window.pdfjsLib;
-pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.worker.min.js';
+    let pdfjsLib=window.pdfjsLib;
+    if(!pdfjsLib){
+        console.warn('pdfjsLib no disponible todavía, intento fallback unpkg...');
+        const s=document.createElement('script');
+        s.src='https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js';
+        s.onload=()=>{ if(window.pdfjsLib){ initPdf(window.pdfjsLib); } else { console.error('No se pudo cargar PDF.js'); }};
+        document.head.appendChild(s);
+    } else {
+        initPdf(pdfjsLib);
+    }
+}
+
+function initPdf(pdfjsLib){
+    try{ pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js'; }catch(e){ console.error('No se pudo configurar worker PDF',e); }
   const canvas=document.getElementById('pdfCanvas');
   const ctx=canvas.getContext('2d');
   const thumbsPanel=document.getElementById('thumbsPanel');
@@ -182,7 +195,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@
   btnPrev.onclick=()=>change(-1);btnNext.onclick=()=>change(1);btnZoomIn.onclick=()=>setScale(scale*1.15);btnZoomOut.onclick=()=>setScale(Math.max(.25,scale/1.15));btnFitWidth.onclick=()=>{fitMode='width';queueRender(currentPage);};btnFitPage.onclick=()=>{fitMode='page';queueRender(currentPage);};btnRotate.onclick=()=>{rotation=(rotation+90)%360;queueRender(currentPage);};
   window.addEventListener('keydown',e=>{if(['INPUT','TEXTAREA'].includes(e.target.tagName))return; if(e.key==='ArrowLeft')change(-1); else if(e.key==='ArrowRight')change(1); else if((e.ctrlKey||e.metaKey)&&['+','=','Add'].includes(e.key)){e.preventDefault();btnZoomIn.click();} else if((e.ctrlKey||e.metaKey)&&['-','Subtract'].includes(e.key)){e.preventDefault();btnZoomOut.click();}});
   pdfjsLib.getDocument({url:menuUrl}).promise.then(pdf=>{pdfDoc=pdf;enable(true);pageCountSpan.textContent=pdf.numPages;update();renderPage(currentPage).then(()=>overlay.remove());for(let i=1;i<=Math.min(pdf.numPages,120);i++){pdf.getPage(i).then(p=>{const vp=p.getViewport({scale:.25});const c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;const cx=c.getContext('2d');p.render({canvasContext:cx,viewport:vp}).promise.then(()=>{const wrap=document.createElement('div');wrap.className='thumb'+(i===1?' active':'');wrap.dataset.page=p.pageNumber;wrap.appendChild(c);wrap.onclick=()=>{currentPage=p.pageNumber;update();queueRender(currentPage);};thumbsPanel.appendChild(wrap);});});} });
-  window.addEventListener('resize',()=>{if(['width','page'].includes(fitMode))queueRender(currentPage);});
+    window.addEventListener('resize',()=>{if(['width','page'].includes(fitMode))queueRender(currentPage);});
 }
 // Panel & Firebase
 const CLIENT_IP='{{ $clientIp }}';
