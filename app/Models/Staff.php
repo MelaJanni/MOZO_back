@@ -12,6 +12,7 @@ class Staff extends Model
 
     protected $fillable = [
         'business_id',
+        'user_id',
         'name',
         'position',
         'email',
@@ -30,6 +31,8 @@ class Staff extends Model
         'employment_type',
         'current_schedule',
         'avatar_path',
+        'invitation_token',
+        'invitation_sent_at',
     ];
 
     protected $casts = [
@@ -38,6 +41,7 @@ class Staff extends Model
         'birth_date' => 'date',
         'height' => 'decimal:2',
         'weight' => 'decimal:2',
+        'invitation_sent_at' => 'datetime',
     ];
 
     protected $appends = ['age', 'avatar_url', 'birthdate_formatted'];
@@ -62,8 +66,33 @@ class Staff extends Model
         return $this->belongsTo(Business::class);
     }
 
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
     public function reviews()
     {
         return $this->hasMany(Review::class);
+    }
+
+    /**
+     * Verificar si el staff está conectado a un usuario
+     */
+    public function isConnectedToUser(): bool
+    {
+        return !is_null($this->user_id);
+    }
+
+    /**
+     * Obtener datos del perfil del usuario conectado
+     */
+    public function getUserProfileData()
+    {
+        if (!$this->user_id) {
+            return null;
+        }
+
+        return $this->user->profile;
     }
 } 

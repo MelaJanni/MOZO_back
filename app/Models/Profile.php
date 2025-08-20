@@ -15,12 +15,53 @@ class Profile extends Model
         'name',
         'description',
         'business_id',
-        'is_active'
+        'is_active',
+        // Datos personales del mozo
+        'phone',
+        'address',
+        'bio',
+        'profile_picture',
+        'date_of_birth',
+        'gender',
+        'height',
+        'weight',
+        // Datos laborales
+        'experience_years',
+        'employment_type',
+        'current_schedule',
+        'skills',
+        // Ubicación
+        'latitude',
+        'longitude'
     ];
 
     protected $casts = [
-        'is_active' => 'boolean'
+        'is_active' => 'boolean',
+        'date_of_birth' => 'date',
+        'height' => 'decimal:2',
+        'weight' => 'decimal:2',
+        'skills' => 'array',
+        'latitude' => 'decimal:8',
+        'longitude' => 'decimal:8'
     ];
+
+    protected $appends = ['age', 'profile_picture_url'];
+
+    /**
+     * Obtener edad calculada
+     */
+    public function getAgeAttribute()
+    {
+        return $this->date_of_birth ? $this->date_of_birth->age : null;
+    }
+
+    /**
+     * Obtener URL completa de la foto de perfil
+     */
+    public function getProfilePictureUrlAttribute()
+    {
+        return $this->profile_picture ? asset('storage/' . $this->profile_picture) : null;
+    }
 
     public function user()
     {

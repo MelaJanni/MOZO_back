@@ -319,11 +319,21 @@ class AdminController extends Controller
         
         $pendingRequests = Staff::where('business_id', $user->business_id)
             ->where('status', 'pending')
+            ->with(['user.profile'])
             ->orderBy('created_at', 'desc')
             ->get();
         
         return response()->json([
-            'requests' => $pendingRequests,
+            'requests' => $pendingRequests->map(function($request) {
+                $data = $request->toArray();
+                
+                // Agregar datos del perfil del usuario si está conectado
+                if ($request->user && $request->user->profile) {
+                    $data['user_profile'] = $request->user->profile;
+                }
+                
+                return $data;
+            }),
             'count' => $pendingRequests->count()
         ]);
     }
@@ -347,14 +357,50 @@ class AdminController extends Controller
     {
         $user = $request->user();
 
-        $staff = Staff::where('business_id', $user->business_id)
-            ->whereNotIn('status', ['rejected'])
+        $query = Staff::where('business_id', $user->business_id)
+            ->whereNotIn('status', ['rejected']);
+
+        // Agregar búsqueda por nombre o email
+        if ($request->has('search') && $request->search) {
+            $searchTerm = $request->search;
+            $query->where(function($q) use ($searchTerm) {
+                $q->where('name', 'LIKE', "%{$searchTerm}%")
+                  ->orWhere('email', 'LIKE', "%{$searchTerm}%");
+            });
+        }
+
+        // Filtrar por estado
+        if ($request->has('status') && $request->status) {
+            $query->where('status', $request->status);
+        }
+
+        $staff = $query->with(['user.profile', 'reviews'])
             ->orderBy('created_at', 'desc')
             ->get();
 
         return response()->json([
-            'staff' => $staff,
-            'count' => $staff->count(),
+            'staff' => $staff->map(function($staffMember) {
+                $data = $staffMember->toArray();
+                
+                // Agregar datos del perfil del usuario si está conectado
+                if ($staffMember->user && $staffMember->user->profile) {
+                    $data['user_profile'] = $staffMember->user->profile;
+                }
+                
+                // Agregar negocios asociados
+                if ($staffMember->user) {
+                    $data['associated_businesses'] = $staffMember->user->businesses->map(function($business) {
+                        return [
+                            'id' => $business->id,
+                            'name' => $business->name,
+                        ];
+                    });
+                }
+                
+                return $data;
+            }),
+            'search' => $request->search,
+            'total' => $staff->count(),
         ]);
     }
 
@@ -718,6 +764,183 @@ class AdminController extends Controller
                 'id' => $targetUser->id,
                 'name' => $targetUser->name,
                 'email' => $targetUser->email,
+            ]
+        ]);
+    }
+
+    /**
+     * Procesar todas las solicitudes pendientes de una vez
+     */
+    public function bulkProcessRequests(Request $request)
+    {
+        $request->validate([
+            'action' => ['required', Rule::in(['confirm_all', 'archive_all'])],
+        ]);
+
+        $user = Auth::user();
+        
+        $pendingRequests = Staff::where('business_id', $user->business_id)
+            ->where('status', 'pending')
+            ->get();
+
+        if ($pendingRequests->isEmpty()) {
+            return response()->json([
+                'message' => 'No hay solicitudes pendientes para procesar'
+            ], 404);
+        }
+
+        $processedCount = 0;
+        
+        foreach ($pendingRequests as $staff) {
+            if ($request->action === 'confirm_all') {
+                $staff->status = 'confirmed';
+                $staff->hire_date = now();
+                $staff->save();
+            } else { // archive_all
+                // Mover a tabla archived_staff
+                ArchivedStaff::create([
+                    'business_id' => $staff->business_id,
+                    'user_id' => $staff->user_id,
+                    'name' => $staff->name,
+                    'email' => $staff->email,
+                    'position' => $staff->position,
+                    'original_data' => $staff->toArray(),
+                    'archived_at' => now(),
+                    'archived_by' => $user->id,
+                    'archive_reason' => 'Bulk archive operation'
+                ]);
+                
+                $staff->delete();
+            }
+            $processedCount++;
+        }
+
+        $actionMessage = $request->action === 'confirm_all' 
+            ? 'confirmadas' 
+            : 'archivadas';
+
+        return response()->json([
+            'message' => "{$processedCount} solicitudes {$actionMessage} exitosamente",
+            'processed_count' => $processedCount
+        ]);
+    }
+
+    /**
+     * Generar enlace directo a WhatsApp para contactar al mozo
+     */
+    public function getWhatsAppLink(Request $request, $staffId)
+    {
+        $user = Auth::user();
+        
+        $staff = Staff::where('id', $staffId)
+            ->where('business_id', $user->business_id)
+            ->firstOrFail();
+
+        if (!$staff->phone) {
+            return response()->json([
+                'error' => 'Este empleado no tiene número de teléfono registrado'
+            ], 422);
+        }
+
+        // Limpiar número de teléfono
+        $phone = preg_replace('/[^0-9]/', '', $staff->phone);
+        
+        // Agregar código de país si no lo tiene (asumiendo Argentina +54)
+        if (!str_starts_with($phone, '54') && strlen($phone) === 10) {
+            $phone = '54' . $phone;
+        }
+
+        $businessName = $user->activeBusiness ? $user->activeBusiness->name : 'mi negocio';
+        $message = urlencode("Hola {$staff->name}, me comunico desde {$businessName}.");
+        $whatsappUrl = "https://wa.me/{$phone}?text={$message}";
+
+        return response()->json([
+            'whatsapp_url' => $whatsappUrl,
+            'phone' => $staff->phone,
+            'formatted_phone' => "+{$phone}"
+        ]);
+    }
+
+    /**
+     * Obtener perfil del admin actual
+     */
+    public function getAdminProfile(Request $request)
+    {
+        $user = $request->user();
+        
+        return response()->json([
+            'profile' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'avatar_url' => $user->profile && $user->profile->profile_picture 
+                    ? asset('storage/' . $user->profile->profile_picture) 
+                    : null,
+                'phone' => $user->profile->phone ?? null,
+                'business' => $user->activeBusiness ? [
+                    'id' => $user->activeBusiness->id,
+                    'name' => $user->activeBusiness->name,
+                ] : null,
+                'created_at' => $user->created_at,
+            ]
+        ]);
+    }
+
+    /**
+     * Actualizar perfil del admin
+     */
+    public function updateAdminProfile(Request $request)
+    {
+        $user = $request->user();
+        
+        $request->validate([
+            'name' => 'sometimes|string|max:255',
+            'email' => ['sometimes', 'email', Rule::unique('users')->ignore($user->id)],
+            'phone' => 'sometimes|string|max:20',
+            'avatar' => 'sometimes|image|mimes:jpeg,png,jpg|max:2048',
+        ]);
+
+        // Actualizar datos del usuario
+        if ($request->has('name')) {
+            $user->name = $request->name;
+        }
+        
+        if ($request->has('email')) {
+            $user->email = $request->email;
+        }
+        
+        $user->save();
+
+        // Actualizar o crear perfil
+        $profile = $user->profile()->firstOrCreate([]);
+        
+        if ($request->has('phone')) {
+            $profile->phone = $request->phone;
+        }
+
+        // Manejar subida de avatar
+        if ($request->hasFile('avatar')) {
+            // Eliminar avatar anterior si existe
+            if ($profile->profile_picture) {
+                Storage::disk('public')->delete($profile->profile_picture);
+            }
+            
+            $avatarPath = $request->file('avatar')->store('avatars', 'public');
+            $profile->profile_picture = $avatarPath;
+        }
+        
+        $profile->save();
+
+        return response()->json([
+            'message' => 'Perfil actualizado exitosamente',
+            'profile' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'phone' => $profile->phone,
+                'avatar_url' => $profile->profile_picture 
+                    ? asset('storage/' . $profile->profile_picture) 
+                    : null,
             ]
         ]);
     }

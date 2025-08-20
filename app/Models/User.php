@@ -46,6 +46,16 @@ class User extends Authenticatable
         return $this->hasOne(Profile::class);
     }
 
+    public function staffRecords()
+    {
+        return $this->hasMany(Staff::class);
+    }
+
+    public function workExperiences()
+    {
+        return $this->hasMany(WorkExperience::class);
+    }
+
     public function isAdmin()
     {
         return $this->role === 'admin';

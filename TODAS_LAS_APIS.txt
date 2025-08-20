@@ -1,0 +1,916 @@
+# 🚀 TODAS LAS APIs DEL SISTEMA MOZO - DOCUMENTACIÓN COMPLETA
+
+## 📚 ÍNDICE
+1. [Autenticación](#autenticación)
+2. [APIs del Mozo - Perfil Personal](#apis-del-mozo---perfil-personal)
+3. [APIs del Mozo - Gestión de Mesas](#apis-del-mozo---gestión-de-mesas)
+4. [APIs del Admin - Gestión de Personal](#apis-del-admin---gestión-de-personal)
+5. [APIs del Admin - Panel de Control](#apis-del-admin---panel-de-control)
+6. [APIs Generales](#apis-generales)
+7. [APIs Públicas (QR)](#apis-públicas-qr)
+
+---
+
+## 🔐 AUTENTICACIÓN
+
+### Registro y Login
+```
+POST /api/register
+Body: {
+  "name": "string",
+  "email": "string",
+  "password": "string",
+  "password_confirmation": "string",
+  "business_invitation_code": "string" (opcional - crea Staff request automáticamente)
+}
+Response: { user, access_token, token_type, staff_request_created, business_name, message }
+
+POST /api/login
+Body: { "email": "string", "password": "string", "fcm_token": "string" (opcional), "platform": "android|ios|web" (opcional) }
+Response: { user, access_token, token_type }
+
+POST /api/login/google
+Response: { message: "Google OAuth no implementado aún" }
+
+POST /api/logout
+Headers: Authorization: Bearer {token}
+Body: { "token": "string" (opcional - FCM token específico) }
+Response: { message, deactivated_tables }
+```
+
+### Recuperación de Contraseña
+```
+POST /api/forgot-password
+Body: { "email": "string" }
+Response: { message }
+
+POST /api/reset-password
+Body: { "token": "string", "email": "string", "password": "string", "password_confirmation": "string" }
+Response: { message }
+
+POST /api/change-password
+Headers: Authorization: Bearer {token}
+Body: { "current_password": "string", "password": "string", "password_confirmation": "string" }
+Response: { message }
+
+DELETE /api/delete-account
+Headers: Authorization: Bearer {token}
+Body: { "password": "string" }
+Response: { message }
+```
+
+### Gestión de Roles
+```
+GET /api/user
+Headers: Authorization: Bearer {token}
+Response: { user_data }
+
+POST /api/role/select
+Headers: Authorization: Bearer {token}
+Body: { "role": "admin|waiter" }
+Response: { message, view, token }
+```
+
+---
+
+## 👨‍🍳 APIS DEL MOZO - PERFIL PERSONAL
+
+### Gestión del Perfil Personal
+```
+POST /api/profile/update
+Headers: Authorization: Bearer {token}
+Body: {
+  "name": "string" (opcional),
+  "email": "string" (opcional),
+  "password": "string" (opcional),
+  "password_confirmation": "string" (opcional),
+  "phone": "string" (opcional),
+  "address": "string" (opcional),
+  "bio": "string" (opcional),
+  "profile_picture": "string" (opcional),
+  "date_of_birth": "date" (opcional),
+  "gender": "string" (opcional),
+  "height": "numeric" (opcional),
+  "weight": "numeric" (opcional),
+  "skills": "array" (opcional),
+  "latitude": "numeric" (opcional),
+  "longitude": "numeric" (opcional),
+  "experience_years": "integer" (opcional),
+  "employment_type": "string" (opcional),
+  "current_schedule": "string" (opcional)
+}
+Response: { message, user }
+
+POST /api/profile/whatsapp/send
+Headers: Authorization: Bearer {token}
+Body: { "phone": "string", "message": "string" }
+Response: { message, to, status }
+```
+
+### Historial Laboral
+```
+GET /api/profile/work-history
+Headers: Authorization: Bearer {token}
+Response: { work_experiences_array }
+
+POST /api/profile/work-history
+Headers: Authorization: Bearer {token}
+Body: {
+  "company": "string",
+  "position": "string",
+  "description": "string" (opcional),
+  "start_date": "date",
+  "end_date": "date" (opcional)
+}
+Response: { work_experience }
+
+PUT /api/profile/work-history/{id}
+Headers: Authorization: Bearer {token}
+Body: { campos a actualizar }
+Response: { work_experience }
+
+DELETE /api/profile/work-history/{id}
+Headers: Authorization: Bearer {token}
+Response: { message }
+```
+
+### Gestión de Dispositivos
+```
+POST /api/device-token
+Headers: Authorization: Bearer {token}
+Body: { "token": "string", "platform": "string", "expires_at": "datetime" }
+Response: { message }
+
+DELETE /api/device-token
+Headers: Authorization: Bearer {token}
+Body: { "token": "string" (opcional), "id": "integer" (opcional) }
+Response: { message }
+
+GET /api/device-tokens/{userId}
+Headers: Authorization: Bearer {token}
+Response: { device_tokens }
+```
+
+---
+
+## 🍽️ APIS DEL MOZO - GESTIÓN DE MESAS
+
+### Dashboard y Estado
+```
+GET /api/waiter/dashboard
+Headers: Authorization: Bearer {token}
+Response: { dashboard_data }
+
+GET /api/waiter/tables/status
+Headers: Authorization: Bearer {token}
+Response: { tables_status }
+```
+
+### Gestión de Negocios
+```
+GET /api/waiter/businesses
+Headers: Authorization: Bearer {token}
+Response: { businesses }
+
+GET /api/waiter/businesses/{id}/tables
+Headers: Authorization: Bearer {token}
+Response: { tables }
+
+POST /api/waiter/join-business
+Headers: Authorization: Bearer {token}
+Body: { "invitation_code": "string" }
+Response: { message, business }
+
+POST /api/waiter/set-active-business
+Headers: Authorization: Bearer {token}
+Body: { "business_id": "integer" }
+Response: { message }
+
+POST /api/waiter/onboard
+Headers: Authorization: Bearer {token}
+Body: { business_data }
+Response: { message, business }
+```
+
+### Gestión de Mesas - Individual
+```
+GET /api/waiter/tables/assigned
+Headers: Authorization: Bearer {token}
+Response: { assigned_tables }
+
+GET /api/waiter/tables/available
+Headers: Authorization: Bearer {token}
+Response: { available_tables }
+
+POST /api/waiter/tables/{table}/activate
+Headers: Authorization: Bearer {token}
+Response: { message }
+
+DELETE /api/waiter/tables/{table}/activate
+Headers: Authorization: Bearer {token}
+Response: { message }
+
+POST /api/waiter/tables/{table}/silence
+Headers: Authorization: Bearer {token}
+Response: { message }
+
+DELETE /api/waiter/tables/{table}/silence
+Headers: Authorization: Bearer {token}
+Response: { message }
+```
+
+### Gestión de Mesas - Múltiples
+```
+POST /api/waiter/tables/activate/multiple
+Headers: Authorization: Bearer {token}
+Body: { "table_ids": [1, 2, 3] }
+Response: { message, activated_count }
+
+POST /api/waiter/tables/deactivate/multiple
+Headers: Authorization: Bearer {token}
+Body: { "table_ids": [1, 2, 3] }
+Response: { message, deactivated_count }
+
+POST /api/waiter/tables/silence/multiple
+Headers: Authorization: Bearer {token}
+Body: { "table_ids": [1, 2, 3] }
+Response: { message, silenced_count }
+
+POST /api/waiter/tables/unsilence/multiple
+Headers: Authorization: Bearer {token}
+Body: { "table_ids": [1, 2, 3] }
+Response: { message, unsilenced_count }
+
+GET /api/waiter/tables/silenced
+Headers: Authorization: Bearer {token}
+Response: { silenced_tables }
+```
+
+### Gestión de Llamadas (Real-time con Firebase)
+```
+GET /api/waiter/calls/pending
+Headers: Authorization: Bearer {token}
+Response: { pending_calls }
+
+GET /api/waiter/calls/recent
+Headers: Authorization: Bearer {token}
+Response: { recent_calls }
+
+POST /api/waiter/calls/{call}/acknowledge
+Headers: Authorization: Bearer {token}
+Response: { message }
+
+POST /api/waiter/calls/{call}/complete
+Headers: Authorization: Bearer {token}
+Response: { message }
+
+GET /api/waiter/calls/history
+Headers: Authorization: Bearer {token}
+Response: { call_history }
+```
+
+### Perfiles de Mesa (Table Profiles)
+```
+GET /api/waiter/table-profiles
+Headers: Authorization: Bearer {token}
+Response: { profiles }
+
+POST /api/waiter/table-profiles
+Headers: Authorization: Bearer {token}
+Body: {
+  "name": "string",
+  "description": "string" (opcional),
+  "table_ids": [1, 2, 3]
+}
+Response: { message, profile }
+
+GET /api/waiter/table-profiles/{profile}
+Headers: Authorization: Bearer {token}
+Response: { profile }
+
+PUT /api/waiter/table-profiles/{profile}
+Headers: Authorization: Bearer {token}
+Body: { campos a actualizar }
+Response: { message, profile }
+
+DELETE /api/waiter/table-profiles/{profile}
+Headers: Authorization: Bearer {token}
+Response: { message }
+
+POST /api/waiter/table-profiles/{profile}/activate
+Headers: Authorization: Bearer {token}
+Response: { message, result }
+
+POST /api/waiter/table-profiles/{profile}/deactivate
+Headers: Authorization: Bearer {token}
+Response: { message }
+```
+
+### Notificaciones y FCM
+```
+GET /api/waiter/table-profiles/notifications
+Headers: Authorization: Bearer {token}
+Response: { notifications, unread_count }
+
+POST /api/waiter/table-profiles/notifications/{notificationId}/read
+Headers: Authorization: Bearer {token}
+Response: { message }
+
+POST /api/waiter/fcm/register
+Headers: Authorization: Bearer {token}
+Body: { "token": "string", "platform": "string" }
+Response: { message }
+
+POST /api/waiter/fcm/refresh
+Headers: Authorization: Bearer {token}
+Body: { "old_token": "string", "new_token": "string" }
+Response: { message }
+
+GET /api/waiter/fcm/status
+Headers: Authorization: Bearer {token}
+Response: { token_status }
+
+POST /api/waiter/fcm/test
+Headers: Authorization: Bearer {token}
+Response: { message }
+
+DELETE /api/waiter/fcm/token
+Headers: Authorization: Bearer {token}
+Response: { message }
+```
+
+### Gestión de IPs (Anti-spam)
+```
+POST /api/waiter/ip/block
+Headers: Authorization: Bearer {token}
+Body: { "ip": "string", "reason": "string" }
+Response: { message }
+
+POST /api/waiter/ip/unblock
+Headers: Authorization: Bearer {token}
+Body: { "ip": "string" }
+Response: { message }
+
+GET /api/waiter/ip/blocked
+Headers: Authorization: Bearer {token}
+Response: { blocked_ips }
+
+GET /api/waiter/ip/debug
+Headers: Authorization: Bearer {token}
+Response: { ip_debug_info }
+
+POST /api/waiter/ip/force-unblock
+Headers: Authorization: Bearer {token}
+Body: { "ip": "string" }
+Response: { message }
+```
+
+---
+
+## 👨‍💼 APIS DEL ADMIN - GESTIÓN DE PERSONAL
+
+### Ver Personal
+```
+GET /api/admin/staff
+Headers: Authorization: Bearer {token}
+Query Params: ?search=nombre&status=confirmed
+Response: { 
+  staff: [
+    {
+      id, name, email, phone, status, position, salary, notes, hire_date,
+      birth_date, age, height, weight, gender, experience_years,
+      user_profile: { datos completos del perfil del mozo },
+      associated_businesses: [ { id, name } ]
+    }
+  ],
+  search, total 
+}
+
+GET /api/admin/staff/{id}
+Headers: Authorization: Bearer {token}
+Response: { 
+  staff: {
+    id, name, email, position, salary, notes, hire_date,
+    user_profile: { datos completos del perfil },
+    reviews: [ { rating, comment, created_at } ]
+  }
+}
+
+PUT /api/admin/staff/{id}
+Headers: Authorization: Bearer {token}
+Body: {
+  "name": "string" (opcional),
+  "position": "string" (opcional),
+  "email": "string" (opcional),
+  "phone": "string" (opcional),
+  "hire_date": "date" (opcional),
+  "salary": "numeric" (opcional),
+  "status": "string" (opcional),
+  "notes": "string" (opcional)
+}
+Response: { message, staff }
+
+DELETE /api/admin/staff/{staffId}
+Headers: Authorization: Bearer {token}
+Response: { message }
+```
+
+### Solicitudes de Personal
+```
+GET /api/admin/staff/requests
+Headers: Authorization: Bearer {token}
+Response: { 
+  requests: [
+    {
+      id, name, email, status, created_at,
+      user_profile: { datos completos del perfil del mozo }
+    }
+  ],
+  count 
+}
+
+GET /api/admin/staff/requests/archived
+Headers: Authorization: Bearer {token}
+Response: { archived_requests, count }
+
+POST /api/admin/staff/request/{requestId}
+Headers: Authorization: Bearer {token}
+Body: { "action": "confirm|reject|archive|archived" }
+Response: { message }
+
+🆕 POST /api/admin/staff/bulk-process
+Headers: Authorization: Bearer {token}
+Body: { "action": "confirm_all|archive_all" }
+Response: { message, processed_count }
+```
+
+### Invitar Personal
+```
+POST /api/admin/staff/invite
+Headers: Authorization: Bearer {token}
+Body: {
+  "name": "string",
+  "email": "string",
+  "position": "string",
+  "phone": "string" (opcional),
+  "birth_date": "date" (opcional),
+  "height": "numeric" (opcional),
+  "weight": "numeric" (opcional),
+  "gender": "string" (opcional),
+  "experience_years": "integer" (opcional),
+  "avatar": "file|string" (opcional)
+}
+Response: { message, staff }
+
+POST /api/admin/staff/onboard
+Headers: Authorization: Bearer {token}
+Body: { staff_data }
+Response: { message }
+```
+
+### Evaluaciones
+```
+POST /api/admin/staff/{id}/reviews
+Headers: Authorization: Bearer {token}
+Body: { "rating": 1-5, "comment": "string" (opcional) }
+Response: { message, review }
+
+DELETE /api/admin/staff/{staffId}/reviews/{id}
+Headers: Authorization: Bearer {token}
+Response: { message }
+```
+
+### 🆕 Nuevas Funcionalidades Admin
+```
+GET /api/admin/staff/{id}/whatsapp
+Headers: Authorization: Bearer {token}
+Response: { whatsapp_url, phone, formatted_phone }
+
+GET /api/admin/profile
+Headers: Authorization: Bearer {token}
+Response: { 
+  profile: {
+    id, name, email, avatar_url, phone,
+    business: { id, name },
+    created_at
+  }
+}
+
+POST /api/admin/profile/update
+Headers: Authorization: Bearer {token}
+Body: {
+  "name": "string" (opcional),
+  "email": "string" (opcional),
+  "phone": "string" (opcional),
+  "avatar": "file" (opcional)
+}
+Response: { message, profile }
+```
+
+---
+
+## ⚙️ APIS DEL ADMIN - PANEL DE CONTROL
+
+### Información del Negocio
+```
+GET /api/admin/business
+Headers: Authorization: Bearer {token}
+Response: { business, tables_count, menus_count, qr_codes_count, invitation_code, invitation_url }
+
+POST /api/admin/business/regenerate-invitation-code
+Headers: Authorization: Bearer {token}
+Response: { message, invitation_code, invitation_url }
+
+POST /api/admin/switch-view
+Headers: Authorization: Bearer {token}
+Body: { "view": "admin|waiter" }
+Response: { message, view, token }
+```
+
+### Configuración
+```
+GET /api/admin/settings
+Headers: Authorization: Bearer {token}
+Response: { business, settings }
+
+POST /api/admin/settings
+Headers: Authorization: Bearer {token}
+Body: { business_settings }
+Response: { message, business }
+```
+
+### Gestión de QR
+```
+POST /api/admin/qr/generate/{tableId}
+Headers: Authorization: Bearer {token}
+Response: { qr_code_data }
+
+GET /api/admin/qr/preview/{tableId}
+Headers: Authorization: Bearer {token}
+Response: { preview_url }
+
+POST /api/admin/qr/export
+Headers: Authorization: Bearer {token}
+Body: { export_options }
+Response: { export_file }
+
+POST /api/admin/qr/email
+Headers: Authorization: Bearer {token}
+Body: { email_data }
+Response: { message }
+```
+
+### Notificaciones
+```
+POST /api/admin/send-test-notification
+Headers: Authorization: Bearer {token}
+Body: { "title": "string" (opcional), "body": "string" (opcional) }
+Response: { message, users_notified, total_users }
+
+POST /api/admin/send-notification-to-user
+Headers: Authorization: Bearer {token}
+Body: { "user_id": "integer", "title": "string", "body": "string", "data": {} (opcional) }
+Response: { message, sent_to }
+
+GET /api/admin/notifications
+Headers: Authorization: Bearer {token}
+Response: { notifications }
+
+POST /api/admin/notifications/send-to-all
+Headers: Authorization: Bearer {token}
+Body: { notification_data }
+Response: { message }
+
+POST /api/admin/notifications/send-to-user
+Headers: Authorization: Bearer {token}
+Body: { notification_data }
+Response: { message }
+
+POST /api/admin/notifications/send-to-device
+Headers: Authorization: Bearer {token}
+Body: { notification_data }
+Response: { message }
+
+POST /api/admin/notifications/send-to-topic
+Headers: Authorization: Bearer {token}
+Body: { notification_data }
+Response: { message }
+
+POST /api/admin/notifications/subscribe-to-topic
+Headers: Authorization: Bearer {token}
+Body: { topic_data }
+Response: { message }
+```
+
+### Estadísticas
+```
+GET /api/admin/statistics
+Headers: Authorization: Bearer {token}
+Response: { 
+  tables_count, menus_count, staff_count, 
+  pending_requests_count, qr_codes_count, archived_staff_count 
+}
+
+GET /api/admin/calls/history
+Headers: Authorization: Bearer {token}
+Response: { call_history }
+
+GET /api/admin/tables/silenced
+Headers: Authorization: Bearer {token}
+Response: { silenced_tables }
+
+DELETE /api/admin/tables/{table}/silence
+Headers: Authorization: Bearer {token}
+Response: { message }
+```
+
+---
+
+## 🏢 APIS GENERALES
+
+### Gestión de Mesas
+```
+GET /api/tables
+Headers: Authorization: Bearer {token}
+Response: { tables }
+
+POST /api/tables
+Headers: Authorization: Bearer {token}
+Body: { table_data }
+Response: { message, table }
+
+PUT /api/tables/{tableId}
+Headers: Authorization: Bearer {token}
+Body: { table_data }
+Response: { message, table }
+
+DELETE /api/tables/{tableId}
+Headers: Authorization: Bearer {token}
+Response: { message }
+
+POST /api/tables/clone/{tableId}
+Headers: Authorization: Bearer {token}
+Response: { message, cloned_table }
+```
+
+### Gestión de Menús
+```
+GET /api/menus
+Headers: Authorization: Bearer {token}
+Response: { menus }
+
+POST /api/menus
+Headers: Authorization: Bearer {token}
+Body: { "name": "string", "file": "file", "is_default": "boolean" }
+Response: { message, menu }
+
+POST /api/menus/default
+Headers: Authorization: Bearer {token}
+Body: { "menu_id": "integer" }
+Response: { message }
+
+PUT /api/menus/{menu}
+Headers: Authorization: Bearer {token}
+Body: { "name": "string" }
+Response: { message, menu }
+
+DELETE /api/menus/{menu}
+Headers: Authorization: Bearer {token}
+Response: { message }
+
+POST /api/menus/reorder
+Headers: Authorization: Bearer {token}
+Body: { "menu_ids": [1, 2, 3] }
+Response: { message }
+
+GET /api/menus/{menu}/preview
+Headers: Authorization: Bearer {token}
+Response: { preview_url }
+
+GET /api/menus/{menu}/download
+Headers: Authorization: Bearer {token}
+Response: { download_file }
+
+GET /api/menus/upload-limits
+Headers: Authorization: Bearer {token}
+Response: { upload_limits }
+```
+
+### Notificaciones de Usuario
+```
+GET /api/user/notifications
+Headers: Authorization: Bearer {token}
+Response: { notifications }
+
+POST /api/user/notifications/{id}/read
+Headers: Authorization: Bearer {token}
+Response: { message }
+
+GET /api/notifications
+Headers: Authorization: Bearer {token}
+Response: { notifications }
+
+POST /api/notifications/handle/{notificationId}
+Headers: Authorization: Bearer {token}
+Response: { message }
+
+POST /api/notifications/{notificationId}/read
+Headers: Authorization: Bearer {token}
+Response: { message }
+
+POST /api/notifications/mark-multiple-read
+Headers: Authorization: Bearer {token}
+Body: { "notification_ids": [1, 2, 3] }
+Response: { message }
+
+POST /api/notifications/global
+Headers: Authorization: Bearer {token}
+Body: { notification_data }
+Response: { message }
+
+POST /api/tables/toggle-notifications/{tableId}
+Headers: Authorization: Bearer {token}
+Response: { message }
+```
+
+---
+
+## 🌐 APIS PÚBLICAS (QR)
+
+### Información de QR
+```
+GET /api/qr/{restaurantSlug}/{tableCode}
+Response: { table_info, business_info, menu_info }
+
+GET /api/table/{tableId}/status
+Response: { table_status, call_status }
+
+GET /api/table/{tableId}/call-status
+Response: { success, has_active_call, call }
+```
+
+### Llamadas de Mozo (Público)
+```
+POST /api/tables/{table}/call-waiter
+Body: {
+  "restaurant_id": "integer",
+  "table_id": "integer",
+  "message": "string" (opcional),
+  "urgency": "low|normal|high" (opcional)
+}
+Response: { success, message, data }
+
+GET /api/waiter-notifications/{id}
+Response: { notification_status }
+```
+
+### Configuración Firebase (Público)
+```
+GET /api/firebase/config
+Response: { firebase_config }
+
+GET /api/firebase/table/{table}/config
+Response: { table_firebase_config }
+
+GET /api/firebase/status
+Response: { 
+  status, real_time_available, fcm_available, 
+  frontend_config_available, fallback_polling_enabled,
+  config, firebase_write_test, recommendations 
+}
+```
+
+### Tiempo Real (Server-Sent Events)
+```
+GET /api/test/sse
+Response: SSE stream
+
+GET /api/table/{tableId}/call-status/stream
+Response: SSE stream para estado de llamadas
+
+GET /api/notifications/stream
+Response: SSE stream para notificaciones
+
+GET /api/notifications/poll
+Response: Polling optimizado para notificaciones
+```
+
+### Fallback Polling
+```
+GET /api/waiter/{waiterId}/notifications
+Response: { success, data: { pending_calls, recent_calls, total_pending, last_check } }
+```
+
+### Testing y Debugging
+```
+POST /api/test/register-fcm-token
+Body: { "token": "string", "platform": "string" }
+Response: { message }
+
+POST /api/test-waiter-notification
+Body: { test_data }
+Response: { success, message, received_data, timestamp }
+
+GET /api/firebase/write-test
+Response: { test_write, url, data_sent, firebase_response_status, firebase_response_body, success }
+
+GET /api/firebase/test
+Response: { realtime_database_test, type, timestamp }
+
+GET /api/debug/recent-calls
+Response: { recent_calls }
+```
+
+### Documentación
+```
+GET /api/api-docs
+Response: { all_apis_list }
+```
+
+---
+
+## 📋 NOTAS IMPORTANTES
+
+### Autenticación
+- Todas las rutas protegidas requieren: `Authorization: Bearer {token}`
+- El token se obtiene en `/api/login` o `/api/register`
+- Los tokens expiran según la configuración de Sanctum
+
+### Roles
+- `admin`: Acceso completo al negocio
+- `waiter`: Acceso a funciones de mozo
+
+### Estados de Staff
+- `pending`: Solicitud pendiente de aprobación
+- `confirmed`: Empleado confirmado y activo
+- `invited`: Invitado pero aún no registrado
+- `rejected`: Solicitud rechazada
+- `archived`: Archivado (diferente a rechazado)
+
+### Campos Editables
+**Solo el Mozo puede editar:**
+- Datos personales en Profile (foto, bio, teléfono, etc.)
+- Historial laboral
+- Habilidades y disponibilidad
+
+**Solo el Admin puede editar:**
+- Cargo (position)
+- Salario (salary)  
+- Notas (notes)
+- Estado del empleado (status)
+
+**Automáticos:**
+- Fecha de contratación (al confirmar)
+- Edad (calculada desde fecha de nacimiento)
+- Negocios asociados
+
+### Firebase Real-time
+- Las llamadas de mozo usan Firebase para tiempo real
+- Fallback a polling si Firebase no está disponible
+- SSE (Server-Sent Events) como alternativa
+
+### Códigos de Invitación
+- Cada business tiene un código único
+- Se usa en registro para crear Staff request automáticamente
+- Se puede regenerar desde el panel admin
+
+---
+
+## 🔧 PARA DESARROLLADORES
+
+### Headers Requeridos
+```
+Content-Type: application/json
+Authorization: Bearer {token}
+Accept: application/json
+```
+
+### Códigos de Estado
+- `200`: OK
+- `201`: Creado
+- `204`: Sin contenido (eliminado)
+- `401`: No autorizado
+- `403`: Prohibido
+- `404`: No encontrado
+- `422`: Error de validación
+- `500`: Error del servidor
+
+### Formato de Errores
+```json
+{
+  "message": "Error message",
+  "errors": {
+    "field": ["Error specific message"]
+  }
+}
+```
+
+### Paginación
+Algunas rutas soportan paginación con query params:
+- `?page=1`
+- `?per_page=15`
+- `?search=término`
+
+---
+
+*Documentación generada automáticamente - Última actualización: 2025-08-20*

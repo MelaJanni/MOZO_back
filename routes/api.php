@@ -232,6 +232,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/staff/invite', [AdminController::class, 'inviteStaff']);
         Route::post('/staff/{id}/reviews', [AdminController::class, 'addReview']);
         Route::delete('/staff/{staffId}/reviews/{id}', [AdminController::class, 'deleteReview']);
+        
+        // Funcionalidades adicionales para el admin
+        Route::post('/staff/bulk-process', [AdminController::class, 'bulkProcessRequests']);
+        Route::get('/staff/{id}/whatsapp', [AdminController::class, 'getWhatsAppLink']);
+        Route::get('/profile', [AdminController::class, 'getAdminProfile']);
+        Route::post('/profile/update', [AdminController::class, 'updateAdminProfile']);
     });
 
     Route::get('/tables', [TableController::class, 'fetchTables']);
