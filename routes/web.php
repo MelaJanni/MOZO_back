@@ -236,12 +236,8 @@ Route::get('/live-scss/pdf-viewer.css', function() {
     ]);
 })->name('live.pdf.viewer.css');
 
-// Ruta para limpiar cachés (usar ?token=TU_TOKEN). Añade CACHE_CLEAR_TOKEN=loquesea en .env
-Route::get('/admin/clear-caches', function(Request $request){
-    $token = $request->query('token');
-    if(!$token || $token !== env('CACHE_CLEAR_TOKEN')) {
-        abort(403,'Token inválido');
-    }
+// Ruta para limpiar cachés (sin token; restringe por IP si deseas)
+Route::get('/admin/clear-caches', function(){
     $results = [];
     foreach(['config:clear','route:clear','view:clear','cache:clear'] as $cmd){
         try { Artisan::call($cmd); $results[$cmd] = trim(Artisan::output()); } catch(\Throwable $e){ $results[$cmd] = 'ERROR: '.$e->getMessage(); }
@@ -253,5 +249,19 @@ Route::get('/admin/clear-caches', function(Request $request){
         $results['opcache_reset'] = 'NO DISPONIBLE';
     }
     return response()->json(['status'=>'ok','cleared'=>$results,'timestamp'=>now()->toDateTimeString()]);
+});
+
+// Debug hashes para verificar qué archivo se está leyendo
+Route::get('/debug/pdf-style-hash', function(){
+    $scssPath = resource_path('css/pdf-viewer.scss');
+    $pubPath  = public_path('css/pdf-viewer.css');
+    return response()->json([
+        'resource_exists' => file_exists($scssPath),
+        'resource_mtime'  => file_exists($scssPath)?date('c', filemtime($scssPath)):null,
+        'resource_md5'    => file_exists($scssPath)?md5_file($scssPath):null,
+        'public_exists'   => file_exists($pubPath),
+        'public_mtime'    => file_exists($pubPath)?date('c', filemtime($pubPath)):null,
+        'public_md5'      => file_exists($pubPath)?md5_file($pubPath):null,
+    ]);
 });
 

@@ -13,8 +13,19 @@
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous">
-    {{-- Estilos dinámicos SCSS sin caché (cambia a asset compilado en producción) --}}
-        <link rel="stylesheet" href="{{ route('live.pdf.viewer.css') }}?ts={{ microtime(true) }}">
+    {{-- Incrustar SCSS compilado inline para bypass TOTAL de caché (solo usar en debug) --}}
+    @php
+        try {
+            if(class_exists(\ScssPhp\ScssPhp\Compiler::class)) {
+                $__scss_compiler = new \ScssPhp\ScssPhp\Compiler();
+                $scssRaw = file_get_contents(resource_path('css/pdf-viewer.scss'));
+                $cssInline = $__scss_compiler->compileString($scssRaw)->getCss();
+            } else {
+                $cssInline = file_exists(public_path('css/pdf-viewer.css')) ? file_get_contents(public_path('css/pdf-viewer.css')) : '/* scssphp no disponible */';
+            }
+        } catch(\Throwable $e) { $cssInline = '/* Error SCSS: '. addslashes($e->getMessage()) .' */'; }
+    @endphp
+    <style id="pdf-viewer-inline-css">{!! $cssInline !!}</style>
 </head>
 <body>
 @php
