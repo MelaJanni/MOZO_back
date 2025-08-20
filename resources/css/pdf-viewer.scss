@@ -5,7 +5,10 @@
 // Variables
 
 *{
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+}
+p{
+  margin:  0 !important;
 }
 
 :root {
@@ -90,7 +93,6 @@ html, body {
   height: 100%;
   background: var(--bg);
   color: #e6edf3;
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 
 body {
@@ -349,15 +351,13 @@ body {
 
   &-tooltip {
     position: absolute;
-    right: 85px;
+    right: 75px;
     top: 50%;
     transform: translateY(-50%);
     background: rgba(17, 24, 39, 0.95);
     color: #fff;
     padding: 8px 12px;
     border-radius: 8px;
-    font-size: 0.75rem;
-    font-weight: 500;
     white-space: nowrap;
     opacity: 0;
     pointer-events: none;
@@ -365,7 +365,11 @@ body {
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-
+    p{
+      font-size: 14px;
+      font-weight: 400;
+      margin: 0;
+    }
     &::after {
       content: '';
       position: absolute;
