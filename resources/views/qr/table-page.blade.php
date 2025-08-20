@@ -224,18 +224,10 @@
     window.addEventListener('keydown',e=>{if(['INPUT','TEXTAREA'].includes(e.target.tagName))return; if(e.key==='ArrowLeft')change(-1); else if(e.key==='ArrowRight')change(1); else if((e.ctrlKey||e.metaKey)&&['+','=','Add'].includes(e.key)){e.preventDefault();btnZoomIn.click();} else if((e.ctrlKey||e.metaKey)&&['-','Subtract'].includes(e.key)){e.preventDefault();btnZoomOut.click();}});
     pdfjsLib.getDocument({url:menuUrl}).promise.then(pdf=>{pdfDoc=pdf;enable(true);pageCountSpan.textContent=pdf.numPages;update();renderPage(currentPage).then(()=>overlay.remove());for(let i=1;i<=Math.min(pdf.numPages,120);i++){pdf.getPage(i).then(p=>{const vp=p.getViewport({scale:.25});const c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;const cx=c.getContext('2d');p.render({canvasContext:cx,viewport:vp}).promise.then(()=>{const wrap=document.createElement('div');wrap.className='thumb'+(i===1?' active':'');wrap.dataset.page=p.pageNumber;wrap.appendChild(c);wrap.onclick=()=>{currentPage=p.pageNumber;update();queueRender(currentPage);};thumbsPanel.appendChild(wrap);});});} });
         window.addEventListener('resize',()=>{if(['width','page'].includes(fitMode))queueRender(currentPage);});
-        // === Gestos táctiles avanzados ===
-        // Implementados:
-        // 1. Pinch (zoom continuo)
-        // 2. Doble tap (zoom in/out inteligente)
-        // 3. Triple tap (reset: modo ancho / escala automática)
-        // 4. Two-finger tap (alternar fit width <-> fit page)
-        // 5. Long press (600ms) alterna visibilidad de thumbnails
-        // 6. Swipe 1 dedo horizontal cambia página
-        // 7. Swipe 2 dedos horizontal cambia 3 páginas (salto rápido)
-        // 8. Rotación (giro dedos >25°) rota 90° (cíclico)
-        // 9. Pan con un dedo mientras hay zoom (scroll del contenedor)
-        // 10. Pinch release snap: si escala ~1 vuelve a fit width
+    // === Gestos táctiles (Hammer.js) ===
+    // Simplifica y hace más confiable pinch / pan / tap / swipe.
+    // Fallback si Hammer no está: se conserva lógica previa (parcial abajo) 
+    let useHammer = typeof Hammer !== 'undefined';
 
         let tapTimes=[]; // almacenar timestamps para multi-tap
         let pinchStartDist=null; let startScaleRef=scale; let touchMode=null; let panStart=null; let stageScrollStart=null;
@@ -264,6 +256,36 @@
     function showLoupe(mx,my){loupe.style.display='block'; loupe.style.left=(mx-80)+'px'; loupe.style.top=(my-80)+'px';}
     function hideLoupe(){loupe.style.display='none';}
 
+        if(useHammer){
+            const h = new Hammer.Manager(stage);
+            h.add(new Hammer.Pinch({enable:true}));
+            h.add(new Hammer.Pan({direction: Hammer.DIRECTION_ALL, threshold:0}));
+            h.add(new Hammer.Tap({event:'doubletap', taps:2, interval:400, posThreshold:60}));
+            h.add(new Hammer.Tap({event:'tripletap', taps:3, interval:600, posThreshold:80}));
+            h.add(new Hammer.Tap()); // single
+            h.add(new Hammer.Swipe({direction: Hammer.DIRECTION_HORIZONTAL, velocity:0.3, threshold:18}));
+            h.get('doubletap').recognizeWith('tripletap');
+            let hammerInitialScale=scale; let hammerPinchCenter=null;
+            h.on('pinchstart',ev=>{hammerInitialScale=scale; hammerPinchCenter={x:ev.center.x-stage.getBoundingClientRect().left,y:ev.center.y-stage.getBoundingClientRect().top};});
+            h.on('pinchmove',ev=>{setScale(hammerInitialScale*ev.scale,hammerPinchCenter.x,hammerPinchCenter.y);});
+            h.on('pinchend',ev=>{ if(Math.abs(scale-1)<0.08) applyFitWidth(); });
+            h.on('panmove',ev=>{
+                if(scale>1.02){
+                    stage.scrollLeft -= ev.deltaX - (h.prevDeltaX||0);
+                    stage.scrollTop  -= ev.deltaY - (h.prevDeltaY||0);
+                }
+                h.prevDeltaX=ev.deltaX; h.prevDeltaY=ev.deltaY;
+            });
+            h.on('panend',()=>{h.prevDeltaX=0;h.prevDeltaY=0;});
+            h.on('doubletap',()=> smartZoomToggle());
+            h.on('tripletap',()=> resetView());
+            h.on('swipe',ev=>{ if(ev.direction===Hammer.DIRECTION_LEFT) change(1); else if(ev.direction===Hammer.DIRECTION_RIGHT) change(-1); });
+            // Long press manual
+            let lpTimer=null; stage.addEventListener('touchstart',e=>{lpTimer=setTimeout(()=>toggleThumbs(),650);},{passive:true}); stage.addEventListener('touchend',()=>{clearTimeout(lpTimer);lpTimer=null;},{passive:true});
+            // Loupe activación: pinch mantenido (>500ms) -> mostrar
+            let pinchHoldTimer=null; h.on('pinchstart',ev=>{pinchHoldTimer=setTimeout(()=>{loupeActive=true; showLoupe(ev.center.x,ev.center.y);},500);}); h.on('pinchend',()=>{clearTimeout(pinchHoldTimer);loupeActive=false; hideLoupe();}); h.on('pinchmove',ev=>{ if(loupeActive){ showLoupe(ev.center.x,ev.center.y); drawLoupe(ev.center.x,ev.center.y);} });
+        }
+        if(!useHammer){
         stage.addEventListener('touchstart',e=>{
             if(e.touches.length===1 && e.touches[0].clientX<EDGE_ZONE && thumbsPanel.classList.contains('peek')){edgeTracking=true; edgeStartX=e.touches[0].clientX;}
             activeTouches=e.touches.length;
@@ -346,7 +368,8 @@
                 if(edgeTracking){setTimeout(()=>{thumbsPanel.classList.remove('show'); edgeShown=false;},2200); edgeTracking=false;}
                 loupeActive=false; hideLoupe(); if(loupeAnim){cancelAnimationFrame(loupeAnim); loupeAnim=null;}
             }
-        });
+    }); // cierre listeners manuales
+    } // fin fallback sin Hammer
         // Evita scroll/refresh al hacer swipe down sobre el panel abierto
         document.addEventListener('touchmove',e=>{
             const panel=document.getElementById('waiterPanel');
