@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\QrWebController;
 use App\Http\Controllers\ApiDocumentationController;
+use ScssPhp\ScssPhp\Compiler;
 
 
 Route::get('/', function () {
@@ -202,4 +203,38 @@ Route::get('/api/docs/qr', [ApiDocumentationController::class, 'qrApis'])
     ->name('api.docs.qr');
 Route::get('/api/docs/waiter', [ApiDocumentationController::class, 'waiterApis'])
     ->name('api.docs.waiter');
+
+// Servir SCSS pdf-viewer en vivo (sin cache) - solo para entorno local / staging
+Route::get('/live-scss/pdf-viewer.css', function() {
+    // En producción redirige al asset estático para evitar penalización de performance
+    if(app()->environment('production')) {
+        return redirect()->to(asset('css/pdf-viewer.css').'?v='.time());
+    }
+    $path = resource_path('css/pdf-viewer.scss');
+    if(!file_exists($path)) abort(404);
+    $scss = file_get_contents($path);
+    // Si la librería no está disponible devolvemos el CSS ya compilado (si existe) como fallback
+    if(!class_exists(Compiler::class)) {
+        $fallback = public_path('css/pdf-viewer.css');
+        if(file_exists($fallback)) {
+            return response(file_get_contents($fallback), 200, [
+                'Content-Type' => 'text/css; charset=UTF-8',
+                'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0'
+            ]);
+        }
+        return response("/* scssphp no instalado; instale scssphp/scssphp o compile manualmente */",200,["Content-Type"=>"text/css"]);
+    }
+    $compiler = new Compiler();
+    $compiler->setOutputStyle(\ScssPhp\ScssPhp\OutputStyle::COMPRESSED);
+    try {
+        $css = $compiler->compileString($scss)->getCss();
+    } catch(\Throwable $e) {
+        return response("/* Error compilando SCSS: ".$e->getMessage()." */",200,["Content-Type"=>"text/css"]);
+    }
+    return response($css, 200, [
+        'Content-Type' => 'text/css; charset=UTF-8',
+        'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+        'Pragma' => 'no-cache'
+    ]);
+})->name('live.pdf.viewer.css');
 

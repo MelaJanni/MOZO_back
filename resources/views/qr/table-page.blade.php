@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous">
+    {{-- Estilos dinámicos SCSS sin caché (cambia a asset compilado en producción) --}}
     <link rel="stylesheet" href="{{ asset('css/pdf-viewer.css') }}?v={{ time() }}">
 </head>
 <body>
@@ -48,7 +49,7 @@
     <div class="pdf-controls-footer" role="toolbar" aria-label="Controles del visor PDF">
         <div class="controls-container row ">
             <!-- Navegación de páginas -->
-            <div class="control-group col">
+            <div class="control-group col p-0">
                 <button class="control-btn" id="btnPrev" disabled title="Página anterior">
                     <i class="fas fa-chevron-left"></i>
                 </button>
@@ -61,7 +62,7 @@
             </div>
             
             <!-- Controles de zoom -->
-            <div class="control-group col">
+            <div class="control-group col p-0">
                 <button class="control-btn" id="btnZoomOut" disabled title="Alejar">
                     <i class="fas fa-search-minus"></i>
                 </button>
@@ -73,7 +74,7 @@
             
             
             <!-- Acciones adicionales -->
-            <div class="control-group col col-btn">
+            <div class="control-group col col-btn p-0">
                 <a class="control-btn" id="btnDownload" href="{{ $menuUrl }}" target="_blank" rel="noopener" title="Abrir en nueva pestaña">
                     <i class="fas fa-external-link-alt"></i>
                     <span class="d-none d-md-inline">Abrir</span>
@@ -95,6 +96,10 @@
     <img src="{{ asset('images/logo.jpeg') }}" alt="Logo Mozo" style="width: 48px; height: 48px; border-radius: 16px; object-fit: cover;">
     <span class="fab-text">MOZO</span>
     <div class="fab-tooltip">Presioná para llamar al mozo</div>
+    <div class="fab-callout show pulse-border" id="fabCallout">
+        <span class="icon">🔔</span>
+        <span><strong>¿Necesitás ayuda?</strong><br>Presioná acá y llamá al mozo</span>
+    </div>
 </button>
 
 <!-- Panel llamar mozo -->
@@ -188,6 +193,17 @@
     function openPanel(){document.getElementById('waiterPanel').classList.add('open');document.getElementById('mozoFab').classList.add('open');document.getElementById('mozoFab').setAttribute('aria-expanded','true');}
     function closePanel(){document.getElementById('waiterPanel').classList.remove('open');document.getElementById('mozoFab').classList.remove('open');document.getElementById('mozoFab').setAttribute('aria-expanded','false');}
     document.addEventListener('keydown',e=>{if(e.key==='Escape')closePanel();});
+    // Dismiss callout al primer uso / scroll
+    (function(){
+        const callout=document.getElementById('fabCallout');
+        if(!callout) return;
+        function hide(){callout.classList.add('dismissed');setTimeout(()=>callout.remove(),600);window.removeEventListener('scroll',hide);document.removeEventListener('click',hide,true);}
+        document.getElementById('mozoFab').addEventListener('click',hide,{once:true});
+        window.addEventListener('scroll',hide,{passive:true});
+        setTimeout(()=>{ // auto-dismiss tras 12s
+            if(document.body.contains(callout)) hide();
+        },12000);
+    })();
     
     // Swipe down functionality
     let touchStartY = 0;
