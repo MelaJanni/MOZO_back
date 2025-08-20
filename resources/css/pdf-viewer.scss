@@ -139,6 +139,7 @@ body {
   padding: 1.25rem 2rem;
   z-index: 100;
   box-shadow: 0 -4px 32px rgba(0, 0, 0, 0.4);
+  display: flex;
 }
 
 .controls-container {
@@ -159,6 +160,7 @@ body {
   background: rgba(255, 255, 255, 0.08);
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.1);
+  width: max-content;
 }
 
 .control-btn {
@@ -447,25 +449,6 @@ body {
   }
 }
 
-@media (max-width: 768px) {
-  .pdf-controls-footer {
-    padding: 1rem;
-  }
-  
-  .controls-container {
-    gap: 0.75rem;
-    flex-direction: column;
-  }
-  
-  .control-group {
-    width: 100%;
-    justify-content: center;
-  }
-  
-  .fab {
-    bottom: 120px;
-  }
-}
 
 @media (max-width: 520px) {
   .control-btn span {

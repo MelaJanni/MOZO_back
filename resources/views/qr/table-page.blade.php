@@ -46,9 +46,9 @@
     
     <!-- Footer con controles -->
     <div class="pdf-controls-footer" role="toolbar" aria-label="Controles del visor PDF">
-        <div class="controls-container">
+        <div class="controls-container row ">
             <!-- Navegación de páginas -->
-            <div class="control-group">
+            <div class="control-group col-5">
                 <button class="control-btn" id="btnPrev" disabled title="Página anterior">
                     <i class="fas fa-chevron-left"></i>
                 </button>
@@ -61,7 +61,7 @@
             </div>
             
             <!-- Controles de zoom -->
-            <div class="control-group">
+            <div class="control-group col-5">
                 <button class="control-btn" id="btnZoomOut" disabled title="Alejar">
                     <i class="fas fa-search-minus"></i>
                 </button>
@@ -71,24 +71,9 @@
                 </button>
             </div>
             
-            <!-- Ajustes de vista -->
-            <div class="control-group">
-                <button class="control-btn" id="btnFitWidth" disabled title="Ajustar al ancho">
-                    <i class="fas fa-arrows-alt-h"></i>
-                    <span class="d-none d-sm-inline">Ancho</span>
-                </button>
-                <button class="control-btn" id="btnFitPage" disabled title="Ajustar página completa">
-                    <i class="fas fa-expand-arrows-alt"></i>
-                    <span class="d-none d-sm-inline">Página</span>
-                </button>
-            </div>
             
             <!-- Acciones adicionales -->
-            <div class="control-group">
-                <button class="control-btn" id="btnRotate" disabled title="Rotar 90°">
-                    <i class="fas fa-redo"></i>
-                    <span class="d-none d-md-inline">Rotar</span>
-                </button>
+            <div class="control-group col-2">
                 <a class="control-btn" id="btnDownload" href="{{ $menuUrl }}" target="_blank" rel="noopener" title="Abrir en nueva pestaña">
                     <i class="fas fa-external-link-alt"></i>
                     <span class="d-none d-md-inline">Abrir</span>
