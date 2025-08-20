@@ -80,9 +80,16 @@ class WaiterCallController extends Controller
 
             // Verificar si la mesa tiene un mozo activo asignado
             if (!$table->active_waiter_id) {
+                // Mensaje reutilizable (\n para saltos de línea si frontend desea mostrar en varias líneas)
+                $errorMessage = "Esta mesa no tiene un mozo asignado actualmente.\nPor favor, llame manualmente al mozo.";
+                // Si la petición expresa que espera HTML (ej: navegadores accediendo directamente), devolver redirect con flash
+                if (!$request->expectsJson() && !$request->ajax()) {
+                    return redirect()->back()->with('error', $errorMessage);
+                }
+                // Respuesta JSON estándar
                 return response()->json([
                     'success' => false,
-                    'message' => 'Esta mesa no tiene un mozo asignado actualmente. Por favor, llame manualmente al mozo.',
+                    'message' => $errorMessage,
                     'action_required' => 'call_manually'
                 ], 422);
             }

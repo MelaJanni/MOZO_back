@@ -744,7 +744,7 @@ startxref
 
             // Verificar si la mesa tiene un mozo activo asignado
             if (!$table->active_waiter_id) {
-                $errorMessage = 'Esta mesa no tiene un mozo asignado actualmente. Por favor, llame manualmente al mozo.';
+                $errorMessage = "Esta mesa no tiene un mozo asignado actualmente.\nPor favor, llame manualmente al mozo.";
                 if ($request->expectsJson() || $request->ajax()) {
                     return response()->json(['success' => false, 'message' => $errorMessage], 422);
                 }
