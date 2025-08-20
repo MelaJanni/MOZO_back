@@ -94,11 +94,14 @@
 <button id="mozoFab" class="fab" aria-haspopup="dialog" aria-controls="waiterPanel" aria-expanded="false" title="Llamar mozo" onclick="togglePanel()">
     <img src="{{ asset('images/logo.jpeg') }}" alt="Logo Mozo" style="width: 48px; height: 48px; border-radius: 16px; object-fit: cover;">
     <span class="fab-text">MOZO</span>
+    <div class="fab-tooltip">Presioná para llamar al mozo</div>
 </button>
 
 <!-- Panel llamar mozo -->
 <section id="waiterPanel" class="waiter-panel" role="dialog" aria-modal="true" aria-label="Panel para llamar al mozo">
-    <div class="panel-grabber" onclick="togglePanel()"></div>
+    <div class="panel-grabber" onclick="togglePanel()">
+        <i class="fas fa-chevron-down"></i>
+    </div>
     <div class="panel-header">
         <h1>¿Necesitás ayuda?</h1>
         <small>Mesa {{ $table->number }} • {{ $business->name }}</small>
@@ -185,6 +188,43 @@
     function openPanel(){document.getElementById('waiterPanel').classList.add('open');document.getElementById('mozoFab').classList.add('open');document.getElementById('mozoFab').setAttribute('aria-expanded','true');}
     function closePanel(){document.getElementById('waiterPanel').classList.remove('open');document.getElementById('mozoFab').classList.remove('open');document.getElementById('mozoFab').setAttribute('aria-expanded','false');}
     document.addEventListener('keydown',e=>{if(e.key==='Escape')closePanel();});
+    
+    // Swipe down functionality
+    let touchStartY = 0;
+    let touchStartTime = 0;
+    const panel = document.getElementById('waiterPanel');
+    
+    panel.addEventListener('touchstart', e => {
+        touchStartY = e.touches[0].clientY;
+        touchStartTime = Date.now();
+    }, { passive: true });
+    
+    panel.addEventListener('touchmove', e => {
+        if (!panel.classList.contains('open')) return;
+        const touchY = e.touches[0].clientY;
+        const deltaY = touchY - touchStartY;
+        
+        if (deltaY > 0) {
+            const progress = Math.min(deltaY / 150, 1);
+            panel.style.transform = `translateY(${deltaY * 0.5}px)`;
+            panel.style.opacity = `${1 - progress * 0.3}`;
+        }
+    }, { passive: true });
+    
+    panel.addEventListener('touchend', e => {
+        if (!panel.classList.contains('open')) return;
+        const touchEndY = e.changedTouches[0].clientY;
+        const deltaY = touchEndY - touchStartY;
+        const deltaTime = Date.now() - touchStartTime;
+        const velocity = deltaY / deltaTime;
+        
+        panel.style.transform = '';
+        panel.style.opacity = '';
+        
+        if (deltaY > 80 || velocity > 0.5) {
+            closePanel();
+        }
+    }, { passive: true });
     function startFirebaseListener(){const cfg={projectId:"mozoqr-7d32c",apiKey:"AIzaSyDGJJKNfSSxD6YnXnNjwRb6VUtPSyGN5CM",authDomain:"mozoqr-7d32c.firebaseapp.com",databaseURL:"https://mozoqr-7d32c-default-rtdb.firebaseio.com",storageBucket:"mozoqr-7d32c.appspot.com"};if(!window.firebase||!firebase.apps.length)firebase.initializeApp(cfg);const ref=firebase.database().ref(`active_calls/${currentNotificationId}`);firebaseListener=ref.on('value',s=>{const d=s.val();if(!d)return; if(d.status==='acknowledged'){showAck(d.waiter?.name||d.waiter_name);ref.off('value',firebaseListener);} else if(d.status==='completed'){showDone(d.waiter?.name||d.waiter_name);ref.off('value',firebaseListener);} });}
     function statusEl(){return document.getElementById('status-message');}
     function showAck(w){const e=statusEl();e.className='status-area status-success';e.style.display='block';e.innerHTML=`🎉 ${w||'El mozo'} confirmó tu solicitud.<div class="ack-extra">🚶‍♂️ En camino...</div>`;notify('¡Mozo confirmado!',`${w||'El mozo'} está en camino`);} 
