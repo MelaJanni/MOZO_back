@@ -201,14 +201,34 @@
     let pdfDoc=null,currentPage=1,scale=1,rotation=0,fitMode='width',rendering=false,pendingPage=null;
     function enable(v){[btnPrev,btnNext,btnZoomIn,btnZoomOut].forEach(b=>b&&(b.disabled=!v));}  
     function calcFitScale(page){const vw=stage.clientWidth-24;const vh=stage.clientHeight-24;const w0=page.view[2];const h0=page.view[3];let w=(rotation%180===0)?w0:h0;let h=(rotation%180===0)?h0:w0;const sW=vw/w;const sP=Math.min(vh/h,vw/w);if(fitMode==='width')return sW;if(fitMode==='page')return sP;return scale;}  
-    async function renderPage(num){rendering=true;const page=await pdfDoc.getPage(num);const effective=(['width','page'].includes(fitMode))?calcFitScale(page):scale;const vp=page.getViewport({scale:effective,rotation});canvas.width=vp.width;canvas.height=vp.height;if(zoomLevel) zoomLevel.textContent=Math.round(effective*100)+'%';await page.render({canvasContext:ctx,viewport:vp}).promise;rendering=false;if(pendingPage){const p=pendingPage;pendingPage=null;renderPage(p);}}  
-    function queueRender(p){rendering?pendingPage=p:renderPage(p);}  
+    // Renderiza manteniendo opcionalmente un punto ancla (anchor) centrado tras el zoom
+    async function renderPage(num, anchor){
+        rendering=true;
+        const page=await pdfDoc.getPage(num);
+        const effective=(['width','page'].includes(fitMode))?calcFitScale(page):scale;
+        const vp=page.getViewport({scale:effective,rotation});
+        // High-DPI para nitidez
+        const dpr=window.devicePixelRatio||1;
+        canvas.width=vp.width*dpr; canvas.height=vp.height*dpr;
+        canvas.style.width=vp.width+'px'; canvas.style.height=vp.height+'px';
+        ctx.setTransform(dpr,0,0,dpr,0,0);
+        if(zoomLevel) zoomLevel.textContent=Math.round(effective*100)+'%';
+        await page.render({canvasContext:ctx,viewport:vp}).promise;
+        // Reposicionar scroll para mantener anchor
+        if(anchor){
+            const scrollXRatio=anchor.x / anchor.prevWidth;
+            const scrollYRatio=anchor.y / anchor.prevHeight;
+            stage.scrollLeft = scrollXRatio * vp.width - anchor.viewportCenterX;
+            stage.scrollTop  = scrollYRatio * vp.height - anchor.viewportCenterY;
+        }
+        rendering=false; if(pendingPage){const p=pendingPage; pendingPage=null; renderPage(p);} }
+    function queueRender(p, anchor){rendering?pendingPage=p:renderPage(p, anchor);}  
     function update(){pageNumSpan.textContent=currentPage;pageCountSpan.textContent=pdfDoc.numPages;btnPrev.disabled=currentPage<=1;btnNext.disabled=currentPage>=pdfDoc.numPages;[...thumbsPanel.querySelectorAll('.thumb')].forEach(el=>el.classList.toggle('active',+el.dataset.page===currentPage));}
     function change(delta){const t=currentPage+delta;if(t>=1&&t<=pdfDoc.numPages){currentPage=t;update();queueRender(currentPage);}}  
-    function setScale(s){
+    function setScale(s, anchor){
         scale=Math.min(6,Math.max(.2,s));
         fitMode='manual';
-        queueRender(currentPage);
+        queueRender(currentPage, anchor);
     }  
     if(btnPrev) btnPrev.onclick=()=>change(-1);
     if(btnNext) btnNext.onclick=()=>change(1);
@@ -268,8 +288,20 @@
                 stage.scrollTop  = pinchCenter.y*factor - (ev.center.y - stage.getBoundingClientRect().top);
             });
             h.on('pinchend',ev=>{
+                // Preparar anchor antes de limpiar transform
+                const rect=stage.getBoundingClientRect();
+                const prevWidth=parseFloat(canvas.style.width)||canvas.width;
+                const prevHeight=parseFloat(canvas.style.height)||canvas.height;
+                const anchor={
+                    x: pinchCenter.x,
+                    y: pinchCenter.y,
+                    prevWidth: prevWidth,
+                    prevHeight: prevHeight,
+                    viewportCenterX: ev.center.x - rect.left,
+                    viewportCenterY: ev.center.y - rect.top
+                };
                 canvas.style.transform='';
-                setScale(pinchTempScale);
+                setScale(pinchTempScale, anchor);
                 if(Math.abs(scale-1)<0.08) applyFitWidth();
             });
             h.on('panmove',ev=>{
