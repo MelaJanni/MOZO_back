@@ -97,6 +97,7 @@ html, body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  overscroll-behavior: none; // evita pull-to-refresh y rebote en mobile
 }
 
 body {
@@ -267,6 +268,7 @@ body {
   position: relative;
   // Deshabilita gestos por defecto del navegador para manejar pinch/scroll personalizados
   touch-action: none;
+  overscroll-behavior: contain;
 }
 
 #pdfCanvas {

@@ -203,7 +203,20 @@
     function queueRender(p){rendering?pendingPage=p:renderPage(p);}  
     function update(){pageNumSpan.textContent=currentPage;pageCountSpan.textContent=pdfDoc.numPages;btnPrev.disabled=currentPage<=1;btnNext.disabled=currentPage>=pdfDoc.numPages;[...thumbsPanel.querySelectorAll('.thumb')].forEach(el=>el.classList.toggle('active',+el.dataset.page===currentPage));}
     function change(delta){const t=currentPage+delta;if(t>=1&&t<=pdfDoc.numPages){currentPage=t;update();queueRender(currentPage);}}  
-    function setScale(s){scale=s;fitMode='manual';queueRender(currentPage);}  
+    function setScale(s,cx=null,cy=null){
+        const prevScale=scale;
+        scale=Math.min(6,Math.max(.2,s));
+        fitMode='manual';
+        if(prevScale!==scale && cx!==null){
+            // Mantener el punto de enfoque (cx,cy relativos al stage) tras el re-render
+            const beforeLeft=stage.scrollLeft; const beforeTop=stage.scrollTop;
+            const rx=(cx+beforeLeft)/prevScale; const ry=(cy+beforeTop)/prevScale;
+            queueRender(currentPage);
+            setTimeout(()=>{stage.scrollLeft=rx*scale-cx; stage.scrollTop=ry*scale-cy;},0);
+            return;
+        }
+        queueRender(currentPage);
+    }  
     if(btnPrev) btnPrev.onclick=()=>change(-1);
     if(btnNext) btnNext.onclick=()=>change(1);
     if(btnZoomIn) btnZoomIn.onclick=()=>setScale(scale*1.15);
@@ -233,7 +246,12 @@
         function angle(a,b){return Math.atan2(b.clientY-a.clientY,b.clientX-a.clientX)*180/Math.PI;}
         function applyFitWidth(){fitMode='width';queueRender(currentPage);} 
         function applyFitPage(){fitMode='page';queueRender(currentPage);} 
-        function smartZoomToggle(){setScale(scale* (scale<1.5?1.6:(scale>2.5?0.6:1.2)));}
+        function smartZoomToggle(){
+            // Zoom progresivo centrado al medio visible
+            const rect=stage.getBoundingClientRect();
+            const cx=rect.width/2; const cy=rect.height/2;
+            setScale(scale* (scale<1.5?1.6:(scale>2.5?0.6:1.2)),cx,cy);
+        }
         function resetView(){scale=1;applyFitWidth();}
         function toggleThumbs(){thumbsPanel.style.display=thumbsPanel.style.display==='none'?'flex':'none';}
     // Inicializa modo peek
@@ -257,7 +275,7 @@
                 longPressTimer=setTimeout(()=>{toggleThumbs();},600);
             } else if(activeTouches===2){
                 touchMode='pinch';
-                pinchStartDist=dist(e.touches[0],e.touches[1]);
+                pinchStartDist=dist(e.touches[0],e.touches[1]); pinchCenter={x:(e.touches[0].clientX+e.touches[1].clientX)/2 - stage.getBoundingClientRect().left, y:(e.touches[0].clientY+e.touches[1].clientY)/2 - stage.getBoundingClientRect().top};
                 startScaleRef=scale; multiFingerStartTime=Date.now(); rotationApplied=false; multiFingerReleased=false;
                 initialAngle=angle(e.touches[0],e.touches[1]);
                 twoFingerTapTimer=setTimeout(()=>{twoFingerTapTimer=null;},250); // ventana two-finger tap
@@ -272,7 +290,9 @@
                 e.preventDefault();
                 const d=dist(e.touches[0],e.touches[1]);
                 const factor=d/pinchStartDist;
-                setScale(Math.min(5,Math.max(.25,startScaleRef*factor)));
+                const centerX=(e.touches[0].clientX+e.touches[1].clientX)/2 - stage.getBoundingClientRect().left;
+                const centerY=(e.touches[0].clientY+e.touches[1].clientY)/2 - stage.getBoundingClientRect().top;
+                setScale(startScaleRef*factor,centerX,centerY);
                 // Rotación
                 if(!rotationApplied){
                     const ang=angle(e.touches[0],e.touches[1]);
@@ -281,7 +301,7 @@
                 }
             } else if(touchMode==='single' && e.touches.length===1 && panStart){
                 const dx=e.touches[0].clientX-panStart.x; const dy=e.touches[0].clientY-panStart.y;
-                if(scale>0.99){ // sólo pan útil si hay zoom ~>=1
+                if(scale>calcFitScale({view:[0,0,canvas.width/scale,canvas.height/scale]})+0.02){
                     stage.scrollLeft=stageScrollStart.x-dx;
                     stage.scrollTop=stageScrollStart.y-dy;
                 }
@@ -327,6 +347,15 @@
                 loupeActive=false; hideLoupe(); if(loupeAnim){cancelAnimationFrame(loupeAnim); loupeAnim=null;}
             }
         });
+        // Evita scroll/refresh al hacer swipe down sobre el panel abierto
+        document.addEventListener('touchmove',e=>{
+            const panel=document.getElementById('waiterPanel');
+            if(panel.classList.contains('open')){
+                // Si se inicia en el panel, prevenir overscroll superior
+                const tgt=e.target.closest('#waiterPanel');
+                if(tgt){e.preventDefault();}
+            }
+        },{passive:false});
     }
     // Panel & Firebase
     const CLIENT_IP='{{ $clientIp }}';
