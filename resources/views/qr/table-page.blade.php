@@ -16,12 +16,25 @@
     {{-- Incrustar SCSS compilado inline para bypass TOTAL de caché (solo usar en debug) --}}
     @php
         try {
-            if(class_exists(\ScssPhp\ScssPhp\Compiler::class)) {
+            $scssPath = resource_path('css/pdf-viewer.scss');
+            $publicCssPath = public_path('css/pdf-viewer.css');
+            $meta = [
+                'time' => microtime(true),
+                'scss_exists' => file_exists($scssPath),
+                'scss_md5' => file_exists($scssPath)? md5_file($scssPath): null,
+                'public_exists' => file_exists($publicCssPath),
+                'public_md5' => file_exists($publicCssPath)? md5_file($publicCssPath): null,
+            ];
+            if(class_exists(\ScssPhp\ScssPhp\Compiler::class) && $meta['scss_exists']) {
                 $__scss_compiler = new \ScssPhp\ScssPhp\Compiler();
-                $scssRaw = file_get_contents(resource_path('css/pdf-viewer.scss'));
-                $cssInline = $__scss_compiler->compileString($scssRaw)->getCss();
+                $scssRaw = file_get_contents($scssPath);
+                $compiled = $__scss_compiler->compileString($scssRaw)->getCss();
+                // Guardamos comentario con metadata y comprobamos si aparece padding-bottom:120px (indicador de versión vieja)
+                $flagOld = (strpos($compiled,'padding-bottom: 120px') !== false);
+                $cssInline = '/*INLINE-SCSS meta='.json_encode($meta).' oldPadding='.(int)$flagOld.' */\n'. $compiled;
             } else {
-                $cssInline = file_exists(public_path('css/pdf-viewer.css')) ? file_get_contents(public_path('css/pdf-viewer.css')) : '/* scssphp no disponible */';
+                $fallback = $meta['public_exists']? file_get_contents($publicCssPath): '/* scssphp no disponible y sin fallback */';
+                $cssInline = '/*INLINE-FALLBACK meta='.json_encode($meta).' */\n'.$fallback;
             }
         } catch(\Throwable $e) { $cssInline = '/* Error SCSS: '. addslashes($e->getMessage()) .' */'; }
     @endphp
