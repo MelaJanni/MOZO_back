@@ -36,7 +36,18 @@ class WaiterCallController extends Controller
         try {
             // Verificar si la IP está bloqueada SILENCIOSAMENTE
             $clientIp = $request->ip();
-            if (IpBlock::isIpBlocked($clientIp, $table->business_id)) {
+            $activeBlocks = IpBlock::where('ip_address', $clientIp)
+                ->where('business_id', $table->business_id)
+                ->active()
+                ->get(['id','blocked_at','expires_at','reason']);
+            $isBlocked = $activeBlocks->isNotEmpty();
+            Log::info('CALL_WAITER_IP_CHECK', [
+                'ip' => $clientIp,
+                'business_id' => $table->business_id,
+                'active_blocks' => $activeBlocks->count(),
+                'route' => 'api.callWaiter'
+            ]);
+            if ($isBlocked) {
                 // Respuesta de "éxito" para no alertar al spammer
                 return response()->json([
                     'success' => true,
@@ -50,7 +61,12 @@ class WaiterCallController extends Controller
                         'blocked' => true
                     ],
                     'blocked' => true, // Para que el frontend no imprima la notificación
-                    'blocked_ip' => true // Solo para debug interno
+                    'blocked_ip' => true, // Solo para debug interno
+                    'debug_ip' => $request->boolean('debug_ip') ? [
+                        'ip' => $clientIp,
+                        'active_blocks' => $activeBlocks,
+                        'business_id' => $table->business_id
+                    ] : null
                 ]);
             }
 
@@ -136,7 +152,7 @@ class WaiterCallController extends Controller
                 'metadata' => [
                     'client_info' => $request->input('client_info'),
                     'urgency' => $request->input('urgency', 'normal'),
-                    'ip_address' => $request->ip(),
+                    'ip_address' => $clientIp,
                     'user_agent' => $request->userAgent(),
                     'source' => 'api_call'
                 ]
@@ -164,7 +180,13 @@ class WaiterCallController extends Controller
                     'called_at' => $call->called_at,
                     'status' => 'pending'
                 ],
-                'estimated_response_time' => '2-3 minutos'
+                'estimated_response_time' => '2-3 minutos',
+                'debug_ip' => $request->boolean('debug_ip') ? [
+                    'ip' => $clientIp,
+                    'active_ip_blocks' => $activeBlocks->count(),
+                    'business_id' => $table->business_id,
+                    'call_id' => $call->id
+                ] : null
             ]);
 
         } catch (\Exception $e) {
