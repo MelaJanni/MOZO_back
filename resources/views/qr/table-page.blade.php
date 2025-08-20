@@ -32,11 +32,11 @@
         .loading-overlay { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1rem; backdrop-filter:blur(4px); background:linear-gradient(135deg,#111827 0%,#1e1e2e 100%); z-index:3; }
         .spinner { width:42px; height:42px; border:5px solid #2d333b; border-top-color:var(--accent); border-radius:50%; animation:spin 1s linear infinite; }
         @keyframes spin { to { transform:rotate(360deg); } }
-        .fab { position:fixed; bottom:22px; right:22px; width:74px; height:74px; border-radius:28px; background:linear-gradient(145deg,var(--accent),var(--accent-dark)); border:none; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:600; font-size:.7rem; letter-spacing:.5px; cursor:pointer; box-shadow:0 12px 28px -6px rgba(139,92,246,.6),0 4px 10px -2px rgba(0,0,0,.55); z-index:50; transition:.35s; }
+        .fab { position:fixed; bottom:22px; right:22px; width:74px; height:74px; border-radius:28px; background:linear-gradient(145deg,var(--accent),var(--accent-dark)); border:none; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#fff; font-weight:600; font-size:.7rem; letter-spacing:.5px; cursor:pointer; box-shadow:0 12px 28px -6px rgba(139,92,246,.6),0 4px 10px -2px rgba(0,0,0,.55); z-index:50; transition:.35s; gap:2px; }
         .fab:active { transform:scale(.94); }
-        .fab svg { width:42px; height:42px; }
-        .fab::after { content:'MOZO'; position:absolute; bottom:6px; font-size:.6rem; font-weight:700; letter-spacing:1px; }
-        .fab.open { transform:rotate(45deg); }
+        .fab:hover { transform:scale(1.05); }
+        .fab.open { transform:rotate(180deg); }
+        .fab-text { font-size:.5rem; font-weight:700; letter-spacing:1px; margin-top:1px; }
         .waiter-panel { position:fixed; left:0; right:0; bottom:0; transform:translateY(105%); background:#161b22; border-radius:34px 34px 0 0; padding:30px 22px 40px; box-shadow:0 -8px 32px -8px rgba(0,0,0,.7); transition:.45s cubic-bezier(.4,0,.2,1); z-index:60; max-height:85vh; display:flex; flex-direction:column; gap:22px; }
         .waiter-panel.open { transform:translateY(0); }
         .panel-grabber { width:64px; height:6px; border-radius:3px; background:#2d333b; margin:0 auto 6px; }
@@ -116,18 +116,8 @@
 
 <!-- FAB -->
 <button id="mozoFab" class="fab" aria-haspopup="dialog" aria-controls="waiterPanel" aria-expanded="false" title="Llamar mozo" onclick="togglePanel()">
-    <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <rect x="4" y="4" width="112" height="112" rx="32" fill="white"/>
-        <circle cx="45" cy="50" r="18" fill="#000"/>
-        <circle cx="45" cy="50" r="8" fill="white"/>
-        <circle cx="75" cy="50" r="18" fill="#000"/>
-        <circle cx="75" cy="50" r="8" fill="white"/>
-        <circle cx="37" cy="30" r="4" fill="#000"/>
-        <circle cx="53" cy="30" r="4" fill="#000"/>
-        <circle cx="67" cy="30" r="4" fill="#000"/>
-        <circle cx="83" cy="30" r="4" fill="#000"/>
-        <path d="M40 78c6 8 16 14 20 14s14-6 20-14" stroke="#000" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>
+    <img src="{{ asset('images/logo.jpeg') }}" alt="Logo Mozo" style="width: 48px; height: 48px; border-radius: 16px; object-fit: cover;">
+    <span class="fab-text">MOZO</span>
 </button>
 
 <!-- Panel llamar mozo -->
