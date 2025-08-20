@@ -3,6 +3,11 @@
 // ================================
 
 // Variables
+
+*{
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
 :root {
   --accent: #8b5cf6;
   --accent-dark: #6d3ff0;
@@ -391,7 +396,6 @@ body {
     background: rgba(17, 24, 39, 0.96);
     padding: 10px 14px 10px 14px;
     border-radius: 10px;
-    
     color: #fff;
     border: 1px solid rgba(139, 92, 246, 0.5);
     box-shadow: 0 6px 18px -4px rgba(0,0,0,0.55), 0 0 0 2px rgba(139,92,246,0.15);
@@ -407,6 +411,7 @@ body {
       font-size: 14px;
       font-weight: 400 !important;
       line-height: 1.25;
+      margin: 0;
     }
 
     &::after { // flecha (cuerpo)
