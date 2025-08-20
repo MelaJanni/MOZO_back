@@ -64,7 +64,6 @@
     
     <!-- Área principal del PDF -->
     <div class="pdf-workspace">
-        <aside class="thumbs-panel" id="thumbsPanel" aria-label="Miniaturas"></aside>
         <div class="canvas-stage" id="canvasStage">
             <div class="loading-overlay" id="loadingOverlay">
                 <div class="spinner" role="status" aria-label="Cargando"></div>

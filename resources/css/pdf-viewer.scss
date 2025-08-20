@@ -137,7 +137,7 @@ body {
   right: 0;
   @include glass-effect(0.92);
   border-top: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 1.25rem 2rem;
+  padding: 16px;
   z-index: 100;
   box-shadow: 0 -4px 32px rgba(0, 0, 0, 0.4);
   display: flex;
@@ -200,7 +200,6 @@ body {
   overflow: hidden;
   position: relative;
   padding-bottom: 70px;
-  padding-top: 10px;
 }
 
 .thumbs-panel {
