@@ -76,7 +76,7 @@
     </div>
     
     <!-- Footer con controles -->
-    <div class="pdf-controls-footer" role="toolbar" aria-label="Controles del visor PDF">
+    <div class="pdf-controls-footer d-none" role="toolbar" aria-label="Controles del visor PDF">
         <div class="controls-container row ">
             <!-- Navegación de páginas -->
             <div class="control-group col p-0">
@@ -114,8 +114,7 @@
     <span class="fab-text">MOZO</span>
     <div class="fab-tooltip">Presioná para llamar al mozo</div>
     <div class="fab-callout show pulse-border" id="fabCallout">
-        <span class="icon">🔔</span>
-        <span><strong>¿Necesitás ayuda?</strong><br>Presioná acá y llamá al mozo</span>
+        <span><br>Presioná acá y llamá al mozo</span>
     </div>
 </button>
 
@@ -196,10 +195,10 @@
     function update(){pageNumSpan.textContent=currentPage;pageCountSpan.textContent=pdfDoc.numPages;btnPrev.disabled=currentPage<=1;btnNext.disabled=currentPage>=pdfDoc.numPages;[...thumbsPanel.querySelectorAll('.thumb')].forEach(el=>el.classList.toggle('active',+el.dataset.page===currentPage));}
     function change(delta){const t=currentPage+delta;if(t>=1&&t<=pdfDoc.numPages){currentPage=t;update();queueRender(currentPage);}}  
     function setScale(s){scale=s;fitMode='manual';queueRender(currentPage);}  
-    btnPrev.onclick=()=>change(-1);
-    btnNext.onclick=()=>change(1);
-    btnZoomIn.onclick=()=>setScale(scale*1.15);
-    btnZoomOut.onclick=()=>setScale(Math.max(.25,scale/1.15));
+    if(btnPrev) btnPrev.onclick=()=>change(-1);
+    if(btnNext) btnNext.onclick=()=>change(1);
+    if(btnZoomIn) btnZoomIn.onclick=()=>setScale(scale*1.15);
+    if(btnZoomOut) btnZoomOut.onclick=()=>setScale(Math.max(.25,scale/1.15));
     window.addEventListener('keydown',e=>{if(['INPUT','TEXTAREA'].includes(e.target.tagName))return; if(e.key==='ArrowLeft')change(-1); else if(e.key==='ArrowRight')change(1); else if((e.ctrlKey||e.metaKey)&&['+','=','Add'].includes(e.key)){e.preventDefault();btnZoomIn.click();} else if((e.ctrlKey||e.metaKey)&&['-','Subtract'].includes(e.key)){e.preventDefault();btnZoomOut.click();}});
     pdfjsLib.getDocument({url:menuUrl}).promise.then(pdf=>{pdfDoc=pdf;enable(true);pageCountSpan.textContent=pdf.numPages;update();renderPage(currentPage).then(()=>overlay.remove());for(let i=1;i<=Math.min(pdf.numPages,120);i++){pdf.getPage(i).then(p=>{const vp=p.getViewport({scale:.25});const c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;const cx=c.getContext('2d');p.render({canvasContext:cx,viewport:vp}).promise.then(()=>{const wrap=document.createElement('div');wrap.className='thumb'+(i===1?' active':'');wrap.dataset.page=p.pageNumber;wrap.appendChild(c);wrap.onclick=()=>{currentPage=p.pageNumber;update();queueRender(currentPage);};thumbsPanel.appendChild(wrap);});});} });
         window.addEventListener('resize',()=>{if(['width','page'].includes(fitMode))queueRender(currentPage);});
