@@ -114,7 +114,7 @@
     <span class="fab-text">MOZO</span>
     <div class="fab-tooltip">Presioná para llamar al mozo</div>
     <div class="fab-callout show pulse-border" id="fabCallout">
-        <span><br>Presioná acá y llamá al mozo</span>
+        <p>Presioná acá y llamá al mozo</p>
     </div>
 </button>
 
