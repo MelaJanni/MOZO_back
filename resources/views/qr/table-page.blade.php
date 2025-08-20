@@ -64,12 +64,14 @@
     
     <!-- Área principal del PDF -->
     <div class="pdf-workspace">
+        <aside class="thumbs-panel" id="thumbsPanel" aria-label="Miniaturas"></aside>
         <div class="canvas-stage" id="canvasStage">
             <div class="loading-overlay" id="loadingOverlay">
                 <div class="spinner" role="status" aria-label="Cargando"></div>
                 <div style="font-size:.85rem; letter-spacing:.5px; opacity:.75;">Cargando menú...</div>
             </div>
             <canvas id="pdfCanvas" aria-label="Página PDF"></canvas>
+            <div class="loupe" id="loupe"><canvas id="loupeCanvas"></canvas></div>
         </div>
     </div>
     
@@ -88,19 +90,6 @@
                     <i class="fas fa-chevron-right"></i>
                 </button>
             </div>
-            
-            <!-- Controles de zoom -->
-            <div class="control-group col p-0">
-                <button class="control-btn" id="btnZoomOut" disabled title="Alejar">
-                    <i class="fas fa-search-minus"></i>
-                </button>
-                <div class="zoom-display" id="zoomLevel">100%</div>
-                <button class="control-btn" id="btnZoomIn" disabled title="Acercar">
-                    <i class="fas fa-search-plus"></i>
-                </button>
-            </div>
-            
-            
             <!-- Acciones adicionales -->
             <div class="control-group col col-btn p-0">
                 <a class="control-btn" id="btnDownload" href="{{ $menuUrl }}" target="_blank" rel="noopener" title="Abrir en nueva pestaña">
@@ -148,6 +137,8 @@
         <div class="status-area status-error" style="display:block;">❌ {{ session('error') }}</div>
     @endif
 </section>
+
+<div id="waiterBackdrop" class="waiter-backdrop" onclick="closePanel()"></div>
 
 <!-- Scripts -->
 <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
@@ -212,14 +203,130 @@
     window.addEventListener('keydown',e=>{if(['INPUT','TEXTAREA'].includes(e.target.tagName))return; if(e.key==='ArrowLeft')change(-1); else if(e.key==='ArrowRight')change(1); else if((e.ctrlKey||e.metaKey)&&['+','=','Add'].includes(e.key)){e.preventDefault();btnZoomIn.click();} else if((e.ctrlKey||e.metaKey)&&['-','Subtract'].includes(e.key)){e.preventDefault();btnZoomOut.click();}});
     pdfjsLib.getDocument({url:menuUrl}).promise.then(pdf=>{pdfDoc=pdf;enable(true);pageCountSpan.textContent=pdf.numPages;update();renderPage(currentPage).then(()=>overlay.remove());for(let i=1;i<=Math.min(pdf.numPages,120);i++){pdf.getPage(i).then(p=>{const vp=p.getViewport({scale:.25});const c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;const cx=c.getContext('2d');p.render({canvasContext:cx,viewport:vp}).promise.then(()=>{const wrap=document.createElement('div');wrap.className='thumb'+(i===1?' active':'');wrap.dataset.page=p.pageNumber;wrap.appendChild(c);wrap.onclick=()=>{currentPage=p.pageNumber;update();queueRender(currentPage);};thumbsPanel.appendChild(wrap);});});} });
         window.addEventListener('resize',()=>{if(['width','page'].includes(fitMode))queueRender(currentPage);});
+        // === Gestos táctiles avanzados ===
+        // Implementados:
+        // 1. Pinch (zoom continuo)
+        // 2. Doble tap (zoom in/out inteligente)
+        // 3. Triple tap (reset: modo ancho / escala automática)
+        // 4. Two-finger tap (alternar fit width <-> fit page)
+        // 5. Long press (600ms) alterna visibilidad de thumbnails
+        // 6. Swipe 1 dedo horizontal cambia página
+        // 7. Swipe 2 dedos horizontal cambia 3 páginas (salto rápido)
+        // 8. Rotación (giro dedos >25°) rota 90° (cíclico)
+        // 9. Pan con un dedo mientras hay zoom (scroll del contenedor)
+        // 10. Pinch release snap: si escala ~1 vuelve a fit width
+
+        let tapTimes=[]; // almacenar timestamps para multi-tap
+        let pinchStartDist=null; let startScaleRef=scale; let touchMode=null; let panStart=null; let stageScrollStart=null;
+        let twoFingerTapTimer=null; let longPressTimer=null; let initialAngle=null; let rotationApplied=false;
+        let multiFingerStartTime=null; let multiFingerReleased=false; let activeTouches=0;
+        let swipeStartX=null; let swipeStartY=null; let swipeFingerCount=0;
+        function dist(a,b){const dx=a.clientX-b.clientX;const dy=a.clientY-b.clientY;return Math.hypot(dx,dy);}    
+        function angle(a,b){return Math.atan2(b.clientY-a.clientY,b.clientX-a.clientX)*180/Math.PI;}
+        function applyFitWidth(){fitMode='width';queueRender(currentPage);} 
+        function applyFitPage(){fitMode='page';queueRender(currentPage);} 
+        function smartZoomToggle(){setScale(scale* (scale<1.5?1.6:(scale>2.5?0.6:1.2)));}
+        function resetView(){scale=1;applyFitWidth();}
+        function toggleThumbs(){thumbsPanel.style.display=thumbsPanel.style.display==='none'?'flex':'none';}
+    // Inicializa modo peek
+    thumbsPanel.classList.add('peek');
+    // Variables edge & loupe
+    let edgeTracking=false, edgeShown=false, edgeStartX=null; const EDGE_ZONE=24, EDGE_THRESHOLD=14;
+    const loupe=document.getElementById('loupe'); const loupeCanvas=document.getElementById('loupeCanvas'); const loupeCtx=loupeCanvas.getContext('2d');
+    loupeCanvas.width=400; loupeCanvas.height=400; let loupeActive=false; let loupeAnim=null;
+    function drawLoupe(mx,my){if(!loupeActive||!pdfDoc)return; const rect=canvas.getBoundingClientRect(); const ratio=canvas.width/rect.width; const grab=120; const sx=(mx-rect.left)*ratio-grab/2; const sy=(my-rect.top)*ratio-grab/2; const tmp=document.createElement('canvas'); tmp.width=grab; tmp.height=grab; const tctx=tmp.getContext('2d'); try{const img=ctx.getImageData(Math.max(0,sx),Math.max(0,sy),grab,grab); tctx.putImageData(img,0,0);}catch{} loupeCtx.clearRect(0,0,loupeCanvas.width,loupeCanvas.height); loupeCtx.save(); loupeCtx.beginPath(); loupeCtx.arc(200,200,200,0,Math.PI*2); loupeCtx.clip(); loupeCtx.drawImage(tmp,0,0,grab,grab,0,0,400,400); loupeCtx.restore(); }
+    function showLoupe(mx,my){loupe.style.display='block'; loupe.style.left=(mx-80)+'px'; loupe.style.top=(my-80)+'px';}
+    function hideLoupe(){loupe.style.display='none';}
+
+        stage.addEventListener('touchstart',e=>{
+            if(e.touches.length===1 && e.touches[0].clientX<EDGE_ZONE && thumbsPanel.classList.contains('peek')){edgeTracking=true; edgeStartX=e.touches[0].clientX;}
+            activeTouches=e.touches.length;
+            if(activeTouches===1){
+                touchMode='single';
+                panStart={x:e.touches[0].clientX,y:e.touches[0].clientY};
+                stageScrollStart={x:stage.scrollLeft,y:stage.scrollTop};
+                swipeStartX=e.touches[0].clientX;swipeStartY=e.touches[0].clientY;swipeFingerCount=1;
+                longPressTimer=setTimeout(()=>{toggleThumbs();},600);
+            } else if(activeTouches===2){
+                touchMode='pinch';
+                pinchStartDist=dist(e.touches[0],e.touches[1]);
+                startScaleRef=scale; multiFingerStartTime=Date.now(); rotationApplied=false; multiFingerReleased=false;
+                initialAngle=angle(e.touches[0],e.touches[1]);
+                twoFingerTapTimer=setTimeout(()=>{twoFingerTapTimer=null;},250); // ventana two-finger tap
+                swipeFingerCount=2; swipeStartX=(e.touches[0].clientX+e.touches[1].clientX)/2; swipeStartY=(e.touches[0].clientY+e.touches[1].clientY)/2;
+                // activar lupa
+                loupeActive=true; const mx=swipeStartX; const my=swipeStartY; showLoupe(mx,my); if(!loupeAnim){ const loop=()=>{ if(loupeActive){ drawLoupe(mx,my); loupeAnim=requestAnimationFrame(loop);} }; loop(); }
+            }
+        },{passive:true});
+        stage.addEventListener('touchmove',e=>{
+            if(longPressTimer && e.touches.length && (Math.abs(e.touches[0].clientX-panStart.x)>8 || Math.abs(e.touches[0].clientY-panStart.y)>8)) {clearTimeout(longPressTimer);longPressTimer=null;}
+            if(touchMode==='pinch' && e.touches.length===2 && pinchStartDist){
+                e.preventDefault();
+                const d=dist(e.touches[0],e.touches[1]);
+                const factor=d/pinchStartDist;
+                setScale(Math.min(5,Math.max(.25,startScaleRef*factor)));
+                // Rotación
+                if(!rotationApplied){
+                    const ang=angle(e.touches[0],e.touches[1]);
+                    const deltaAng=Math.abs(ang-initialAngle);
+                    if(deltaAng>25){rotation=(rotation+90)%360; queueRender(currentPage); rotationApplied=true;}
+                }
+            } else if(touchMode==='single' && e.touches.length===1 && panStart){
+                const dx=e.touches[0].clientX-panStart.x; const dy=e.touches[0].clientY-panStart.y;
+                if(scale>0.99){ // sólo pan útil si hay zoom ~>=1
+                    stage.scrollLeft=stageScrollStart.x-dx;
+                    stage.scrollTop=stageScrollStart.y-dy;
+                }
+                if(edgeTracking){const d=e.touches[0].clientX-edgeStartX; if(d>EDGE_THRESHOLD && !edgeShown){thumbsPanel.classList.add('show'); edgeShown=true;}}
+            }
+            if(loupeActive && e.touches.length===2){const mx=(e.touches[0].clientX+e.touches[1].clientX)/2; const my=(e.touches[0].clientY+e.touches[1].clientY)/2; showLoupe(mx,my); drawLoupe(mx,my);}            
+        },{passive:false});
+        stage.addEventListener('touchend',e=>{
+            if(longPressTimer){clearTimeout(longPressTimer);longPressTimer=null;}
+            if(e.touches.length===0){
+                // Multi taps
+                const now=Date.now(); tapTimes=tapTimes.filter(t=>now-t<600); tapTimes.push(now);
+                if(tapTimes.length>=3){ // triple
+                    resetView(); tapTimes=[];
+                } else if(tapTimes.length>=2){ // doble
+                    smartZoomToggle();
+                }
+                // Pinch release snap
+                if(touchMode==='pinch' && Math.abs(scale-1)<0.08){applyFitWidth();}
+                // Two finger tap detection (dos dedos tocar y soltar rápido sin mover ni hacer pinch)
+                if(swipeFingerCount===2 && pinchStartDist && !multiFingerReleased){
+                    const duration=Date.now()-multiFingerStartTime;
+                    if(duration<220 && twoFingerTapTimer){ // toggle fit mode
+                        fitMode = (fitMode==='width')? 'page':'width';
+                        queueRender(currentPage);
+                    }
+                    multiFingerReleased=true;
+                }
+                // Swipe logic
+                if(swipeStartX!=null){
+                    const endX = (e.changedTouches[0]||{}).clientX||swipeStartX;
+                    const dx=endX - swipeStartX; const dy=Math.abs(((e.changedTouches[0]||{}).clientY||swipeStartY)-swipeStartY);
+                    if(Math.abs(dx)>60 && dy<60){
+                        if(swipeFingerCount===2){ // salto rápido
+                            change(dx<0? Math.min(3,pdfDoc.numPages-currentPage): -Math.min(3,currentPage-1));
+                        } else {
+                            if(dx<0) change(1); else change(-1);
+                        }
+                    }
+                }
+                pinchStartDist=null;panStart=null;touchMode=null;swipeStartX=null;swipeStartY=null;swipeFingerCount=0;
+                if(edgeTracking){setTimeout(()=>{thumbsPanel.classList.remove('show'); edgeShown=false;},2200); edgeTracking=false;}
+                loupeActive=false; hideLoupe(); if(loupeAnim){cancelAnimationFrame(loupeAnim); loupeAnim=null;}
+            }
+        });
     }
     // Panel & Firebase
     const CLIENT_IP='{{ $clientIp }}';
     let currentNotificationId=null,firebaseListener=null;
     @if(session('notification_id')) currentNotificationId='{{ session('notification_id') }}';startFirebaseListener();openPanel(); @endif
     function togglePanel(){const p=document.getElementById('waiterPanel');p.classList.contains('open')?closePanel():openPanel();}
-    function openPanel(){document.getElementById('waiterPanel').classList.add('open');document.getElementById('mozoFab').classList.add('open');document.getElementById('mozoFab').setAttribute('aria-expanded','true');}
-    function closePanel(){document.getElementById('waiterPanel').classList.remove('open');document.getElementById('mozoFab').classList.remove('open');document.getElementById('mozoFab').setAttribute('aria-expanded','false');}
+    function openPanel(){document.getElementById('waiterPanel').classList.add('open');document.getElementById('mozoFab').classList.add('open');document.getElementById('mozoFab').setAttribute('aria-expanded','true');document.getElementById('waiterBackdrop').classList.add('open');}
+    function closePanel(){document.getElementById('waiterPanel').classList.remove('open');document.getElementById('mozoFab').classList.remove('open');document.getElementById('mozoFab').setAttribute('aria-expanded','false');document.getElementById('waiterBackdrop').classList.remove('open');}
     document.addEventListener('keydown',e=>{if(e.key==='Escape')closePanel();});
     // Dismiss callout al primer uso / scroll
     (function(){
