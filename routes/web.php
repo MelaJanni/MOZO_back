@@ -5,6 +5,8 @@ use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\QrWebController;
 use App\Http\Controllers\ApiDocumentationController;
 use ScssPhp\ScssPhp\Compiler;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 
 
 Route::get('/', function () {
@@ -206,10 +208,6 @@ Route::get('/api/docs/waiter', [ApiDocumentationController::class, 'waiterApis']
 
 // Servir SCSS pdf-viewer en vivo (sin cache) - solo para entorno local / staging
 Route::get('/live-scss/pdf-viewer.css', function() {
-    // En producción redirige al asset estático para evitar penalización de performance
-    if(app()->environment('production')) {
-        return redirect()->to(asset('css/pdf-viewer.css').'?v='.time());
-    }
     $path = resource_path('css/pdf-viewer.scss');
     if(!file_exists($path)) abort(404);
     $scss = file_get_contents($path);
@@ -237,4 +235,23 @@ Route::get('/live-scss/pdf-viewer.css', function() {
         'Pragma' => 'no-cache'
     ]);
 })->name('live.pdf.viewer.css');
+
+// Ruta para limpiar cachés (usar ?token=TU_TOKEN). Añade CACHE_CLEAR_TOKEN=loquesea en .env
+Route::get('/admin/clear-caches', function(Request $request){
+    $token = $request->query('token');
+    if(!$token || $token !== env('CACHE_CLEAR_TOKEN')) {
+        abort(403,'Token inválido');
+    }
+    $results = [];
+    foreach(['config:clear','route:clear','view:clear','cache:clear'] as $cmd){
+        try { Artisan::call($cmd); $results[$cmd] = trim(Artisan::output()); } catch(\Throwable $e){ $results[$cmd] = 'ERROR: '.$e->getMessage(); }
+    }
+    if(function_exists('opcache_reset')) {
+        $ok = opcache_reset();
+        $results['opcache_reset'] = $ok ? 'OK' : 'FALLÓ';
+    } else {
+        $results['opcache_reset'] = 'NO DISPONIBLE';
+    }
+    return response()->json(['status'=>'ok','cleared'=>$results,'timestamp'=>now()->toDateTimeString()]);
+});
 
