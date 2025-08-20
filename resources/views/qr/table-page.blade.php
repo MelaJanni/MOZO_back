@@ -148,14 +148,14 @@
 </section>
 
 <!-- Scripts -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.js" integrity="sha512-sUQl3Xci2QqQbnG0sg6sUUPT1FZ3Z5LTOYdN45Kz1gGUPKBHoqykE+UqnM4VtExJCLrg3GLv6q9elEWl1V+F5A==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-database-compat.js"></script>
 <script>
 const menuUrl=@json($menuUrl);
 if(menuUrl){
   const pdfjsLib=window['pdfjs-dist/build/pdf'];
-  pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js';
+pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.worker.min.js';
   const canvas=document.getElementById('pdfCanvas');
   const ctx=canvas.getContext('2d');
   const thumbsPanel=document.getElementById('thumbsPanel');
