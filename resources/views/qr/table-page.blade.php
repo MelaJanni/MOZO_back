@@ -48,7 +48,7 @@
     <div class="pdf-controls-footer" role="toolbar" aria-label="Controles del visor PDF">
         <div class="controls-container row ">
             <!-- Navegación de páginas -->
-            <div class="control-group col-5">
+            <div class="control-group col">
                 <button class="control-btn" id="btnPrev" disabled title="Página anterior">
                     <i class="fas fa-chevron-left"></i>
                 </button>
@@ -61,7 +61,7 @@
             </div>
             
             <!-- Controles de zoom -->
-            <div class="control-group col-5">
+            <div class="control-group col">
                 <button class="control-btn" id="btnZoomOut" disabled title="Alejar">
                     <i class="fas fa-search-minus"></i>
                 </button>
@@ -73,7 +73,7 @@
             
             
             <!-- Acciones adicionales -->
-            <div class="control-group col-2">
+            <div class="control-group col col-btn">
                 <a class="control-btn" id="btnDownload" href="{{ $menuUrl }}" target="_blank" rel="noopener" title="Abrir en nueva pestaña">
                     <i class="fas fa-external-link-alt"></i>
                     <span class="d-none d-md-inline">Abrir</span>
@@ -120,22 +120,35 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 <script>
     const menuUrl=@json($menuUrl);
-    // Inicializar visor sólo si hay URL y PDF.js cargó; usar versión 3.x confiable
-    if(menuUrl){
-        let pdfjsLib=window.pdfjsLib;
-        if(!pdfjsLib){
-            console.warn('pdfjsLib no disponible todavía, intento fallback unpkg...');
-            const s=document.createElement('script');
-            s.src='https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js';
-            s.onload=()=>{ if(window.pdfjsLib){ initPdf(window.pdfjsLib); } else { console.error('No se pudo cargar PDF.js'); }};
-            document.head.appendChild(s);
+    
+    // Función para inicializar PDF.js con retry
+    function waitForPdfjs(callback, attempts = 0) {
+        if (window.pdfjsLib && window.pdfjsLib.GlobalWorkerOptions) {
+            callback(window.pdfjsLib);
+        } else if (attempts < 10) {
+            setTimeout(() => waitForPdfjs(callback, attempts + 1), 100);
         } else {
-            initPdf(pdfjsLib);
+            console.error('PDF.js no pudo cargarse después de múltiples intentos');
+            document.getElementById('loadingOverlay').innerHTML = 
+                '<div style="text-align:center;"><h3>Error cargando visor PDF</h3><p>Por favor recarga la página</p></div>';
         }
+    }
+    
+    // Inicializar visor sólo si hay URL
+    if(menuUrl){
+        // Esperar a que PDF.js esté completamente cargado
+        waitForPdfjs(initPdf);
     }
 
     function initPdf(pdfjsLib){
-        try{ pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js'; }catch(e){ console.error('No se pudo configurar worker PDF',e); }
+        try{ 
+            // Configurar worker de PDF.js
+            if(pdfjsLib.GlobalWorkerOptions) {
+                pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js'; 
+            }
+        }catch(e){ 
+            console.error('Error configurando worker PDF:', e); 
+        }
     const canvas=document.getElementById('pdfCanvas');
     const ctx=canvas.getContext('2d');
     const thumbsPanel=document.getElementById('thumbsPanel');
@@ -144,22 +157,22 @@
     const btnNext=document.getElementById('btnNext');
     const btnZoomIn=document.getElementById('btnZoomIn');
     const btnZoomOut=document.getElementById('btnZoomOut');
-    const btnFitWidth=document.getElementById('btnFitWidth');
-    const btnFitPage=document.getElementById('btnFitPage');
-    const btnRotate=document.getElementById('btnRotate');
     const pageNumSpan=document.getElementById('pageNum');
     const pageCountSpan=document.getElementById('pageCount');
     const zoomLevel=document.getElementById('zoomLevel');
     const stage=document.getElementById('canvasStage');
     let pdfDoc=null,currentPage=1,scale=1,rotation=0,fitMode='width',rendering=false,pendingPage=null;
-    function enable(v){[btnPrev,btnNext,btnZoomIn,btnZoomOut,btnFitWidth,btnFitPage,btnRotate].forEach(b=>b.disabled=!v);}  
+    function enable(v){[btnPrev,btnNext,btnZoomIn,btnZoomOut].forEach(b=>b&&(b.disabled=!v));}  
     function calcFitScale(page){const vw=stage.clientWidth-24;const vh=stage.clientHeight-24;const w0=page.view[2];const h0=page.view[3];let w=(rotation%180===0)?w0:h0;let h=(rotation%180===0)?h0:w0;const sW=vw/w;const sP=Math.min(vh/h,vw/w);if(fitMode==='width')return sW;if(fitMode==='page')return sP;return scale;}  
     async function renderPage(num){rendering=true;const page=await pdfDoc.getPage(num);const effective=(['width','page'].includes(fitMode))?calcFitScale(page):scale;const vp=page.getViewport({scale:effective,rotation});canvas.width=vp.width;canvas.height=vp.height;zoomLevel.textContent=Math.round(effective*100)+'%';await page.render({canvasContext:ctx,viewport:vp}).promise;rendering=false;if(pendingPage){const p=pendingPage;pendingPage=null;renderPage(p);}}  
     function queueRender(p){rendering?pendingPage=p:renderPage(p);}  
     function update(){pageNumSpan.textContent=currentPage;pageCountSpan.textContent=pdfDoc.numPages;btnPrev.disabled=currentPage<=1;btnNext.disabled=currentPage>=pdfDoc.numPages;[...thumbsPanel.querySelectorAll('.thumb')].forEach(el=>el.classList.toggle('active',+el.dataset.page===currentPage));}
     function change(delta){const t=currentPage+delta;if(t>=1&&t<=pdfDoc.numPages){currentPage=t;update();queueRender(currentPage);}}  
     function setScale(s){scale=s;fitMode='manual';queueRender(currentPage);}  
-    btnPrev.onclick=()=>change(-1);btnNext.onclick=()=>change(1);btnZoomIn.onclick=()=>setScale(scale*1.15);btnZoomOut.onclick=()=>setScale(Math.max(.25,scale/1.15));btnFitWidth.onclick=()=>{fitMode='width';queueRender(currentPage);};btnFitPage.onclick=()=>{fitMode='page';queueRender(currentPage);};btnRotate.onclick=()=>{rotation=(rotation+90)%360;queueRender(currentPage);};
+    btnPrev.onclick=()=>change(-1);
+    btnNext.onclick=()=>change(1);
+    btnZoomIn.onclick=()=>setScale(scale*1.15);
+    btnZoomOut.onclick=()=>setScale(Math.max(.25,scale/1.15));
     window.addEventListener('keydown',e=>{if(['INPUT','TEXTAREA'].includes(e.target.tagName))return; if(e.key==='ArrowLeft')change(-1); else if(e.key==='ArrowRight')change(1); else if((e.ctrlKey||e.metaKey)&&['+','=','Add'].includes(e.key)){e.preventDefault();btnZoomIn.click();} else if((e.ctrlKey||e.metaKey)&&['-','Subtract'].includes(e.key)){e.preventDefault();btnZoomOut.click();}});
     pdfjsLib.getDocument({url:menuUrl}).promise.then(pdf=>{pdfDoc=pdf;enable(true);pageCountSpan.textContent=pdf.numPages;update();renderPage(currentPage).then(()=>overlay.remove());for(let i=1;i<=Math.min(pdf.numPages,120);i++){pdf.getPage(i).then(p=>{const vp=p.getViewport({scale:.25});const c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;const cx=c.getContext('2d');p.render({canvasContext:cx,viewport:vp}).promise.then(()=>{const wrap=document.createElement('div');wrap.className='thumb'+(i===1?' active':'');wrap.dataset.page=p.pageNumber;wrap.appendChild(c);wrap.onclick=()=>{currentPage=p.pageNumber;update();queueRender(currentPage);};thumbsPanel.appendChild(wrap);});});} });
         window.addEventListener('resize',()=>{if(['width','page'].includes(fitMode))queueRender(currentPage);});
