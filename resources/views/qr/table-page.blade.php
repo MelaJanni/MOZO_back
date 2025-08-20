@@ -154,7 +154,7 @@
 <script>
 const menuUrl=@json($menuUrl);
 if(menuUrl){
-  const pdfjsLib=window['pdfjs-dist/build/pdf'];
+    const pdfjsLib=window.pdfjsLib;
 pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.worker.min.js';
   const canvas=document.getElementById('pdfCanvas');
   const ctx=canvas.getContext('2d');
