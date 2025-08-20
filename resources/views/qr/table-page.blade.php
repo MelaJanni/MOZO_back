@@ -48,661 +48,132 @@
 
         .logo img {
             width: 45px;
-            height: 45px;
-            border-radius: 50%;
-            object-fit: cover;
-        }
+            <!DOCTYPE html>
+            <html lang="es">
+            <head>
+                <meta charset="UTF-8" />
+                <meta name="viewport" content="width=device-width,initial-scale=1" />
+                <title>{{ $business->name }} | Mesa {{ $table->number }}</title>
+                <meta name="theme-color" content="#8b5cf6" />
+                <style>
+                    :root {
+                        --mozo-primary:#8b5cf6; /* morado */
+                        --mozo-primary-dark:#6d3ff0;
+                        --mozo-bg:#111217;
+                        --panel-bg:#1d1f27;
+                        --radius:20px;
+                        --transition:0.35s cubic-bezier(.4,.0,.2,1);
+                    }
+                    *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+                    body,html{height:100%;width:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:var(--mozo-bg);color:#fff;overscroll-behavior:none;}
+                    body{display:flex;flex-direction:column;}
+                    .pdf-wrapper{flex:1;position:relative;height:100vh;width:100%;overflow:hidden;background:#000;}
+                    .pdf-iframe{position:absolute;top:0;left:0;width:100%;height:100%;border:0;background:#000;}
+                    .pdf-fallback{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px;gap:22px;height:100%;}
+                    .pdf-fallback h2{font-size:clamp(1.3rem,4vw,2rem);}
+                    .pdf-fallback p{opacity:.75;line-height:1.4;font-size:1rem;}
+                    .fab{position:fixed;bottom:20px;right:20px;width:78px;height:78px;border-radius:32px;background:linear-gradient(145deg,var(--mozo-primary),var(--mozo-primary-dark));display:flex;align-items:center;justify-content:center;box-shadow:0 10px 32px -4px rgba(139,92,246,.55),0 4px 8px -2px rgba(0,0,0,.4);cursor:pointer;border:none;outline:none;color:#fff;font-weight:600;font-size:14px;letter-spacing:.5px;transition:var(--transition);z-index:50;overflow:hidden;}
+                    .fab:active{transform:scale(.94);}        
+                    .fab svg{width:48px;height:48px;}
+                    .fab::after{content:'Llamar';position:absolute;bottom:6px;font-size:11px;font-weight:500;opacity:.9;}
+                    .fab.open{transform:rotate(45deg);} /* X effect */
+                    .waiter-panel{position:fixed;left:0;right:0;bottom:0;transform:translateY(105%);background:var(--panel-bg);border-radius:32px 32px 0 0;padding:28px 22px 34px;box-shadow:0 -8px 32px -8px rgba(0,0,0,.65);transition:var(--transition);z-index:49;max-height:85vh;display:flex;flex-direction:column;gap:22px;}
+                    .waiter-panel.open{transform:translateY(0);}        
+                    .panel-grabber{width:56px;height:6px;border-radius:3px;background:#2c2f3a;margin:0 auto 4px;}
+                    .panel-header{display:flex;flex-direction:column;gap:6px;text-align:center;}
+                    .panel-header h1{font-size:clamp(1.1rem,3.1vw,1.6rem);font-weight:700;letter-spacing:.5px;}
+                    .panel-header small{opacity:.75;font-weight:500;}
+                    .call-btn{background:linear-gradient(145deg,#f87171,#dc2626);border:none;border-radius:18px;padding:20px 26px;color:#fff;font-size:1.1rem;font-weight:600;display:flex;align-items:center;justify-content:center;gap:10px;cursor:pointer;box-shadow:0 6px 24px -4px rgba(248,113,113,.55),0 2px 6px -1px rgba(0,0,0,.5);transition:var(--transition);}
+                    .call-btn:disabled{background:linear-gradient(145deg,#64748b,#475569);opacity:.7;cursor:not-allowed;box-shadow:none;}
+                    .call-btn.loading{background:linear-gradient(145deg,#fbbf24,#f59e0b);animation:pulse 1.5s infinite;}
+                    .status-area{min-height:56px;border-radius:18px;padding:16px 18px;font-weight:500;font-size:.95rem;line-height:1.3;display:none;}
+                    .status-success{background:#14532d;color:#d1fae5;border:1px solid #10b981;}
+                    .status-error{background:#7f1d1d;color:#fecaca;border:1px solid #f87171;}
+                    .status-pending{background:#78350f;color:#fde68a;border:1px solid #fbbf24;animation:pulse 2s infinite;}
+                    @keyframes pulse{0%{opacity:1}50%{opacity:.65}100%{opacity:1}}
+                    .open-menu-link{position:absolute;top:12px;right:12px;z-index:10;background:rgba(17,18,23,.6);backdrop-filter:blur(6px);padding:10px 16px;border-radius:14px;color:#fff;text-decoration:none;font-size:.8rem;font-weight:600;letter-spacing:.5px;display:flex;align-items:center;gap:6px;box-shadow:0 4px 14px -4px rgba(0,0,0,.6);}        
+                    .open-menu-link:hover{background:rgba(17,18,23,.85);}        
+                    .accessibility-hint{font-size:.7rem;text-transform:uppercase;letter-spacing:1px;opacity:.5;text-align:center;}
+                    .logo-mini{display:inline-flex;align-items:center;justify-content:center;background:#fff;color:#000;font-weight:700;font-size:18px;width:46px;height:46px;border-radius:15px;box-shadow:0 4px 12px -3px rgba(0,0,0,.5);}
+                    .ack-extra{font-size:.75rem;margin-top:6px;opacity:.8;font-weight:400;}
+                    @media (min-width:780px){.waiter-panel{left:50%;right:auto;transform:translate(50%,105%);width:420px;border-radius:38px;padding:34px 30px;}.waiter-panel.open{transform:translate(50%,0)}.fab{bottom:28px;right:34px}}
+                    @media (max-width:460px){.fab{width:68px;height:68px;border-radius:26px}.fab svg{width:42px;height:42px}}
+                </style>
+            </head>
+            <body>
+                @php
+                    $menuUrl = null;
+                    if($defaultMenu && $defaultMenu->file_path){
+                        $filename = basename($defaultMenu->file_path);
+                        $menuUrl = route('menu.pdf', ['business_id'=>$business->id,'filename'=>$filename]);
+                    } elseif($business->menu_pdf) {
+                        $filename = basename($business->menu_pdf);
+                        $menuUrl = route('menu.pdf', ['business_id'=>$business->id,'filename'=>$filename]);
+                    }
+                @endphp
 
-        .restaurant-name {
-            font-size: 28px;
-            font-weight: bold;
-            margin-bottom: 8px;
-        }
-
-        .table-info {
-            font-size: 18px;
-            opacity: 0.9;
-            background: rgba(255,255,255,0.2);
-            padding: 8px 16px;
-            border-radius: 20px;
-            display: inline-block;
-        }
-
-        .content {
-            padding: 30px 20px;
-        }
-
-        .welcome-message {
-            text-align: center;
-            margin-bottom: 30px;
-            padding: 20px;
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            border-radius: 15px;
-            border-left: 5px solid #4a90e2;
-        }
-
-        .welcome-title {
-            font-size: 24px;
-            color: #2c3e50;
-            margin-bottom: 10px;
-        }
-
-        .welcome-text {
-            color: #6c757d;
-            font-size: 16px;
-            line-height: 1.5;
-        }
-
-        .menu-section {
-            margin-bottom: 30px;
-        }
-
-        .section-title {
-            font-size: 22px;
-            color: #2c3e50;
-            margin-bottom: 15px;
-            padding-bottom: 8px;
-            border-bottom: 2px solid #4a90e2;
-            display: flex;
-            align-items: center;
-        }
-
-        .section-title::before {
-            content: "📋";
-            margin-right: 10px;
-            font-size: 24px;
-        }
-
-        .menu-container {
-            border-radius: 15px;
-            overflow: hidden;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-            background: white;
-            border: 1px solid #e9ecef;
-        }
-
-        .menu-pdf {
-            width: 100%;
-            height: 600px;
-            border: none;
-        }
-
-        .call-waiter-section {
-            text-align: center;
-            margin: 40px 0;
-            padding: 30px 20px;
-            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
-            border-radius: 15px;
-            border: 1px solid #f39c12;
-        }
-
-        .call-button {
-            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
-            color: white;
-            border: none;
-            padding: 18px 40px;
-            font-size: 20px;
-            font-weight: bold;
-            border-radius: 50px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 6px 20px rgba(231, 76, 60, 0.3);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .call-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(231, 76, 60, 0.4);
-        }
-
-        .call-button:disabled {
-            background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: 0 4px 15px rgba(149, 165, 166, 0.3);
-        }
-        
-        .call-button.loading {
-            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
-            animation: pulse 1.5s infinite;
-        }
-
-        .status-message {
-            margin-top: 15px;
-            padding: 12px 20px;
-            border-radius: 25px;
-            font-weight: 600;
-            font-size: 16px;
-            transition: all 0.3s ease;
-        }
-
-        .status-success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-
-        .status-pending {
-            background: #fff3cd;
-            color: #856404;
-            border: 1px solid #ffeaa7;
-            animation: pulse 2s infinite;
-        }
-
-        .status-error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.7; }
-            100% { opacity: 1; }
-        }
-
-
-        .footer {
-            text-align: center;
-            padding: 20px;
-            color: #6c757d;
-            border-top: 1px solid #e9ecef;
-            background: #f8f9fa;
-        }
-
-        @media (max-width: 768px) {
-            .container {
-                margin: 0;
-                border-radius: 0;
-            }
-            
-            .header {
-                padding: 15px;
-            }
-            
-            .restaurant-name {
-                font-size: 24px;
-            }
-            
-            .content {
-                padding: 20px 15px;
-            }
-            
-            .call-button {
-                width: 100%;
-                max-width: 300px;
-                padding: 16px 30px;
-                font-size: 18px;
-            }
-            
-            .menu-pdf {
-                height: 500px;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <header class="header">
-            <div class="logo">
-                @if($business->logo)
-                    <img src="{{ asset('storage/' . $business->logo) }}" alt="{{ $business->name }} Logo">
-                @else
-                    🍴
-                @endif
-            </div>
-            <h1 class="restaurant-name">{{ $business->name }}</h1>
-            <div class="table-info">Mesa {{ $table->number }} - {{ $table->name }}</div>
-        </header>
-
-        <main class="content">
-            <div class="welcome-message">
-                <h2 class="welcome-title">¡Bienvenido!</h2>
-                <p class="welcome-text">
-                    Estás en {{ $business->name }}, Mesa {{ $table->number }}. 
-                    Revisa nuestro menú y no dudes en llamar a nuestro mozo cuando estés listo para ordenar.
-                </p>
-            </div>
-
-            <section class="menu-section">
-                <h2 class="section-title">Nuestro Menú</h2>
-                <div class="menu-container">
-                    @if($defaultMenu && $defaultMenu->file_path)
-                        @php
-                            // Usar la ruta Laravel para servir PDFs
-                            $filename = basename($defaultMenu->file_path);
-                            $menuUrl = route('menu.pdf', ['business_id' => $business->id, 'filename' => $filename]);
-                        @endphp
-                        
-                        <!-- Mostrar PDF dinámico del admin -->
-                        <div id="menu-pdf-container" style="position: relative; height: 600px; overflow: hidden;">
-                            <iframe 
-                                id="menu-pdf-iframe"
-                                src="{{ $menuUrl }}"
-                                class="menu-pdf"
-                                title="Menú de {{ $business->name }}"
-                                onload="handlePdfLoad()"
-                                onerror="handlePdfError()">
-                            </iframe>
-                            
-                            <!-- Botón para abrir en nueva pestaña -->
-                            <div style="position: absolute; bottom: 10px; right: 10px; z-index: 10;">
-                                <a href="{{ $menuUrl }}" 
-                                   target="_blank" 
-                                   style="background: #4a90e2; color: white; padding: 8px 16px; border-radius: 20px; text-decoration: none; font-size: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
-                                    📱 Abrir menú
-                                </a>
-                            </div>
-                        </div>
-
-                        <!-- Mensaje de fallback si el PDF no carga -->
-                        <div id="menu-fallback" style="display: none; padding: 40px; text-align: center; color: #6c757d;">
-                            <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 10px; padding: 30px; margin: 20px 0;">
-                                <h3 style="color: #856404; margin-bottom: 15px;">📋 Menú no disponible temporalmente</h3>
-                                <p style="color: #856404; margin-bottom: 20px; font-size: 16px;">
-                                    No pudimos cargar el menú digital en este momento.
-                                </p>
-                                <div style="background: #e3f2fd; border-radius: 8px; padding: 20px; margin: 20px 0;">
-                                    <p style="color: #1976d2; font-weight: 600; margin-bottom: 10px;">
-                                        💡 ¿Qué puedes hacer?
-                                    </p>
-                                    <p style="color: #1976d2; margin: 0;">
-                                        Llama a nuestro mozo usando el botón de abajo y te traeremos el menú físico de inmediato.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-
-                    @elseif($business->menu_pdf)
-                        @php
-                            // Fallback al campo menu_pdf antiguo
-                            $filename = basename($business->menu_pdf);
-                            $menuUrl = route('menu.pdf', ['business_id' => $business->id, 'filename' => $filename]);
-                        @endphp
-                        
-                        <div id="menu-pdf-container" style="position: relative; height: 600px; overflow: hidden;">
-                            <iframe 
-                                id="menu-pdf-iframe"
-                                src="{{ $menuUrl }}"
-                                class="menu-pdf"
-                                title="Menú de {{ $business->name }}"
-                                onload="handlePdfLoad()"
-                                onerror="handlePdfError()">
-                            </iframe>
-                            
-                            <div style="position: absolute; bottom: 10px; right: 10px; z-index: 10;">
-                                <a href="{{ $menuUrl }}" 
-                                   target="_blank" 
-                                   style="background: #4a90e2; color: white; padding: 8px 16px; border-radius: 20px; text-decoration: none; font-size: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
-                                    📱 Abrir menú
-                                </a>
-                            </div>
-                        </div>
-
-                        <div id="menu-fallback" style="display: none; padding: 40px; text-align: center; color: #6c757d;">
-                            <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 10px; padding: 30px; margin: 20px 0;">
-                                <h3 style="color: #856404; margin-bottom: 15px;">📋 Menú no disponible temporalmente</h3>
-                                <p style="color: #856404; margin-bottom: 20px; font-size: 16px;">
-                                    No pudimos cargar el menú digital en este momento.
-                                </p>
-                                <div style="background: #e3f2fd; border-radius: 8px; padding: 20px; margin: 20px 0;">
-                                    <p style="color: #1976d2; font-weight: 600; margin-bottom: 10px;">
-                                        💡 ¿Qué puedes hacer?
-                                    </p>
-                                    <p style="color: #1976d2; margin: 0;">
-                                        Llama a nuestro mozo usando el botón de abajo y te traeremos el menú físico de inmediato.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-
+                <div class="pdf-wrapper" id="pdfWrapper" aria-label="Visor del menú">
+                    @if($menuUrl)
+                        <iframe id="menu-pdf-iframe" class="pdf-iframe" src="{{ $menuUrl }}" title="Menú {{ $business->name }}" onload="handlePdfLoad()" onerror="handlePdfError()" aria-describedby="menuActions"></iframe>
+                        <a class="open-menu-link" id="openInNewTab" href="{{ $menuUrl }}" target="_blank" rel="noopener" aria-label="Abrir menú en nueva pestaña">📄 Abrir</a>
                     @else
-                        <!-- No hay menú configurado -->
-                        <div style="padding: 40px; text-align: center; color: #6c757d;">
-                            <div style="background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 10px; padding: 30px; margin: 20px 0;">
-                                <h3 style="color: #721c24; margin-bottom: 15px;">📋 Menú no configurado</h3>
-                                <p style="color: #721c24; margin-bottom: 20px; font-size: 16px;">
-                                    Este restaurante aún no ha subido su menú digital.
-                                </p>
-                                <div style="background: #e3f2fd; border-radius: 8px; padding: 20px; margin: 20px 0;">
-                                    <p style="color: #1976d2; font-weight: 600; margin-bottom: 10px;">
-                                        💡 Solicita el menú físico
-                                    </p>
-                                    <p style="color: #1976d2; margin: 0;">
-                                        Llama a nuestro mozo y te traerá el menú físico para que puedas revisar todas nuestras opciones.
-                                    </p>
-                                </div>
-                            </div>
+                        <div class="pdf-fallback" id="menu-fallback">
+                            <div class="logo-mini">MÖ</div>
+                            <h2>Menú no disponible</h2>
+                            <p>No encontramos un PDF cargado por el restaurante. Podés llamar al mozo y solicitar el menú físico.</p>
                         </div>
                     @endif
                 </div>
-            </section>
 
-            <section class="call-waiter-section">
-                <div id="call-waiter-form">
-                    <button type="button" class="call-button" id="call-waiter-btn" onclick="callWaiter()">
-                        🔔 Llamar Mozo
-                    </button>
-                </div>
-                
-                <!-- Mensajes dinámicos sin recarga -->
-                <div id="status-message" style="display: none;" class="status-message">
-                    <!-- Los mensajes se mostrarán aquí vía JavaScript -->
-                </div>
-                
-                @if(session('success'))
-                    <div class="status-message status-success" style="display: block;">
-                        🎉 {{ session('success') }}
-                        @if(session('notification_id'))
-                            <div style="font-size: 14px; margin-top: 8px; opacity: 0.8;">
-                                ⏳ Te notificaremos cuando el mozo confirme...
-                            </div>
-                        @endif
-                    </div>
-                @endif
-                
-                @if(session('error'))
-                    <div class="status-message status-error" style="display: block;">
-                        ❌ {{ session('error') }}
-                    </div>
-                @endif
-            </section>
-        </main>
+                <!-- Botón flotante (logo MOZO estilizado) -->
+                <button id="mozoFab" class="fab" aria-haspopup="dialog" aria-controls="waiterPanel" aria-expanded="false" title="Llamar mozo" onclick="togglePanel()">
+                    <!-- SVG simple rostro MOZO -->
+                    <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <rect x="4" y="4" width="112" height="112" rx="32" fill="white"/>
+                        <circle cx="45" cy="50" r="18" fill="#000"/>
+                        <circle cx="45" cy="50" r="8" fill="white"/>
+                        <circle cx="75" cy="50" r="18" fill="#000"/>
+                        <circle cx="75" cy="50" r="8" fill="white"/>
+                        <circle cx="37" cy="30" r="4" fill="#000"/>
+                        <circle cx="53" cy="30" r="4" fill="#000"/>
+                        <circle cx="67" cy="30" r="4" fill="#000"/>
+                        <circle cx="83" cy="30" r="4" fill="#000"/>
+                        <path d="M40 78c6 8 16 14 20 14s14-6 20-14" stroke="#000" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
 
-        <footer class="footer">
-            <p>© {{ date('Y') }} {{ $business->name }}. Sistema de llamado QR.</p>
-        </footer>
-    </div>
-
-    <!-- Firebase SDK para escuchar acknowledged -->
-    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-database-compat.js"></script>
-
-    <script>
-        // 🔍 DEBUG: Mostrar IP del cliente en consola
-        const CLIENT_IP = '{{ $clientIp }}';
-        console.log('🌐 IP del cliente que está viendo la página:', CLIENT_IP);
-        console.log('📍 Mesa:', '{{ $table->number }}', '(ID: {{ $table->id }})');
-        console.log('🏪 Restaurante:', '{{ $business->name }}', '(ID: {{ $business->id }})');
-        
-        // Solo escuchar Firebase si hay una solicitud pendiente
-        const TABLE_ID = {{ $table->id }};
-        let currentNotificationId = null;
-        let firebaseListener = null;
-
-        // Obtener ID de notificación desde la sesión si existe (después de form submit)
-        @if(session('notification_id'))
-            currentNotificationId = '{{ session('notification_id') }}';
-            console.log('🔍 Notification ID desde sesión:', currentNotificationId);
-            startFirebaseListener();
-        @endif
-
-        function startFirebaseListener() {
-            console.log('🔥 Iniciando listener Firebase para acknowledged...');
-            
-            // Configuración Firebase
-            const firebaseConfig = {
-                projectId: "mozoqr-7d32c",
-                apiKey: "AIzaSyDGJJKNfSSxD6YnXnNjwRb6VUtPSyGN5CM",
-                authDomain: "mozoqr-7d32c.firebaseapp.com",
-                databaseURL: "https://mozoqr-7d32c-default-rtdb.firebaseio.com",
-                storageBucket: "mozoqr-7d32c.appspot.com"
-            };
-            
-            // Inicializar Firebase
-            if (!window.firebase || !window.firebase.apps.length) {
-                firebase.initializeApp(firebaseConfig);
-            }
-            
-            const database = firebase.database();
-            
-            // Escuchar cambios en mi solicitud específica usando estructura unificada
-            const myCallRef = database.ref(`active_calls/${currentNotificationId}`);
-            
-            firebaseListener = myCallRef.on('value', (snapshot) => {
-                const data = snapshot.val();
-                console.log('🔍 Firebase data received:', data);
-                
-                // 🛡️ DEBUG: Mostrar info de seguridad de Firebase
-                if (data && data.client_info) {
-                    console.log('🛡️ INFO DE SEGURIDAD EN FIREBASE:', data.client_info);
-                    
-                    // Verificar si es una IP potencialmente spam
-                    if (data.client_info.ip_address) {
-                        console.log('📍 IP de origen de la llamada:', data.client_info.ip_address);
-                        console.log('🖥️ User Agent:', data.client_info.user_agent);
-                        console.log('🎯 Fuente:', data.client_info.source_type || data.client_info.source);
-                    }
-                }
-                
-                if (data && data.status === 'acknowledged') {
-                    console.log('🎉 ACKNOWLEDGED! Mozo confirmó la solicitud');
-                    showAcknowledgedMessage(data.waiter?.name || data.waiter_name);
-                    
-                    // Detener listener
-                    myCallRef.off('value', firebaseListener);
-                    firebaseListener = null;
-                } else if (data && data.status === 'completed') {
-                    console.log('✅ COMPLETED! Llamada completada');
-                    showCompletedMessage(data.waiter?.name || data.waiter_name);
-                    
-                    // Detener listener
-                    myCallRef.off('value', firebaseListener);
-                    firebaseListener = null;
-                }
-            });
-        }
-
-        function showAcknowledgedMessage(waiterName) {
-            // Actualizar mensaje de éxito para mostrar que el mozo confirmó
-            const successMessage = document.querySelector('.status-success');
-            if (successMessage) {
-                successMessage.innerHTML = `
-                    <div style="font-size: 18px; font-weight: bold; color: #155724;">
-                        🎉 ¡${waiterName || 'El mozo'} confirmó tu solicitud!
-                    </div>
-                    <div style="font-size: 16px; margin-top: 5px;">
-                        🚶‍♂️ Llegará pronto a tu mesa
-                    </div>
-                `;
-                
-                // Hacer que el mensaje sea más visible
-                successMessage.style.border = '2px solid #28a745';
-                successMessage.style.animation = 'pulse 2s ease-in-out 3';
-                
-                // Notificación del navegador
-                if (Notification.permission === 'granted') {
-                    new Notification('¡Mozo confirmado!', {
-                        body: `${waiterName || 'El mozo'} confirmó tu solicitud y está en camino`,
-                        icon: '/favicon.ico',
-                        tag: 'waiter-confirmed'
-                    });
-                }
-            }
-        }
-
-        function showCompletedMessage(waiterName) {
-            // Actualizar mensaje para mostrar que la llamada fue completada
-            const successMessage = document.querySelector('.status-success');
-            if (successMessage) {
-                successMessage.innerHTML = `
-                    <div style="font-size: 18px; font-weight: bold; color: #155724;">
-                        ✅ ¡${waiterName || 'El mozo'} completó tu solicitud!
-                    </div>
-                    <div style="font-size: 16px; margin-top: 5px;">
-                        👍 Servicio finalizado
-                    </div>
-                `;
-                
-                // Hacer que el mensaje sea más visible
-                successMessage.style.border = '2px solid #28a745';
-                successMessage.style.background = '#d4edda';
-                
-                // Notificación del navegador
-                if (Notification.permission === 'granted') {
-                    new Notification('¡Servicio completado!', {
-                        body: `${waiterName || 'El mozo'} completó tu solicitud`,
-                        icon: '/favicon.ico',
-                        tag: 'waiter-completed'
-                    });
-                }
-            }
-        }
-
-        // Solicitar permisos de notificación
-        if ('Notification' in window && Notification.permission === 'default') {
-            Notification.requestPermission();
-        }
-
-        // 🔔 FUNCIÓN AJAX PARA LLAMAR AL MOZO (sin recarga)
-        async function callWaiter() {
-            const button = document.getElementById('call-waiter-btn');
-            const statusDiv = document.getElementById('status-message');
-            
-            console.log('🔔 LLAMANDO AL MOZO desde IP:', CLIENT_IP);
-            console.log('📋 Datos que se enviarán:', {
-                restaurant_id: {{ $business->id }},
-                table_id: {{ $table->id }},
-                message: 'Cliente solicita atención',
-                ip_address: CLIENT_IP,
-                timestamp: new Date().toISOString()
-            });
-            
-            // Deshabilitar botón mientras se procesa
-            button.disabled = true;
-            button.classList.add('loading');
-            button.innerHTML = '⏳ Llamando...';
-            
-            // Ocultar mensajes de sesión anteriores
-            const sessionMessages = document.querySelectorAll('.status-message:not(#status-message)');
-            sessionMessages.forEach(msg => msg.style.display = 'none');
-            
-            try {
-                const response = await fetch('{{ route("waiter.call") }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        restaurant_id: {{ $business->id }},
-                        table_id: {{ $table->id }},
-                        message: 'Cliente solicita atención'
-                    })
-                });
-                
-                const data = await response.json();
-                console.log('📡 Respuesta del servidor:', data);
-                
-                if (response.ok && data.success) {
-                    // 🛡️ DEBUG: Mostrar info de seguridad
-                    if (data.data && data.data.client_info) {
-                        console.log('🛡️ INFO DE SEGURIDAD GUARDADA:', data.data.client_info);
-                        console.log('📊 DATOS COMPLETOS DE LA LLAMADA:', data.data);
-                        
-                        // Si es un dispositivo bloqueado, mostrar advertencia
-                        if (data.blocked_ip) {
-                            console.warn('🚫 ATENCIÓN: Esta IP está bloqueada por spam');
-                        }
-                    }
-                    
-                    // Éxito - mostrar mensaje y empezar Firebase listener
-                    showStatusMessage('success', '🎉 ' + (data.message || 'Mozo llamado exitosamente'));
-                    
-                    if (data.notification_id) {
-                        currentNotificationId = data.notification_id;
+                <!-- Panel deslizable -->
+                <!-- Firebase -->
+                <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
+                <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-database-compat.js"></script>
+                <script>
+                    const CLIENT_IP='{{ $clientIp }}';
+                    const TABLE_ID={{ $table->id }};
+                    let currentNotificationId=null;let firebaseListener=null;
+                    @if(session('notification_id'))
+                        currentNotificationId='{{ session('notification_id') }}';
                         startFirebaseListener();
-                        
-                        // Agregar mensaje de espera
-                        setTimeout(() => {
-                            const currentMsg = statusDiv.innerHTML;
-                            statusDiv.innerHTML = currentMsg + '<div style="font-size: 14px; margin-top: 8px; opacity: 0.8;">⏳ Esperando confirmación del mozo...</div>';
-                        }, 500);
-                    }
-                    
-                } else {
-                    // Error del servidor
-                    showStatusMessage('error', '❌ ' + (data.message || 'Error al llamar al mozo'));
-                }
-                
-            } catch (error) {
-                console.error('💥 Error en la llamada AJAX:', error);
-                showStatusMessage('error', '❌ Error de conexión. Intenta nuevamente.');
-            } finally {
-                // Rehabilitar botón
-                button.disabled = false;
-                button.classList.remove('loading');
-                button.innerHTML = '🔔 Llamar Mozo';
-            }
-        }
-        
-        // 🎨 FUNCIÓN PARA MOSTRAR MENSAJES DE ESTADO
-        function showStatusMessage(type, message) {
-            const statusDiv = document.getElementById('status-message');
-            statusDiv.className = `status-message status-${type}`;
-            statusDiv.innerHTML = message;
-            statusDiv.style.display = 'block';
-            
-            // Auto-ocultar errores después de 5 segundos
-            if (type === 'error') {
-                setTimeout(() => {
-                    statusDiv.style.display = 'none';
-                }, 5000);
-            }
-        }
+                        openPanel();
+                    @endif
 
-        // 📋 MANEJO DE ERRORES DEL PDF
-        let pdfLoadAttempts = 0;
-        const maxPdfLoadAttempts = 3;
+                    function togglePanel(){const p=document.getElementById('waiterPanel');const f=document.getElementById('mozoFab');const open=!p.classList.contains('open');open?openPanel():closePanel();}
+                    function openPanel(){const p=document.getElementById('waiterPanel');const f=document.getElementById('mozoFab');p.classList.add('open');f.classList.add('open');f.setAttribute('aria-expanded','true');}
+                    function closePanel(){const p=document.getElementById('waiterPanel');const f=document.getElementById('mozoFab');p.classList.remove('open');f.classList.remove('open');f.setAttribute('aria-expanded','false');}
+                    document.addEventListener('keydown',e=>{if(e.key==='Escape'){closePanel();}});
 
-        function handlePdfLoad() {
-            console.log('✅ PDF cargado correctamente');
-            // El PDF se cargó bien, no hacer nada
-        }
+                    function startFirebaseListener(){const firebaseConfig={projectId:"mozoqr-7d32c",apiKey:"AIzaSyDGJJKNfSSxD6YnXnNjwRb6VUtPSyGN5CM",authDomain:"mozoqr-7d32c.firebaseapp.com",databaseURL:"https://mozoqr-7d32c-default-rtdb.firebaseio.com",storageBucket:"mozoqr-7d32c.appspot.com"};if(!window.firebase||!window.firebase.apps.length){firebase.initializeApp(firebaseConfig);}const db=firebase.database();const ref=db.ref(`active_calls/${currentNotificationId}`);firebaseListener=ref.on('value',snap=>{const data=snap.val();if(!data) return; if(data.status==='acknowledged'){showAcknowledgedMessage(data.waiter?.name||data.waiter_name);ref.off('value',firebaseListener);firebaseListener=null;} else if(data.status==='completed'){showCompletedMessage(data.waiter?.name||data.waiter_name);ref.off('value',firebaseListener);firebaseListener=null;}});}
 
-        function handlePdfError() {
-            console.log('❌ Error cargando PDF, intento:', pdfLoadAttempts + 1);
-            pdfLoadAttempts++;
-            
-            if (pdfLoadAttempts >= maxPdfLoadAttempts) {
-                showPdfFallback();
-            }
-        }
+                    function baseStatusDiv(){return document.getElementById('status-message');}
+                    function showAcknowledgedMessage(waiter){const d=baseStatusDiv();d.className='status-area status-success';d.style.display='block';d.innerHTML=`🎉 ${waiter||'El mozo'} confirmó tu solicitud.<div class="ack-extra">🚶‍♂️ En camino...</div>`;notify('¡Mozo confirmado!',`${waiter||'El mozo'} está en camino`);}        
+                    function showCompletedMessage(waiter){const d=baseStatusDiv();d.className='status-area status-success';d.style.display='block';d.innerHTML=`✅ ${waiter||'El mozo'} completó tu solicitud.`;notify('Servicio completado',`${waiter||'El mozo'} finalizó la asistencia`);}        
+                    function notify(title,body){if('Notification'in window&&Notification.permission==='granted'){new Notification(title,{body,icon:'/favicon.ico',tag:'mozo-call'});} }
+                    if('Notification'in window&&Notification.permission==='default'){Notification.requestPermission();}
 
-        function showPdfFallback() {
-            console.log('📋 Mostrando mensaje de fallback del menú');
-            
-            // Ocultar el iframe del PDF
-            const pdfContainer = document.getElementById('menu-pdf-container');
-            const fallbackContainer = document.getElementById('menu-fallback');
-            
-            if (pdfContainer && fallbackContainer) {
-                pdfContainer.style.display = 'none';
-                fallbackContainer.style.display = 'block';
-            }
-        }
+                    async function callWaiter(){const btn=document.getElementById('call-waiter-btn');const d=baseStatusDiv();btn.disabled=true;btn.classList.add('loading');btn.textContent='⏳ Llamando...';d.style.display='none';try{const res=await fetch('{{ route('waiter.call') }}',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'},body:JSON.stringify({restaurant_id:{{ $business->id }},table_id:{{ $table->id }},message:'Cliente solicita atención'})});const data=await res.json();if(res.ok&&data.success){d.className='status-area status-success';d.innerHTML='🎉 '+(data.message||'Mozo llamado exitosamente')+'<div class="ack-extra">⏳ Esperando confirmación...</div>';d.style.display='block';if(data.notification_id){currentNotificationId=data.notification_id;startFirebaseListener();}} else {d.className='status-area status-error';d.innerHTML='❌ '+(data.message||'Error al llamar al mozo');d.style.display='block';}}catch(e){d.className='status-area status-error';d.innerHTML='❌ Error de conexión. Intenta nuevamente.';d.style.display='block';}finally{btn.disabled=false;btn.classList.remove('loading');btn.textContent='🔔 Llamar Mozo';}}
 
-        // Detectar si el PDF no carga después de un tiempo
-        setTimeout(() => {
-            const iframe = document.getElementById('menu-pdf-iframe');
-            if (iframe) {
-                // Verificar si el iframe está realmente mostrando contenido
-                try {
-                    // Si el iframe no tiene contenido válido después de 5 segundos, mostrar fallback
-                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-                    if (!iframeDoc || iframeDoc.body.innerHTML.trim() === '') {
-                        console.log('⏰ Timeout: PDF no cargó en 5 segundos');
-                        showPdfFallback();
-                    }
-                } catch (e) {
-                    // Si hay un error de CORS o acceso, asumimos que el PDF no cargó
-                    console.log('🔒 No se puede acceder al contenido del iframe, probablemente PDF no disponible');
-                    // No mostrar fallback inmediatamente por CORS, solo si realmente falla
-                }
-            }
-        }, 5000); // 5 segundos de timeout
-    </script>
-</body>
-</html>
+                    // PDF handling
+                    let pdfLoadAttempts=0;const maxPdfLoadAttempts=3;function handlePdfLoad(){/* ok */}function handlePdfError(){pdfLoadAttempts++;if(pdfLoadAttempts>=maxPdfLoadAttempts){showPdfFallback();}}function showPdfFallback(){const iframe=document.getElementById('menu-pdf-iframe');const fallback=document.getElementById('menu-fallback');if(iframe&&fallback){iframe.style.display='none';fallback.style.display='flex';}}
+                    setTimeout(()=>{const iframe=document.getElementById('menu-pdf-iframe');if(iframe){try{const doc=iframe.contentDocument||iframe.contentWindow.document;if(!doc||!doc.body||doc.body.innerHTML.trim()===''){showPdfFallback();}}catch(e){/* ignore cross origin */}}},5000);
+                </script>
+            </body>
+            </html>

@@ -2097,7 +2097,8 @@ class WaiterCallController extends Controller
             'call_id' => 'required|integer|exists:waiter_calls,id',
             'reason' => 'sometimes|in:spam,abuse,manual',
             'duration_hours' => 'sometimes|integer|min:1|max:720', // Máximo 30 días
-            'notes' => 'sometimes|string|max:500'
+            'notes' => 'sometimes|string|max:500',
+            'also_silence_table' => 'sometimes|boolean'
         ]);
 
         try {
@@ -2187,16 +2188,19 @@ class WaiterCallController extends Controller
                 ]);
             }
 
-            // También silenciar la mesa automáticamente si no está silenciada
-            $activeSilence = TableSilence::where('table_id', $call->table_id)->active()->first();
-            if (!$activeSilence) {
-                TableSilence::create([
-                    'table_id' => $call->table_id,
-                    'silenced_by' => $waiter->id,
-                    'reason' => 'manual',
-                    'silenced_at' => now(),
-                    'notes' => "Silenciado automáticamente al bloquear IP por spam"
-                ]);
+            $tableSilenced = false;
+            if ($request->boolean('also_silence_table')) {
+                $activeSilence = TableSilence::where('table_id', $call->table_id)->active()->first();
+                if (!$activeSilence) {
+                    TableSilence::create([
+                        'table_id' => $call->table_id,
+                        'silenced_by' => $waiter->id,
+                        'reason' => 'manual',
+                        'silenced_at' => now(),
+                        'notes' => 'Silenciado junto al bloqueo de IP (petición explícita)'
+                    ]);
+                    $tableSilenced = true;
+                }
             }
 
             return response()->json([
