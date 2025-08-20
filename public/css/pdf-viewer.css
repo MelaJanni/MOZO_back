@@ -77,12 +77,14 @@ body {
   z-index: 100;
   box-shadow: 0 -4px 32px rgba(0, 0, 0, 0.4);
   display: flex;
+  justify-content: center;
 }
 
 .controls-container {
-  max-width: 900px;
-  margin: 0 auto;
-  width: 100%;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 /* Bootstrap row override para los controles */
@@ -99,26 +101,25 @@ body {
 .control-group {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  padding: 0.5rem 1rem;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  width: max-content;
-  margin: 0 auto;
+  gap: 0;
+  margin: 0;
+}
+
+.col-btn {
+  max-width: max-content;
 }
 
 .control-btn {
   background: rgba(139, 92, 246, 0.15);
   color: #e6edf3;
   border: 1px solid rgba(139, 92, 246, 0.3);
-  padding: 0.65rem 0.9rem;
+  height: 36px;
+  width: 36px;
   border-radius: 8px;
-  font-size: 0.8rem;
+  font-size: 12px;
   font-weight: 600;
-  display: inline-flex;
-  gap: 0.4rem;
+  display: flex;
+  justify-content: center;
   align-items: center;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -160,6 +161,7 @@ body {
   color: #fff;
   min-width: 80px;
   text-align: center;
+  margin: 0px 3px;
 }
 
 .zoom-display {
@@ -172,6 +174,7 @@ body {
   color: #fff;
   min-width: 65px;
   text-align: center;
+  margin: 0px 3px;
 }
 
 /* PDF Workspace */
