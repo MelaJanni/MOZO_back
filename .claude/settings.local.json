@@ -22,7 +22,8 @@
       "Bash(timeout:*)",
       "Bash(time curl:*)",
       "Bash(cp:*)",
-      "WebFetch(domain:mozoqr-7d32c-default-rtdb.firebaseio.com)"
+      "WebFetch(domain:mozoqr-7d32c-default-rtdb.firebaseio.com)",
+      "WebFetch(domain:www.behance.net)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",

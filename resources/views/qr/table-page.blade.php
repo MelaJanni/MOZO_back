@@ -7,22 +7,27 @@
     <meta name="theme-color" content="#0d1117" />
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous">
     <style>
         :root { --accent:#8b5cf6; --accent-dark:#6d3ff0; --bg:#0d1117; --bg-alt:#161b22; --border:#30363d; }
         * { box-sizing:border-box; }
         html,body { height:100%; background:var(--bg); color:#e6edf3; font-family:system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; }
         body { margin:0; display:flex; flex-direction:column; }
         .viewer-shell { flex:1; display:flex; flex-direction:column; overflow:hidden; }
-        .pdf-toolbar { background:linear-gradient(90deg,#111827,#1e293b); padding:.55rem .9rem; display:flex; gap:.65rem; align-items:center; border-bottom:1px solid var(--border); position:relative; z-index:2; }
-        .brand { font-weight:600; font-size:.95rem; display:flex; align-items:center; gap:.45rem; padding-right:.75rem; border-right:1px solid var(--border); }
+        .pdf-header { background:linear-gradient(90deg,rgba(17,24,39,0.95),rgba(30,41,59,0.95)); backdrop-filter:blur(12px); padding:1rem 1.5rem; display:flex; align-items:center; justify-content:between; border-bottom:1px solid rgba(255,255,255,0.1); position:relative; z-index:10; box-shadow:0 2px 20px rgba(0,0,0,0.3); }
+        .brand { font-weight:700; font-size:1.1rem; display:flex; align-items:center; gap:.5rem; color:#fff; }
         .brand span { color:var(--accent); }
-        .toolbar-group { display:flex; gap:.35rem; align-items:center; }
-        .toolbar-btn { background:#1f242d; color:#e6edf3; border:1px solid #2d333b; padding:.45rem .65rem; border-radius:8px; font-size:.75rem; font-weight:600; display:inline-flex; gap:.35rem; align-items:center; cursor:pointer; transition:.25s; }
-        .toolbar-btn:hover { background:#2d333b; }
-        .toolbar-btn[disabled] { opacity:.35; cursor:not-allowed; }
-        .page-indicator { font-size:.75rem; font-weight:600; min-width:86px; text-align:center; padding:.35rem .6rem; background:#1f242d; border:1px solid #2d333b; border-radius:8px; }
-        .zoom-indicator { width:68px; }
-        .pdf-workspace { flex:1; display:flex; overflow:hidden; position:relative; }
+        .pdf-controls-footer { position:fixed; bottom:0; left:0; right:0; background:rgba(22,27,34,0.92); backdrop-filter:blur(20px); border-top:1px solid rgba(255,255,255,0.1); padding:1.25rem 2rem; z-index:100; box-shadow:0 -4px 32px rgba(0,0,0,0.4); }
+        .controls-container { max-width:900px; margin:0 auto; display:flex; align-items:center; justify-content:center; gap:1.5rem; flex-wrap:wrap; }
+        .control-group { display:flex; align-items:center; gap:.75rem; padding:.5rem 1rem; background:rgba(255,255,255,0.08); border-radius:12px; border:1px solid rgba(255,255,255,0.1); }
+        .control-btn { background:rgba(139,92,246,0.15); color:#e6edf3; border:1px solid rgba(139,92,246,0.3); padding:.65rem .9rem; border-radius:8px; font-size:.8rem; font-weight:600; display:inline-flex; gap:.4rem; align-items:center; cursor:pointer; transition:all .3s ease; text-decoration:none; min-width:auto; }
+        .control-btn:hover { background:rgba(139,92,246,0.25); color:#fff; border-color:rgba(139,92,246,0.5); transform:translateY(-1px); box-shadow:0 4px 12px rgba(139,92,246,0.2); }
+        .control-btn:active { transform:translateY(0); }
+        .control-btn[disabled] { opacity:.4; cursor:not-allowed; background:rgba(75,85,99,0.3); border-color:rgba(75,85,99,0.3); }
+        .control-btn[disabled]:hover { transform:none; box-shadow:none; }
+        .page-display { font-size:.85rem; font-weight:600; padding:.6rem 1rem; background:rgba(30,41,59,0.8); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#fff; min-width:80px; text-align:center; }
+        .zoom-display { font-size:.8rem; font-weight:600; padding:.6rem .8rem; background:rgba(30,41,59,0.8); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#fff; min-width:65px; text-align:center; }
+        .pdf-workspace { flex:1; display:flex; overflow:hidden; position:relative; padding-bottom:120px; }
         .thumbs-panel { width:88px; background:#0f141b; border-right:1px solid var(--border); overflow-y:auto; padding:.5rem .4rem; display:flex; flex-direction:column; gap:.6rem; }
         .thumb { position:relative; cursor:pointer; border:2px solid transparent; border-radius:8px; background:#111; overflow:hidden; }
         .thumb canvas { width:100%; display:block; }
@@ -32,7 +37,7 @@
         .loading-overlay { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1rem; backdrop-filter:blur(4px); background:linear-gradient(135deg,#111827 0%,#1e1e2e 100%); z-index:3; }
         .spinner { width:42px; height:42px; border:5px solid #2d333b; border-top-color:var(--accent); border-radius:50%; animation:spin 1s linear infinite; }
         @keyframes spin { to { transform:rotate(360deg); } }
-        .fab { position:fixed; bottom:22px; right:22px; width:74px; height:74px; border-radius:28px; background:linear-gradient(145deg,var(--accent),var(--accent-dark)); border:none; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#fff; font-weight:600; font-size:.7rem; letter-spacing:.5px; cursor:pointer; box-shadow:0 12px 28px -6px rgba(139,92,246,.6),0 4px 10px -2px rgba(0,0,0,.55); z-index:50; transition:.35s; gap:2px; }
+        .fab { position:fixed; bottom:140px; right:22px; width:74px; height:74px; border-radius:28px; background:linear-gradient(145deg,var(--accent),var(--accent-dark)); border:none; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#fff; font-weight:600; font-size:.7rem; letter-spacing:.5px; cursor:pointer; box-shadow:0 12px 28px -6px rgba(139,92,246,.6),0 4px 10px -2px rgba(0,0,0,.55); z-index:50; transition:.35s; gap:2px; }
         .fab:active { transform:scale(.94); }
         .fab:hover { transform:scale(1.05); }
         .fab.open { transform:rotate(180deg); }
@@ -54,8 +59,22 @@
         .pdf-fallback { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1rem; text-align:center; padding:3rem 1.5rem; }
         .pdf-fallback h2 { font-size:1.4rem; font-weight:700; }
         .pdf-fallback p { opacity:.75; }
-        @media (max-width:900px) { .thumbs-panel { display:none; } .pdf-toolbar { flex-wrap:wrap; } .brand { border:none; padding-right:0; } }
-        @media (max-width:520px) { .toolbar-btn span.label { display:none; } .page-indicator { min-width:auto; padding:.35rem .5rem; } }
+        @media (max-width:900px) { 
+            .thumbs-panel { display:none; } 
+            .controls-container { gap:1rem; padding:0 1rem; }
+        }
+        @media (max-width:768px) { 
+            .pdf-controls-footer { padding:1rem; }
+            .controls-container { gap:.75rem; flex-direction:column; }
+            .control-group { width:100%; justify-content:center; }
+            .fab { bottom:120px; }
+        }
+        @media (max-width:520px) { 
+            .control-btn span { display:none; }
+            .page-display, .zoom-display { min-width:60px; padding:.5rem .6rem; }
+            .pdf-header { padding:.75rem 1rem; }
+            .brand { font-size:1rem; }
+        }
     </style>
 </head>
 <body>
@@ -72,29 +91,15 @@
 
 <div class="viewer-shell" id="viewerShell">
     @if($menuUrl)
-    <div class="pdf-toolbar" role="toolbar" aria-label="Controles del visor PDF">
+    <!-- Header simplificado -->
+    <div class="pdf-header" role="banner">
         <div class="brand" title="{{ $business->name }}">
             <span>MOZO</span>
-            <small class="text-secondary">Mesa {{ $table->number }}</small>
+            <small style="opacity:.7;">Mesa {{ $table->number }} • {{ $business->name }}</small>
         </div>
-        <div class="toolbar-group" aria-label="Navegación páginas">
-            <button class="toolbar-btn" id="btnPrev" disabled title="Página anterior">⬅️ <span class="label">Prev</span></button>
-            <div class="page-indicator"><span id="pageNum">-</span>/<span id="pageCount">-</span></div>
-            <button class="toolbar-btn" id="btnNext" disabled title="Página siguiente">➡️ <span class="label">Next</span></button>
-        </div>
-        <div class="toolbar-group" aria-label="Zoom">
-            <button class="toolbar-btn" id="btnZoomOut" disabled title="Alejar">➖</button>
-            <div class="page-indicator zoom-indicator" id="zoomLevel">100%</div>
-            <button class="toolbar-btn" id="btnZoomIn" disabled title="Acercar">➕</button>
-            <button class="toolbar-btn" id="btnFitWidth" disabled title="Ajustar ancho">↔️ <span class="label">Ancho</span></button>
-            <button class="toolbar-btn" id="btnFitPage" disabled title="Página completa">🗔 <span class="label">Página</span></button>
-        </div>
-        <div class="toolbar-group" aria-label="Acciones">
-            <button class="toolbar-btn" id="btnRotate" disabled title="Rotar 90°">🔄 <span class="label">Rotar</span></button>
-            <a class="toolbar-btn" id="btnDownload" href="{{ $menuUrl }}" target="_blank" rel="noopener" title="Descargar / Abrir">💾 <span class="label">Abrir</span></a>
-        </div>
-        <div class="ms-auto small text-secondary d-none d-md-block" style="opacity:.55;">Flechas navegan • Ctrl+/− zoom</div>
     </div>
+    
+    <!-- Área principal del PDF -->
     <div class="pdf-workspace">
         <aside class="thumbs-panel" id="thumbsPanel" aria-label="Miniaturas"></aside>
         <div class="canvas-stage" id="canvasStage">
@@ -103,6 +108,59 @@
                 <div style="font-size:.85rem; letter-spacing:.5px; opacity:.75;">Cargando menú...</div>
             </div>
             <canvas id="pdfCanvas" aria-label="Página PDF"></canvas>
+        </div>
+    </div>
+    
+    <!-- Footer con controles -->
+    <div class="pdf-controls-footer" role="toolbar" aria-label="Controles del visor PDF">
+        <div class="controls-container">
+            <!-- Navegación de páginas -->
+            <div class="control-group">
+                <button class="control-btn" id="btnPrev" disabled title="Página anterior">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <div class="page-display">
+                    <span id="pageNum">-</span>/<span id="pageCount">-</span>
+                </div>
+                <button class="control-btn" id="btnNext" disabled title="Página siguiente">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+            
+            <!-- Controles de zoom -->
+            <div class="control-group">
+                <button class="control-btn" id="btnZoomOut" disabled title="Alejar">
+                    <i class="fas fa-search-minus"></i>
+                </button>
+                <div class="zoom-display" id="zoomLevel">100%</div>
+                <button class="control-btn" id="btnZoomIn" disabled title="Acercar">
+                    <i class="fas fa-search-plus"></i>
+                </button>
+            </div>
+            
+            <!-- Ajustes de vista -->
+            <div class="control-group">
+                <button class="control-btn" id="btnFitWidth" disabled title="Ajustar al ancho">
+                    <i class="fas fa-arrows-alt-h"></i>
+                    <span class="d-none d-sm-inline">Ancho</span>
+                </button>
+                <button class="control-btn" id="btnFitPage" disabled title="Ajustar página completa">
+                    <i class="fas fa-expand-arrows-alt"></i>
+                    <span class="d-none d-sm-inline">Página</span>
+                </button>
+            </div>
+            
+            <!-- Acciones adicionales -->
+            <div class="control-group">
+                <button class="control-btn" id="btnRotate" disabled title="Rotar 90°">
+                    <i class="fas fa-redo"></i>
+                    <span class="d-none d-md-inline">Rotar</span>
+                </button>
+                <a class="control-btn" id="btnDownload" href="{{ $menuUrl }}" target="_blank" rel="noopener" title="Abrir en nueva pestaña">
+                    <i class="fas fa-external-link-alt"></i>
+                    <span class="d-none d-md-inline">Abrir</span>
+                </a>
+            </div>
         </div>
     </div>
     @else
