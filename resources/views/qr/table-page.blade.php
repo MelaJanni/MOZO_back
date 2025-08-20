@@ -39,6 +39,8 @@
         } catch(\Throwable $e) { $cssInline = '/* Error SCSS: '. addslashes($e->getMessage()) .' */'; }
     @endphp
     <style id="pdf-viewer-inline-css">{!! $cssInline !!}</style>
+    <!-- Hammer.js CDN para garantizar disponibilidad en producción (fallback a node si bundler lo incluye) -->
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js" integrity="sha256-qG5R2UHxAnGxB1wH6mJ0G7LbcW2CYwiVdc+GdHnkM6M=" crossorigin="anonymous"></script>
 </head>
 <body>
 @php
@@ -203,18 +205,9 @@
     function queueRender(p){rendering?pendingPage=p:renderPage(p);}  
     function update(){pageNumSpan.textContent=currentPage;pageCountSpan.textContent=pdfDoc.numPages;btnPrev.disabled=currentPage<=1;btnNext.disabled=currentPage>=pdfDoc.numPages;[...thumbsPanel.querySelectorAll('.thumb')].forEach(el=>el.classList.toggle('active',+el.dataset.page===currentPage));}
     function change(delta){const t=currentPage+delta;if(t>=1&&t<=pdfDoc.numPages){currentPage=t;update();queueRender(currentPage);}}  
-    function setScale(s,cx=null,cy=null){
-        const prevScale=scale;
+    function setScale(s){
         scale=Math.min(6,Math.max(.2,s));
         fitMode='manual';
-        if(prevScale!==scale && cx!==null){
-            // Mantener el punto de enfoque (cx,cy relativos al stage) tras el re-render
-            const beforeLeft=stage.scrollLeft; const beforeTop=stage.scrollTop;
-            const rx=(cx+beforeLeft)/prevScale; const ry=(cy+beforeTop)/prevScale;
-            queueRender(currentPage);
-            setTimeout(()=>{stage.scrollLeft=rx*scale-cx; stage.scrollTop=ry*scale-cy;},0);
-            return;
-        }
         queueRender(currentPage);
     }  
     if(btnPrev) btnPrev.onclick=()=>change(-1);
@@ -238,12 +231,7 @@
         function angle(a,b){return Math.atan2(b.clientY-a.clientY,b.clientX-a.clientX)*180/Math.PI;}
         function applyFitWidth(){fitMode='width';queueRender(currentPage);} 
         function applyFitPage(){fitMode='page';queueRender(currentPage);} 
-        function smartZoomToggle(){
-            // Zoom progresivo centrado al medio visible
-            const rect=stage.getBoundingClientRect();
-            const cx=rect.width/2; const cy=rect.height/2;
-            setScale(scale* (scale<1.5?1.6:(scale>2.5?0.6:1.2)),cx,cy);
-        }
+    function smartZoomToggle(){ setScale(scale* (scale<1.5?1.6:(scale>2.5?0.6:1.2))); }
         function resetView(){scale=1;applyFitWidth();}
         function toggleThumbs(){thumbsPanel.style.display=thumbsPanel.style.display==='none'?'flex':'none';}
     // Inicializa modo peek
@@ -265,10 +253,25 @@
             h.add(new Hammer.Tap()); // single
             h.add(new Hammer.Swipe({direction: Hammer.DIRECTION_HORIZONTAL, velocity:0.3, threshold:18}));
             h.get('doubletap').recognizeWith('tripletap');
-            let hammerInitialScale=scale; let hammerPinchCenter=null;
-            h.on('pinchstart',ev=>{hammerInitialScale=scale; hammerPinchCenter={x:ev.center.x-stage.getBoundingClientRect().left,y:ev.center.y-stage.getBoundingClientRect().top};});
-            h.on('pinchmove',ev=>{setScale(hammerInitialScale*ev.scale,hammerPinchCenter.x,hammerPinchCenter.y);});
-            h.on('pinchend',ev=>{ if(Math.abs(scale-1)<0.08) applyFitWidth(); });
+            let hammerInitialScale=scale; let pinchTempScale=scale; let pinchStartScroll=null; let pinchCenter=null;
+            h.on('pinchstart',ev=>{
+                hammerInitialScale=scale; pinchStartScroll={x:stage.scrollLeft,y:stage.scrollTop};
+                const rect=stage.getBoundingClientRect();
+                pinchCenter={x:ev.center.x-rect.left+stage.scrollLeft,y:ev.center.y-rect.top+stage.scrollTop};
+                canvas.style.transformOrigin='0 0';
+            });
+            h.on('pinchmove',ev=>{
+                pinchTempScale=Math.min(6,Math.max(.2,hammerInitialScale*ev.scale));
+                const factor=pinchTempScale/hammerInitialScale;
+                canvas.style.transform=`scale(${pinchTempScale})`;
+                stage.scrollLeft = pinchCenter.x*factor - (ev.center.x - stage.getBoundingClientRect().left);
+                stage.scrollTop  = pinchCenter.y*factor - (ev.center.y - stage.getBoundingClientRect().top);
+            });
+            h.on('pinchend',ev=>{
+                canvas.style.transform='';
+                setScale(pinchTempScale);
+                if(Math.abs(scale-1)<0.08) applyFitWidth();
+            });
             h.on('panmove',ev=>{
                 if(scale>1.02){
                     stage.scrollLeft -= ev.deltaX - (h.prevDeltaX||0);
@@ -283,7 +286,7 @@
             // Long press manual
             let lpTimer=null; stage.addEventListener('touchstart',e=>{lpTimer=setTimeout(()=>toggleThumbs(),650);},{passive:true}); stage.addEventListener('touchend',()=>{clearTimeout(lpTimer);lpTimer=null;},{passive:true});
             // Loupe activación: pinch mantenido (>500ms) -> mostrar
-            let pinchHoldTimer=null; h.on('pinchstart',ev=>{pinchHoldTimer=setTimeout(()=>{loupeActive=true; showLoupe(ev.center.x,ev.center.y);},500);}); h.on('pinchend',()=>{clearTimeout(pinchHoldTimer);loupeActive=false; hideLoupe();}); h.on('pinchmove',ev=>{ if(loupeActive){ showLoupe(ev.center.x,ev.center.y); drawLoupe(ev.center.x,ev.center.y);} });
+            let pinchHoldTimer=null; h.on('pinchstart',ev=>{pinchHoldTimer=setTimeout(()=>{loupeActive=true; showLoupe(ev.center.x,ev.center.y);},450);}); h.on('pinchend',()=>{clearTimeout(pinchHoldTimer);loupeActive=false; hideLoupe();}); h.on('pinchmove',ev=>{ if(loupeActive){ showLoupe(ev.center.x,ev.center.y); drawLoupe(ev.center.x,ev.center.y);} });
         }
         if(!useHammer){
         stage.addEventListener('touchstart',e=>{
