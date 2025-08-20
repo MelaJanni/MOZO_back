@@ -396,26 +396,26 @@ body {
 .fab .fab-callout::after {
   content: "";
   position: absolute;
-  right: -18px;
+  left: 100%;
   top: 50%;
   transform: translateY(-50%);
   width: 20px;
   height: 20px;
   background: linear-gradient(155deg, rgba(32, 39, 53, 0.98), rgba(17, 24, 39, 0.92));
-  clip-path: polygon(0 50%, 100% 0, 100% 100%);
+  clip-path: polygon(100% 50%, 0 0, 0 100%);
   box-shadow: 0 2px 6px -1px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(139, 92, 246, 0.25);
 }
 .fab .fab-callout::before {
   content: "";
   position: absolute;
-  right: -18px;
+  left: 100%;
   top: 50%;
   transform: translateY(-50%) scale(1.25);
   width: 20px;
   height: 20px;
   background: linear-gradient(145deg, rgba(139, 92, 246, 0.95), rgba(168, 122, 255, 0.4));
   filter: blur(6px) opacity(0.55);
-  clip-path: polygon(0 50%, 100% 0, 100% 100%);
+  clip-path: polygon(100% 50%, 0 0, 0 100%);
   pointer-events: none;
 }
 .fab .fab-callout .icon {
