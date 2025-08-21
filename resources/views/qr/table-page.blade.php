@@ -222,7 +222,7 @@
     const stage=document.getElementById('canvasStage');
     let pdfDoc=null,currentPage=1,scale=1,rotation=0,fitMode='width',rendering=false,pendingPage=null; // rotation fijo 0
     const continuousMode=true; // modo scroll continuo
-    if(continuousMode){ stage.classList.add('continuous'); } else { stage.classList.add('paginated'); }
+    if(continuousMode){ stage.classList.add('continuous'); stage.removeAttribute('style'); } else { stage.classList.add('paginated'); }
     function enable(v){[btnPrev,btnNext,btnZoomIn,btnZoomOut].forEach(b=>b&&(b.disabled=!v));}  
     function calcFitScale(page){const vw=stage.clientWidth-24;const vh=stage.clientHeight-24;const w0=page.view[2];const h0=page.view[3];const sW=(rotation%180===0)?(vw/w0):(vw/h0);const sP=Math.min(vh/h0,vw/w0);if(fitMode==='width')return sW;if(fitMode==='page')return sP;return scale;}  
     // Renderiza manteniendo opcionalmente un punto ancla (anchor) centrado tras el zoom
@@ -352,7 +352,8 @@
     // Lupa eliminada
 
         if(useHammer){
-            const h = new Hammer.Manager(stage);
+            // Evitamos que Hammer agregue touch-action:none y user-select:none usando cssProps vacíos
+            const h = new Hammer.Manager(stage,{ cssProps: {} });
             h.add(new Hammer.Pinch({enable:true}));
             h.add(new Hammer.Pan({direction: Hammer.DIRECTION_ALL, threshold:0}));
             h.add(new Hammer.Tap({event:'doubletap', taps:2, interval:400, posThreshold:60}));
@@ -402,6 +403,13 @@
             h.on('doubletap',()=> smartZoomToggle());
             h.on('tripletap',()=> resetView());
             if(!continuousMode){ h.on('swipe',ev=>{ if(ev.direction===Hammer.DIRECTION_UP) change(1); else if(ev.direction===Hammer.DIRECTION_DOWN) change(-1); }); }
+            // Forzar estilos permitiendo gestos nativos si continuo
+            if(continuousMode){
+                stage.style.touchAction='pan-y pinch-zoom';
+                stage.style.userSelect='auto';
+                stage.style.webkitUserDrag='auto';
+                stage.style.webkitTapHighlightColor='rgba(0,0,0,0)';
+            }
             // Long press manual
             let lpTimer=null; stage.addEventListener('touchstart',e=>{lpTimer=setTimeout(()=>toggleThumbs(),650);},{passive:true}); stage.addEventListener('touchend',()=>{clearTimeout(lpTimer);lpTimer=null;},{passive:true});
             // Loupe activación: pinch mantenido (>500ms) -> mostrar
