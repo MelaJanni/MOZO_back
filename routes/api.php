@@ -19,6 +19,7 @@ use App\Http\Controllers\RealtimeController;
 use App\Http\Controllers\WaiterCallRealtimeController;
 use App\Http\Controllers\WaiterCallRealtimeControllerHTTP;
 use App\Http\Controllers\FcmTokenController;
+use App\Http\Controllers\StaffController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Broadcast;
@@ -115,6 +116,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::prefix('profile')->group(function () {
         Route::post('/update', [ProfileController::class, 'updateProfile']);
+        Route::post('/waiter/update', [ProfileController::class, 'updateWaiterProfile']); // Con validaciones obligatorias
+        Route::get('/completeness', [ProfileController::class, 'getProfileCompleteness']);
         Route::post('/whatsapp/send', [ProfileController::class, 'sendWhatsAppMessage']);
         
         Route::get('/work-history', [ProfileController::class, 'getWorkHistory']);
@@ -238,6 +241,19 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/staff/{id}/whatsapp', [AdminController::class, 'getWhatsAppLink']);
         Route::get('/profile', [AdminController::class, 'getAdminProfile']);
         Route::post('/profile/update', [AdminController::class, 'updateAdminProfile']);
+    });
+
+    // 🔥 STAFF MANAGEMENT - Sistema de solicitudes de mozos con Firebase
+    Route::prefix('staff')->group(function () {
+        Route::get('/', [StaffController::class, 'index']); // Listar solicitudes
+        Route::post('/', [StaffController::class, 'store']); // Crear solicitud
+        Route::get('/{id}', [StaffController::class, 'show']); // Ver detalles
+        Route::post('/{id}/approve', [StaffController::class, 'approve']); // Aprobar
+        Route::post('/{id}/reject', [StaffController::class, 'reject']); // Rechazar
+        Route::post('/{id}/invite', [StaffController::class, 'sendInvitation']); // Enviar invitación
+        Route::get('/{id}/whatsapp', [StaffController::class, 'getWhatsAppInvitation']); // Obtener WhatsApp
+        Route::delete('/{id}', [StaffController::class, 'destroy']); // Eliminar
+        Route::post('/test-notifications', [StaffController::class, 'testNotifications']); // Test
     });
 
     Route::get('/tables', [TableController::class, 'fetchTables']);
@@ -418,6 +434,9 @@ Route::middleware('public_api')->group(function () {
     // API pública para obtener estado de mesa (polling fallback)
     Route::get('/table/{tableId}/status', [PublicQrController::class, 'getTableStatus'])
         ->name('api.table.status');
+
+    // 🔗 STAFF - Unirse con token de invitación (público)
+    Route::post('/staff/join/{token}', [StaffController::class, 'joinWithToken']);
 
     // 🔍 DEBUG: Endpoint para ver llamadas recientes (para testing)
     Route::get('/debug/recent-calls', [App\Http\Controllers\RealtimeWaiterCallController::class, 'getRecentCalls']);

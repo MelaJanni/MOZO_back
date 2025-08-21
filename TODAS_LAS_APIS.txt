@@ -30,7 +30,13 @@ Body: { "email": "string", "password": "string", "fcm_token": "string" (opcional
 Response: { user, access_token, token_type }
 
 POST /api/login/google
-Response: { message: "Google OAuth no implementado aún" }
+Body: { 
+  "google_token": "string", 
+  "fcm_token": "string" (opcional),
+  "platform": "android|ios|web" (opcional),
+  "business_invitation_code": "string" (opcional)
+}
+Response: { success, user, access_token, token_type, staff_request_created, business_name, message }
 
 POST /api/logout
 Headers: Authorization: Bearer {token}
@@ -100,6 +106,39 @@ Body: {
   "current_schedule": "string" (opcional)
 }
 Response: { message, user }
+
+POST /api/profile/waiter/update
+Headers: Authorization: Bearer {token}
+Body: {
+  "name": "string" (required),
+  "email": "string" (required),
+  "phone": "string" (required),
+  "date_of_birth": "date" (required),
+  "height": "number" (required, 1.0-2.5 metros),
+  "weight": "number" (required, 30-200 kg),
+  "gender": "masculino|femenino|otro" (required),
+  "experience_years": "integer" (required, 0-50),
+  "employment_type": "tiempo_completo|medio_tiempo|por_horas" (required),
+  "current_schedule": "string" (required),
+  "address": "string" (opcional),
+  "bio": "string" (opcional),
+  "skills": "array" (opcional),
+  "latitude": "number" (opcional),
+  "longitude": "number" (opcional),
+  "avatar": "file" (opcional, imagen 2MB max)
+}
+Response: { success: true, message: "Perfil de mozo actualizado exitosamente", user, profile_complete: boolean }
+
+GET /api/profile/completeness
+Headers: Authorization: Bearer {token}
+Response: { 
+  success: true,
+  is_complete: boolean,
+  missing_fields: [ { field: "string", label: "string" } ],
+  completed_fields: integer,
+  total_required_fields: integer,
+  completion_percentage: number
+}
 
 POST /api/profile/whatsapp/send
 Headers: Authorization: Bearer {token}
@@ -478,6 +517,117 @@ Response: { message, review }
 DELETE /api/admin/staff/{staffId}/reviews/{id}
 Headers: Authorization: Bearer {token}
 Response: { message }
+```
+
+## 🔥 STAFF MANAGEMENT - Sistema de solicitudes de mozos con Firebase
+
+### Gestión de Solicitudes de Staff
+```
+GET /api/staff?business_id={id}
+Headers: Authorization: Bearer {token}
+Response: { 
+  success: true,
+  data: [
+    {
+      id, name, email, phone, position, status, 
+      experience_years, employment_type, salary, 
+      hire_date, created_at, 
+      user: { id, name, email } | null
+    }
+  ]
+}
+
+POST /api/staff
+Headers: Authorization: Bearer {token}
+Body: {
+  "business_id": "integer" (required),
+  "name": "string" (required),
+  "email": "string" (required),
+  "phone": "string" (required),
+  "position": "string" (required),
+  "date_of_birth": "date" (required),
+  "height": "number" (required, 1.0-2.5 metros),
+  "weight": "number" (required, 30-200 kg),
+  "gender": "masculino|femenino|otro" (required),
+  "experience_years": "integer" (required, 0-50),
+  "employment_type": "tiempo_completo|medio_tiempo|por_horas" (required),
+  "current_schedule": "string" (required),
+  "user_id": "integer" (opcional),
+  "skills": "array" (opcional),
+  "latitude": "number" (opcional),
+  "longitude": "number" (opcional)
+}
+Response: { success: true, message: "Solicitud de staff creada exitosamente", data: staff }
+
+GET /api/staff/{id}
+Headers: Authorization: Bearer {token}
+Response: { 
+  success: true,
+  data: { 
+    id, name, email, phone, position, status, salary, hire_date,
+    birth_date, height, weight, gender, experience_years, 
+    employment_type, current_schedule, notes, invitation_token,
+    invitation_sent_at, created_at, updated_at, user, business
+  }
+}
+
+POST /api/staff/{id}/approve
+Headers: Authorization: Bearer {token}
+Body: {
+  "salary": "number" (opcional),
+  "hire_date": "date" (opcional),
+  "notes": "string" (opcional)
+}
+Response: { success: true, message: "Solicitud de staff aprobada exitosamente", data: staff }
+
+POST /api/staff/{id}/reject
+Headers: Authorization: Bearer {token}
+Body: { "notes": "string" (opcional) }
+Response: { success: true, message: "Solicitud de staff rechazada", data: staff }
+
+POST /api/staff/{id}/invite
+Headers: Authorization: Bearer {token}
+Response: { 
+  success: true, 
+  message: "Invitación enviada exitosamente",
+  data: { 
+    invitation_token: "string", 
+    invitation_url: "string",
+    email_sent: true,
+    whatsapp_url: "string"
+  }
+}
+
+GET /api/staff/{id}/whatsapp
+Headers: Authorization: Bearer {token}
+Response: {
+  success: true,
+  data: {
+    whatsapp_url: "string",
+    phone: "string", 
+    invitation_token: "string",
+    expires_at: "datetime"
+  }
+}
+
+DELETE /api/staff/{id}
+Headers: Authorization: Bearer {token}
+Response: { success: true, message: "Solicitud de staff eliminada exitosamente" }
+```
+
+### Unirse con Token de Invitación (Público)
+```
+POST /api/staff/join/{token}
+Body: { "user_id": "integer" (required) }
+Response: { success: true, message: "Te has unido al negocio exitosamente", data: staff }
+```
+
+### Testing
+```
+POST /api/staff/test-notifications
+Headers: Authorization: Bearer {token}
+Body: { "business_id": "integer" (required) }
+Response: { success: true, message: "Test de notificaciones de staff completado", data: result }
 ```
 
 ### 🆕 Nuevas Funcionalidades Admin

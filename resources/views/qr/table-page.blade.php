@@ -78,7 +78,6 @@
                 <div style="font-size:.85rem; letter-spacing:.5px; opacity:.75;">Cargando menú...</div>
             </div>
             <canvas id="pdfCanvas" aria-label="Página PDF"></canvas>
-            <div class="loupe" id="loupe"><canvas id="loupeCanvas"></canvas></div>
         </div>
     </div>
     
@@ -205,9 +204,9 @@
         zoomLevel=zl;
     }
     const stage=document.getElementById('canvasStage');
-    let pdfDoc=null,currentPage=1,scale=1,rotation=0,fitMode='width',rendering=false,pendingPage=null;
+    let pdfDoc=null,currentPage=1,scale=1,rotation=0,fitMode='width',rendering=false,pendingPage=null; // rotation fijo 0
     function enable(v){[btnPrev,btnNext,btnZoomIn,btnZoomOut].forEach(b=>b&&(b.disabled=!v));}  
-    function calcFitScale(page){const vw=stage.clientWidth-24;const vh=stage.clientHeight-24;const w0=page.view[2];const h0=page.view[3];let w=(rotation%180===0)?w0:h0;let h=(rotation%180===0)?h0:w0;const sW=vw/w;const sP=Math.min(vh/h,vw/w);if(fitMode==='width')return sW;if(fitMode==='page')return sP;return scale;}  
+    function calcFitScale(page){const vw=stage.clientWidth-24;const vh=stage.clientHeight-24;const w0=page.view[2];const h0=page.view[3];const sW=(rotation%180===0)?(vw/w0):(vw/h0);const sP=Math.min(vh/h0,vw/w0);if(fitMode==='width')return sW;if(fitMode==='page')return sP;return scale;}  
     // Renderiza manteniendo opcionalmente un punto ancla (anchor) centrado tras el zoom
     async function renderPage(num, anchor){
         rendering=true;
@@ -256,12 +255,11 @@
     let useHammer = typeof Hammer !== 'undefined';
 
         let tapTimes=[]; // almacenar timestamps para multi-tap
-        let pinchStartDist=null; let startScaleRef=scale; let touchMode=null; let panStart=null; let stageScrollStart=null;
-        let twoFingerTapTimer=null; let longPressTimer=null; let initialAngle=null; let rotationApplied=false;
-        let multiFingerStartTime=null; let multiFingerReleased=false; let activeTouches=0;
-        let swipeStartX=null; let swipeStartY=null; let swipeFingerCount=0;
-        function dist(a,b){const dx=a.clientX-b.clientX;const dy=a.clientY-b.clientY;return Math.hypot(dx,dy);}    
-        function angle(a,b){return Math.atan2(b.clientY-a.clientY,b.clientX-a.clientX)*180/Math.PI;}
+    let pinchStartDist=null; let startScaleRef=scale; let touchMode=null; let panStart=null; let stageScrollStart=null;
+    let twoFingerTapTimer=null; let longPressTimer=null;
+    let multiFingerStartTime=null; let multiFingerReleased=false; let activeTouches=0;
+    let swipeStartX=null; let swipeStartY=null; let swipeFingerCount=0;
+    function dist(a,b){const dx=a.clientX-b.clientX;const dy=a.clientY-b.clientY;return Math.hypot(dx,dy);}    
         function applyFitWidth(){fitMode='width';queueRender(currentPage);} 
         function applyFitPage(){fitMode='page';queueRender(currentPage);} 
     function smartZoomToggle(){ setScale(scale* (scale<1.5?1.6:(scale>2.5?0.6:1.2))); }
@@ -271,11 +269,7 @@
     thumbsPanel.classList.add('peek');
     // Variables edge & loupe
     let edgeTracking=false, edgeShown=false, edgeStartX=null; const EDGE_ZONE=24, EDGE_THRESHOLD=14;
-    const loupe=document.getElementById('loupe'); const loupeCanvas=document.getElementById('loupeCanvas'); const loupeCtx=loupeCanvas.getContext('2d');
-    loupeCanvas.width=400; loupeCanvas.height=400; let loupeActive=false; let loupeAnim=null;
-    function drawLoupe(mx,my){if(!loupeActive||!pdfDoc)return; const rect=canvas.getBoundingClientRect(); const ratio=canvas.width/rect.width; const grab=120; const sx=(mx-rect.left)*ratio-grab/2; const sy=(my-rect.top)*ratio-grab/2; const tmp=document.createElement('canvas'); tmp.width=grab; tmp.height=grab; const tctx=tmp.getContext('2d'); try{const img=ctx.getImageData(Math.max(0,sx),Math.max(0,sy),grab,grab); tctx.putImageData(img,0,0);}catch{} loupeCtx.clearRect(0,0,loupeCanvas.width,loupeCanvas.height); loupeCtx.save(); loupeCtx.beginPath(); loupeCtx.arc(200,200,200,0,Math.PI*2); loupeCtx.clip(); loupeCtx.drawImage(tmp,0,0,grab,grab,0,0,400,400); loupeCtx.restore(); }
-    function showLoupe(mx,my){loupe.style.display='block'; loupe.style.left=(mx-80)+'px'; loupe.style.top=(my-80)+'px';}
-    function hideLoupe(){loupe.style.display='none';}
+    // Lupa eliminada
 
         if(useHammer){
             const h = new Hammer.Manager(stage);
@@ -284,7 +278,7 @@
             h.add(new Hammer.Tap({event:'doubletap', taps:2, interval:400, posThreshold:60}));
             h.add(new Hammer.Tap({event:'tripletap', taps:3, interval:600, posThreshold:80}));
             h.add(new Hammer.Tap()); // single
-            h.add(new Hammer.Swipe({direction: Hammer.DIRECTION_HORIZONTAL, velocity:0.3, threshold:18}));
+            h.add(new Hammer.Swipe({direction: Hammer.DIRECTION_VERTICAL, velocity:0.3, threshold:18}));
             h.get('doubletap').recognizeWith('tripletap');
             let hammerInitialScale=scale; let pinchTempScale=scale; let pinchStartScroll=null; let pinchCenter=null;
             h.on('pinchstart',ev=>{
@@ -327,11 +321,11 @@
             h.on('panend',()=>{h.prevDeltaX=0;h.prevDeltaY=0;});
             h.on('doubletap',()=> smartZoomToggle());
             h.on('tripletap',()=> resetView());
-            h.on('swipe',ev=>{ if(ev.direction===Hammer.DIRECTION_LEFT) change(1); else if(ev.direction===Hammer.DIRECTION_RIGHT) change(-1); });
+            h.on('swipe',ev=>{ if(ev.direction===Hammer.DIRECTION_UP) change(1); else if(ev.direction===Hammer.DIRECTION_DOWN) change(-1); });
             // Long press manual
             let lpTimer=null; stage.addEventListener('touchstart',e=>{lpTimer=setTimeout(()=>toggleThumbs(),650);},{passive:true}); stage.addEventListener('touchend',()=>{clearTimeout(lpTimer);lpTimer=null;},{passive:true});
             // Loupe activación: pinch mantenido (>500ms) -> mostrar
-            let pinchHoldTimer=null; h.on('pinchstart',ev=>{pinchHoldTimer=setTimeout(()=>{loupeActive=true; showLoupe(ev.center.x,ev.center.y);},450);}); h.on('pinchend',()=>{clearTimeout(pinchHoldTimer);loupeActive=false; hideLoupe();}); h.on('pinchmove',ev=>{ if(loupeActive){ showLoupe(ev.center.x,ev.center.y); drawLoupe(ev.center.x,ev.center.y);} });
+            // Eliminada activación de lupa durante pinch
         }
         if(!useHammer){
         stage.addEventListener('touchstart',e=>{
@@ -347,11 +341,10 @@
                 touchMode='pinch';
                 pinchStartDist=dist(e.touches[0],e.touches[1]); pinchCenter={x:(e.touches[0].clientX+e.touches[1].clientX)/2 - stage.getBoundingClientRect().left, y:(e.touches[0].clientY+e.touches[1].clientY)/2 - stage.getBoundingClientRect().top};
                 startScaleRef=scale; multiFingerStartTime=Date.now(); rotationApplied=false; multiFingerReleased=false;
-                initialAngle=angle(e.touches[0],e.touches[1]);
+                // rotación deshabilitada
                 twoFingerTapTimer=setTimeout(()=>{twoFingerTapTimer=null;},250); // ventana two-finger tap
                 swipeFingerCount=2; swipeStartX=(e.touches[0].clientX+e.touches[1].clientX)/2; swipeStartY=(e.touches[0].clientY+e.touches[1].clientY)/2;
-                // activar lupa
-                loupeActive=true; const mx=swipeStartX; const my=swipeStartY; showLoupe(mx,my); if(!loupeAnim){ const loop=()=>{ if(loupeActive){ drawLoupe(mx,my); loupeAnim=requestAnimationFrame(loop);} }; loop(); }
+                // lupa eliminada
             }
         },{passive:true});
         stage.addEventListener('touchmove',e=>{
@@ -363,12 +356,7 @@
                 const centerX=(e.touches[0].clientX+e.touches[1].clientX)/2 - stage.getBoundingClientRect().left;
                 const centerY=(e.touches[0].clientY+e.touches[1].clientY)/2 - stage.getBoundingClientRect().top;
                 setScale(startScaleRef*factor,centerX,centerY);
-                // Rotación
-                if(!rotationApplied){
-                    const ang=angle(e.touches[0],e.touches[1]);
-                    const deltaAng=Math.abs(ang-initialAngle);
-                    if(deltaAng>25){rotation=(rotation+90)%360; queueRender(currentPage); rotationApplied=true;}
-                }
+                // rotación eliminada
             } else if(touchMode==='single' && e.touches.length===1 && panStart){
                 const dx=e.touches[0].clientX-panStart.x; const dy=e.touches[0].clientY-panStart.y;
                 if(scale>calcFitScale({view:[0,0,canvas.width/scale,canvas.height/scale]})+0.02){
@@ -377,7 +365,7 @@
                 }
                 if(edgeTracking){const d=e.touches[0].clientX-edgeStartX; if(d>EDGE_THRESHOLD && !edgeShown){thumbsPanel.classList.add('show'); edgeShown=true;}}
             }
-            if(loupeActive && e.touches.length===2){const mx=(e.touches[0].clientX+e.touches[1].clientX)/2; const my=(e.touches[0].clientY+e.touches[1].clientY)/2; showLoupe(mx,my); drawLoupe(mx,my);}            
+            // lupa eliminada
         },{passive:false});
         stage.addEventListener('touchend',e=>{
             if(longPressTimer){clearTimeout(longPressTimer);longPressTimer=null;}
@@ -414,7 +402,7 @@
                 }
                 pinchStartDist=null;panStart=null;touchMode=null;swipeStartX=null;swipeStartY=null;swipeFingerCount=0;
                 if(edgeTracking){setTimeout(()=>{thumbsPanel.classList.remove('show'); edgeShown=false;},2200); edgeTracking=false;}
-                loupeActive=false; hideLoupe(); if(loupeAnim){cancelAnimationFrame(loupeAnim); loupeAnim=null;}
+                // lupa eliminada
             }
     }); // cierre listeners manuales
     } // fin fallback sin Hammer

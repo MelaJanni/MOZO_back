@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\Table;
 use App\Models\WorkExperience;
 use App\Models\DeviceToken;
+use App\Http\Requests\UpdateProfileRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
@@ -118,6 +119,148 @@ class ProfileController extends Controller
         return response()->json([
             'message' => 'Perfil actualizado exitosamente.',
             'user' => $user->load('profile'),
+        ]);
+    }
+
+    /**
+     * 📝 ACTUALIZAR PERFIL CON VALIDACIONES OBLIGATORIAS PARA MOZOS
+     */
+    public function updateWaiterProfile(UpdateProfileRequest $request)
+    {
+        try {
+            $user = Auth::user();
+            
+            // Verificar que el usuario sea mozo
+            if ($user->role !== 'waiter') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Solo los mozos pueden usar este endpoint'
+                ], 403);
+            }
+
+            $profile = $user->profile()->firstOrCreate([]);
+
+            // Actualizar datos del usuario
+            $user->fill($request->only(['name', 'email']));
+            
+            // Manejar subida de avatar si existe
+            $avatarPath = null;
+            if ($request->hasFile('avatar')) {
+                $avatarPath = $request->file('avatar')->store('avatars', 'public');
+                $user->avatar = $avatarPath;
+            }
+            
+            $user->save();
+
+            // Actualizar perfil con todos los campos
+            $profileData = $request->except(['name', 'email', 'avatar']);
+            
+            // Convertir skills a JSON si viene como array
+            if (isset($profileData['skills']) && is_array($profileData['skills'])) {
+                $profileData['skills'] = $profileData['skills'];
+            }
+
+            $profile->fill($profileData);
+            $profile->save();
+
+            \Log::info('Waiter profile updated with required fields', [
+                'user_id' => $user->id,
+                'profile_id' => $profile->id,
+                'has_required_fields' => $this->hasRequiredFields($profile)
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Perfil de mozo actualizado exitosamente',
+                'user' => $user->load('profile'),
+                'profile_complete' => $this->hasRequiredFields($profile)
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error updating waiter profile', [
+                'user_id' => $user->id ?? null,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al actualizar el perfil'
+            ], 500);
+        }
+    }
+
+    /**
+     * 🔍 VERIFICAR SI EL PERFIL TIENE TODOS LOS CAMPOS OBLIGATORIOS
+     */
+    private function hasRequiredFields($profile): bool
+    {
+        $requiredFields = [
+            'name', 'phone', 'date_of_birth', 'height', 'weight', 
+            'gender', 'experience_years', 'employment_type', 'current_schedule'
+        ];
+
+        foreach ($requiredFields as $field) {
+            if (empty($profile->$field)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * 📊 OBTENER ESTADO DE COMPLETITUD DEL PERFIL
+     */
+    public function getProfileCompleteness(Request $request)
+    {
+        $user = Auth::user();
+        $profile = $user->profile;
+
+        if (!$profile) {
+            return response()->json([
+                'success' => true,
+                'is_complete' => false,
+                'missing_fields' => ['profile_not_created'],
+                'completion_percentage' => 0
+            ]);
+        }
+
+        $requiredFields = [
+            'name' => 'Nombre',
+            'phone' => 'Teléfono', 
+            'date_of_birth' => 'Fecha de nacimiento',
+            'height' => 'Altura',
+            'weight' => 'Peso',
+            'gender' => 'Género',
+            'experience_years' => 'Años de experiencia',
+            'employment_type' => 'Tipo de empleo',
+            'current_schedule' => 'Horario actual'
+        ];
+
+        $missingFields = [];
+        $completedFields = 0;
+
+        foreach ($requiredFields as $field => $label) {
+            if (empty($profile->$field)) {
+                $missingFields[] = [
+                    'field' => $field,
+                    'label' => $label
+                ];
+            } else {
+                $completedFields++;
+            }
+        }
+
+        $totalFields = count($requiredFields);
+        $completionPercentage = ($completedFields / $totalFields) * 100;
+
+        return response()->json([
+            'success' => true,
+            'is_complete' => empty($missingFields),
+            'missing_fields' => $missingFields,
+            'completed_fields' => $completedFields,
+            'total_required_fields' => $totalFields,
+            'completion_percentage' => round($completionPercentage, 2)
         ]);
     }
     
