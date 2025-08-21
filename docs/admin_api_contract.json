@@ -1,0 +1,287 @@
+{
+  "meta": {
+    "name": "MOZO Admin API Contract",
+    "version": "1.0.0",
+    "generated_at": "2025-08-21T00:00:00Z",
+    "auth": {
+      "type": "Bearer",
+      "header": "Authorization: Bearer {token}"
+    },
+    "base_path": "/api",
+    "role": "admin"
+  },
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/admin/business",
+      "description": "Información del negocio del admin autenticado",
+      "response": {
+        "business": {
+          "$ref": "#/models/Business"
+        },
+        "tables_count": "number",
+        "menus_count": "number",
+        "qr_codes_count": "number",
+        "invitation_code": "string",
+        "invitation_url": "string"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/admin/business/regenerate-invitation-code",
+      "description": "Regenera el código de invitación del negocio",
+      "response": {
+        "message": "string",
+        "invitation_code": "string",
+        "invitation_url": "string"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/admin/switch-view",
+      "description": "Cambiar vista entre admin/waiter",
+      "request": { "view": "admin|waiter" },
+      "response": { "message": "string", "view": "string", "token": "string" }
+    },
+    {
+      "method": "GET",
+      "path": "/admin/settings",
+      "description": "Obtiene la configuración del negocio",
+      "response": { "settings": "object" }
+    },
+    {
+      "method": "POST",
+      "path": "/admin/settings",
+      "description": "Actualiza la configuración del negocio",
+      "request": { "settings": "object" },
+      "response": { "message": "string", "settings": "object" }
+    },
+
+    { "group": "Menus" },
+    {
+      "method": "GET",
+      "path": "/menus",
+      "description": "Lista menús del negocio del admin",
+      "response": { "menus": [ { "$ref": "#/models/Menu" } ] }
+    },
+    {
+      "method": "POST",
+      "path": "/menus",
+      "description": "Sube un nuevo menú (PDF/JPG/PNG)",
+      "request": { "name": "string", "file": "multipart", "is_default": "boolean?" },
+      "response": { "message": "string", "menu": { "$ref": "#/models/Menu" } }
+    },
+    {
+      "method": "POST",
+      "path": "/menus/default",
+      "description": "Establece un menú como predeterminado",
+      "request": { "menu_id": "integer" },
+      "response": { "message": "string", "menu": { "$ref": "#/models/Menu" } }
+    },
+    {
+      "method": "PUT",
+      "path": "/menus/{menu}",
+      "description": "Renombra/actualiza metadatos del menú",
+      "request": { "name": "string?", "category": "string?", "description": "string?" },
+      "response": { "message": "string", "menu": { "$ref": "#/models/Menu" } }
+    },
+    {
+      "method": "DELETE",
+      "path": "/menus/{menu}",
+      "description": "Elimina un menú",
+      "response": { "message": "string" }
+    },
+    {
+      "method": "POST",
+      "path": "/menus/reorder",
+      "description": "Reordena menús",
+      "request": { "order": [ { "menu_id": "integer", "display_order": "integer" } ] },
+      "response": { "message": "string" }
+    },
+    {
+      "method": "GET",
+      "path": "/menus/{menu}/preview",
+      "description": "Vista previa del menú (stream)",
+      "response": { "contentType": "application/pdf|image/*" }
+    },
+    {
+      "method": "GET",
+      "path": "/menus/{menu}/download",
+      "description": "Descarga el archivo del menú",
+      "response": { "contentType": "application/pdf|image/*" }
+    },
+
+    { "group": "Tables" },
+    {
+      "method": "GET",
+      "path": "/tables",
+      "description": "Lista mesas del negocio",
+      "response": { "tables": [ { "$ref": "#/models/Table" } ], "count": "number" }
+    },
+    {
+      "method": "POST",
+      "path": "/tables",
+      "description": "Crea una mesa",
+      "request": { "number": "integer", "capacity": "integer?", "location": "string?", "status": "available|occupied|reserved|maintenance?", "notifications_enabled": "boolean?" },
+      "response": { "message": "string", "table": { "$ref": "#/models/Table" } }
+    },
+    {
+      "method": "PUT",
+      "path": "/tables/{tableId}",
+      "description": "Actualiza una mesa",
+      "request": { "number": "integer?", "capacity": "integer?", "location": "string?", "status": "available|occupied|reserved|maintenance?", "notifications_enabled": "boolean?" },
+      "response": { "message": "string", "table": { "$ref": "#/models/Table" } }
+    },
+    {
+      "method": "DELETE",
+      "path": "/tables/{tableId}",
+      "description": "Elimina una mesa (y sus QR)",
+      "response": { "message": "string", "table_id": "integer" }
+    },
+    {
+      "method": "POST",
+      "path": "/tables/clone/{tableId}",
+      "description": "Clona una mesa usando un nuevo número",
+      "request": { "number": "integer", "capacity": "integer?", "location": "string?", "status": "string?", "notifications_enabled": "boolean?" },
+      "response": { "message": "string", "table": { "$ref": "#/models/Table" } }
+    },
+
+    { "group": "QR" },
+    {
+      "method": "POST",
+      "path": "/admin/qr/generate/{tableId}",
+      "description": "Genera (o actualiza) QR de la mesa",
+      "response": { "message": "string", "qr_code": { "$ref": "#/models/QrCode" } }
+    },
+    {
+      "method": "GET",
+      "path": "/admin/qr/preview/{tableId}",
+      "description": "SVG del QR de la mesa",
+      "response": { "contentType": "image/svg+xml" }
+    },
+    {
+      "method": "POST",
+      "path": "/admin/qr/export",
+      "description": "Exporta QRs seleccionados en PDF/PNG",
+      "request": { "qr_ids": ["integer"], "format": "pdf|png" },
+      "response": { "message": "string", "download_url": "string", "qr_codes": [ { "$ref": "#/models/QrCode" } ] }
+    },
+    {
+      "method": "POST",
+      "path": "/admin/qr/email",
+      "description": "Envía QRs exportados por email",
+      "request": { "qr_ids": ["integer"], "format": "pdf|png", "emails": ["string"] },
+      "response": { "message": "string" }
+    },
+
+    { "group": "Notifications & Devices" },
+    {
+      "method": "POST",
+      "path": "/device-token",
+      "description": "Registra token FCM del usuario actual",
+      "request": { "token": "string", "platform": "android|ios|web?" },
+      "response": { "message": "string" }
+    },
+    {
+      "method": "DELETE",
+      "path": "/device-token",
+      "description": "Elimina token FCM del usuario actual",
+      "request": { "token": "string?" },
+      "response": { "message": "string" }
+    },
+    {
+      "method": "GET",
+      "path": "/user/notifications",
+      "description": "Lista notificaciones del usuario",
+      "response": { "notifications": ["object"] }
+    },
+    {
+      "method": "POST",
+      "path": "/user/notifications/{id}/read",
+      "description": "Marca notificación como leída",
+      "response": { "message": "string" }
+    },
+
+    { "group": "Public QR (consumo del FE)" },
+    {
+      "method": "GET",
+      "path": "/qr/{restaurantSlug}/{tableCode}",
+      "description": "Información pública de la mesa por QR",
+      "response": {
+        "success": "boolean",
+        "data": {
+          "table": { "id": "integer", "name": "string?", "code": "string", "number": "integer", "can_call_waiter": "boolean" },
+          "business": { "id": "integer", "name": "string", "address": "string?", "phone": "string?", "logo": "string?" },
+          "menu": { "type": "object|null", "properties": { "id": "integer", "name": "string", "file_path": "string", "download_url": "string" } },
+          "waiter": { "type": "object|null", "properties": { "id": "integer", "name": "string" } },
+          "pending_call": { "type": "object|null", "properties": { "id": "integer", "status": "string", "called_at": "datetime", "acknowledged_at": "datetime|null", "minutes_ago": "integer" } },
+          "firebase_config": { "enabled": "boolean", "table_calls_path": "string", "table_status_path": "string" }
+        }
+      }
+    }
+  ],
+  "models": {
+    "Business": {
+      "id": "integer",
+      "name": "string",
+      "address": "string?",
+      "phone": "string?",
+      "email": "string?",
+      "logo": "string?",
+      "settings": "object",
+      "is_active": "boolean",
+      "invitation_code": "string",
+      "slug": "string (derivado)"
+    },
+    "Table": {
+      "id": "integer",
+      "business_id": "integer",
+      "number": "integer",
+      "name": "string?",
+      "code": "string?",
+      "capacity": "integer?",
+      "location": "string?",
+      "status": "available|occupied|reserved|maintenance",
+      "notifications_enabled": "boolean",
+      "active_waiter_id": "integer|null",
+  "qrCode": { "type": "object|null", "$ref": "#/models/QrCode" }
+    },
+    "Menu": {
+      "id": "integer",
+      "business_id": "integer",
+      "name": "string",
+      "file_path": "string",
+      "is_default": "boolean",
+      "display_order": "integer?"
+    },
+    "QrCode": {
+      "id": "integer",
+      "business_id": "integer",
+      "table_id": "integer",
+      "code": "string",
+      "url": "string"
+    },
+    "AdminProfile": {
+      "id": "integer",
+      "user_id": "integer",
+      "display_name": "string",
+      "avatar": "string?",
+      "position": "string?",
+      "corporate_email": "string?",
+      "corporate_phone": "string?",
+      "office_extension": "string?",
+      "bio": "string?",
+      "last_active_at": "datetime?",
+      "notify_new_orders": "boolean",
+      "notify_staff_requests": "boolean",
+      "notify_reviews": "boolean",
+      "notify_payments": "boolean"
+    }
+  },
+  "notes": [
+    "Todos los endpoints (salvo los de QR público) requieren Bearer token (Sanctum).",
+    "Los endpoints de /menus y /tables usan el business_id del usuario autenticado internamente.",
+    "El preview de QR devuelve image/svg+xml.",
+    "Para multi-admin futuro, existe pivote business_admins con is_primary (único actual)."
+  ]
+}
