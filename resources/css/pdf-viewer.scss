@@ -11,6 +11,15 @@ p{
   margin:  0 !important;
 }
 
+:root {
+  --accent: #8b5cf6;
+  --accent-dark: #6d3ff0;
+  --bg: #0d1117;
+  --bg-alt: #161b22;
+  --border: #30363d;
+  --font-sans: 'Inter', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+}
+
 /* Utilidades */
 @mixin glass-effect($opacity: 0.9) {
   background: rgba(17,24,39,$opacity);

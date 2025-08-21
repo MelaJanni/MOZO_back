@@ -11,6 +11,9 @@
     {{-- IMPORTANTE: Para asegurar que nginx/apache no cachee este CSS, establecer en server:
          Cache-Control: no-store para /live-scss/ o desactivar proxy cache. --}}
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous">
     {{-- Incrustar SCSS compilado inline para bypass TOTAL de caché (solo usar en debug) --}}
@@ -108,9 +111,9 @@
     @if(!$menuUrl)
         <div id="missingMenuMsg" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:40;pointer-events:none;">
             <div style="text-align:center;max-width:300px;padding:24px 20px;border:1px solid rgba(139,92,246,.35);background:rgba(17,24,39,.75);backdrop-filter:blur(12px);border-radius:16px;box-shadow:0 6px 24px -8px rgba(0,0,0,.7);">
-                <h3 style="margin:0 0 10px;font:600 16px var(--font-sans);color:#fff;letter-spacing:.5px;">Menú no disponible</h3>
-                <p style="margin:0 0 12px;font:13px/1.3 var(--font-sans);opacity:.75;">Todavía no se subió un PDF para este negocio o fue eliminado. Podés llamar al mozo para pedir uno físico.</p>
-                <button onclick="togglePanel()" style="background:#8b5cf6;border:none;color:#fff;font:600 13px var(--font-sans);padding:8px 14px;border-radius:6px;pointer-events:auto;">Llamar mozo</button>
+                <h3 style="margin:0 0 10px;font:600 16px 'Inter',var(--font-sans);color:#fff;letter-spacing:.5px;">Menú no disponible</h3>
+                <p style="margin:0 0 12px;font:13px/1.4 'Inter',var(--font-sans);opacity:.78;">Por favor llamá al mozo. Te traerá la carta física en unos segundos.</p>
+                <button onclick="togglePanel()" style="background:#8b5cf6;border:none;color:#fff;font:600 13px 'Inter',var(--font-sans);padding:8px 14px;border-radius:6px;pointer-events:auto;">Llamar al mozo</button>
             </div>
         </div>
     @endif
@@ -257,11 +260,11 @@
             .then(pdf=>{pdfDoc=pdf;enable(true);pageCountSpan.textContent=pdf.numPages;update();renderPage(currentPage).then(()=>overlay.remove());for(let i=1;i<=Math.min(pdf.numPages,120);i++){pdf.getPage(i).then(p=>{const vp=p.getViewport({scale:.25});const c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;const cx=c.getContext('2d');p.render({canvasContext:cx,viewport:vp}).promise.then(()=>{const wrap=document.createElement('div');wrap.className='thumb'+(i===1?' active':'');wrap.dataset.page=p.pageNumber;wrap.appendChild(c);wrap.onclick=()=>{currentPage=p.pageNumber;update();queueRender(currentPage);};thumbsPanel.appendChild(wrap);});});} })
             .catch(err=>{
                     console.error('Error cargando PDF', err);
-                    overlay.innerHTML = '<div style="text-align:center;padding:24px;">'+
-                        '<h3 style="margin:0 0 8px;font:600 16px var(--font-sans);color:#fff;">Menú no disponible</h3>'+
-                        '<p style="margin:0 0 12px;font:13px/1.3 var(--font-sans);opacity:.7;">No se encontró el archivo PDF del menú.<br>Posibles causas: archivo eliminado, despliegue sin uploads, nombre distinto.</p>'+
-                        '<button style="background:#8b5cf6;border:none;color:#fff;padding:8px 14px;border-radius:6px;font:600 13px var(--font-sans);" onclick="location.reload()">Reintentar</button>'+
-                    '</div>';
+                                overlay.innerHTML = '<div style="text-align:center;padding:24px;">'+
+                                    '<h3 style="margin:0 0 8px;font:600 16px \'Inter\',var(--font-sans);color:#fff;">Menú no disponible</h3>'+
+                                    '<p style="margin:0 0 14px;font:13px/1.45 \'Inter\',var(--font-sans);opacity:.78;">Por favor llamá al mozo, te acercará la carta física enseguida.</p>'+
+                                    '<button style="background:#8b5cf6;border:none;color:#fff;padding:8px 16px;border-radius:6px;font:600 13px \'Inter\',var(--font-sans);" onclick="togglePanel()">Llamar al mozo</button>'+
+                                '</div>';
             });
         window.addEventListener('resize',()=>{if(['width','page'].includes(fitMode))queueRender(currentPage);});
     // === Gestos táctiles (Hammer.js) ===
