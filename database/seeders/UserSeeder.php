@@ -31,6 +31,8 @@ class UserSeeder extends Seeder
                     'password' => Hash::make('password'),
                     'role' => 'admin',
                     'active_business_id' => $business->id,
+                    'google_id' => null,
+                    'google_avatar' => null,
                 ]);
                 $admin->businesses()->attach($business->id);
             }
@@ -46,6 +48,8 @@ class UserSeeder extends Seeder
                         'password' => Hash::make('password'),
                         'role' => 'waiter',
                         'active_business_id' => $business->id,
+                        'google_id' => null,
+                        'google_avatar' => null,
                     ]);
                     $waiter->businesses()->attach($business->id);
                 }
