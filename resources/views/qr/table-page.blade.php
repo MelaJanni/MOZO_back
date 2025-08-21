@@ -42,6 +42,11 @@
         } catch(\Throwable $e) { $cssInline = '/* Error SCSS: '. addslashes($e->getMessage()) .' */'; }
     @endphp
     <style id="pdf-viewer-inline-css">{!! $cssInline !!}</style>
+    <style>
+        /* Estilos añadidos para modo continuo */
+        .pages-container { padding: 12px 0 160px; }
+        .pages-container .pdf-page canvas { width: 100%; height: auto; }
+    </style>
     <!-- Hammer.js CDN para garantizar disponibilidad en producción (fallback a node si bundler lo incluye) -->
     <!-- Hammer.js sin SRI (hash previo inválido causaba bloqueo). Si quieres SRI válido, calcular y reponer -->
     <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js" crossorigin="anonymous"></script>
@@ -81,6 +86,7 @@
                 <div style="font-size:.85rem; letter-spacing:.5px; opacity:.75;">Cargando menú...</div>
             </div>
             <canvas id="pdfCanvas" aria-label="Página PDF"></canvas>
+            <div id="pagesContainer" class="pages-container" style="display:none;position:relative;z-index:1;"></div>
         </div>
     </div>
     
@@ -192,6 +198,7 @@
         }
     const canvas=document.getElementById('pdfCanvas');
     const ctx=canvas.getContext('2d');
+    const pagesContainer=document.getElementById('pagesContainer');
     const thumbsPanel=document.getElementById('thumbsPanel');
     const overlay=document.getElementById('loadingOverlay');
     const btnPrev=document.getElementById('btnPrev');
@@ -214,30 +221,78 @@
     }
     const stage=document.getElementById('canvasStage');
     let pdfDoc=null,currentPage=1,scale=1,rotation=0,fitMode='width',rendering=false,pendingPage=null; // rotation fijo 0
+    const continuousMode=true; // NUEVO modo scroll continuo
     function enable(v){[btnPrev,btnNext,btnZoomIn,btnZoomOut].forEach(b=>b&&(b.disabled=!v));}  
     function calcFitScale(page){const vw=stage.clientWidth-24;const vh=stage.clientHeight-24;const w0=page.view[2];const h0=page.view[3];const sW=(rotation%180===0)?(vw/w0):(vw/h0);const sP=Math.min(vh/h0,vw/w0);if(fitMode==='width')return sW;if(fitMode==='page')return sP;return scale;}  
     // Renderiza manteniendo opcionalmente un punto ancla (anchor) centrado tras el zoom
     async function renderPage(num, anchor){
-        rendering=true;
-        const page=await pdfDoc.getPage(num);
-        const effective=(['width','page'].includes(fitMode))?calcFitScale(page):scale;
-        const vp=page.getViewport({scale:effective,rotation});
-        // High-DPI para nitidez
-        const dpr=window.devicePixelRatio||1;
-        canvas.width=vp.width*dpr; canvas.height=vp.height*dpr;
-        canvas.style.width=vp.width+'px'; canvas.style.height=vp.height+'px';
-        ctx.setTransform(dpr,0,0,dpr,0,0);
-        if(zoomLevel) zoomLevel.textContent=Math.round(effective*100)+'%';
-        await page.render({canvasContext:ctx,viewport:vp}).promise;
-        // Reposicionar scroll para mantener anchor
-        if(anchor){
-            const scrollXRatio=anchor.x / anchor.prevWidth;
-            const scrollYRatio=anchor.y / anchor.prevHeight;
-            stage.scrollLeft = scrollXRatio * vp.width - anchor.viewportCenterX;
-            stage.scrollTop  = scrollYRatio * vp.height - anchor.viewportCenterY;
+        if(continuousMode){
+            // en modo continuo cada página se renderiza individualmente por su propio canvas
+            const canvasWrap=pagesContainer.querySelector(`.pdf-page[data-page='${num}']`);
+            if(!canvasWrap) return;
+            const pageCanvas=canvasWrap.querySelector('canvas');
+            const page=await pdfDoc.getPage(num);
+            const effective=(['width','page'].includes(fitMode))?calcFitScale(page):scale;
+            const vp=page.getViewport({scale:effective,rotation});
+            const dpr=window.devicePixelRatio||1;
+            pageCanvas.width=vp.width*dpr; pageCanvas.height=vp.height*dpr;
+            pageCanvas.style.width=vp.width+'px'; pageCanvas.style.height=vp.height+'px';
+            const pctx=pageCanvas.getContext('2d');
+            pctx.setTransform(dpr,0,0,dpr,0,0);
+            await page.render({canvasContext:pctx,viewport:vp}).promise;
+            if(zoomLevel && num===currentPage) zoomLevel.textContent=Math.round(effective*100)+'%';
+        } else {
+            rendering=true;
+            const page=await pdfDoc.getPage(num);
+            const effective=(['width','page'].includes(fitMode))?calcFitScale(page):scale;
+            const vp=page.getViewport({scale:effective,rotation});
+            const dpr=window.devicePixelRatio||1;
+            canvas.width=vp.width*dpr; canvas.height=vp.height*dpr;
+            canvas.style.width=vp.width+'px'; canvas.style.height=vp.height+'px';
+            ctx.setTransform(dpr,0,0,dpr,0,0);
+            if(zoomLevel) zoomLevel.textContent=Math.round(effective*100)+'%';
+            await page.render({canvasContext:ctx,viewport:vp}).promise;
+            if(anchor){
+                const scrollXRatio=anchor.x / anchor.prevWidth;
+                const scrollYRatio=anchor.y / anchor.prevHeight;
+                stage.scrollLeft = scrollXRatio * vp.width - anchor.viewportCenterX;
+                stage.scrollTop  = scrollYRatio * vp.height - anchor.viewportCenterY;
+            }
+            rendering=false; if(pendingPage){const p=pendingPage; pendingPage=null; renderPage(p);} 
         }
-        rendering=false; if(pendingPage){const p=pendingPage; pendingPage=null; renderPage(p);} }
-    function queueRender(p, anchor){rendering?pendingPage=p:renderPage(p, anchor);}  
+    }
+    function queueRender(p, anchor){ if(continuousMode){ renderPage(p,anchor); } else { rendering?pendingPage=p:renderPage(p, anchor);} }  
+    async function renderAllPages(){
+        if(!continuousMode) return;
+        for(let i=1;i<=pdfDoc.numPages;i++){ await renderPage(i); }
+    }
+    function buildPages(){
+        if(!continuousMode) return;
+        canvas.style.display='none';
+        pagesContainer.style.display='block';
+        pagesContainer.innerHTML='';
+        for(let i=1;i<=pdfDoc.numPages;i++){
+            const wrap=document.createElement('div');
+            wrap.className='pdf-page';
+            wrap.dataset.page=i;
+            wrap.style.cssText='position:relative;margin:0 auto 24px;display:flex;justify-content:center;';
+            const c=document.createElement('canvas');
+            c.setAttribute('aria-label','Página '+i);
+            c.style.background='#fff';
+            c.style.borderRadius='4px';
+            c.style.boxShadow='0 2px 8px -2px rgba(0,0,0,.35)';
+            wrap.appendChild(c);
+            pagesContainer.appendChild(wrap);
+        }
+    }
+    function updateCurrentByScroll(){
+        if(!continuousMode) return;
+        const pages=[...pagesContainer.querySelectorAll('.pdf-page')];
+        let best=1; let bestDelta=Infinity;
+        const top=stage.scrollTop; const vh=stage.clientHeight; const middle=top+vh/2;
+        pages.forEach(p=>{const r=p.getBoundingClientRect(); const sTop=r.top+stage.scrollTop - stage.getBoundingClientRect().top; const sBottom=sTop + r.height; if(middle>=sTop && middle<=sBottom){best=+p.dataset.page; bestDelta=0;} else {const d=Math.min(Math.abs(middle-sTop),Math.abs(middle-sBottom)); if(d<bestDelta){best=+p.dataset.page; bestDelta=d;}} });
+        if(best!==currentPage){ currentPage=best; update(); }
+    }
     function update(){
         pageNumSpan.textContent=currentPage; pageCountSpan.textContent=pdfDoc.numPages;
         if(pageNumTop) pageNumTop.textContent=currentPage;
@@ -245,11 +300,12 @@
         btnPrev.disabled=currentPage<=1; btnNext.disabled=currentPage>=pdfDoc.numPages;
         [...thumbsPanel.querySelectorAll('.thumb')].forEach(el=>el.classList.toggle('active',+el.dataset.page===currentPage));
     }
-    function change(delta){const t=currentPage+delta;if(t>=1&&t<=pdfDoc.numPages){currentPage=t;update();queueRender(currentPage);}}  
+    function change(delta){const t=currentPage+delta;if(t>=1&&t<=pdfDoc.numPages){currentPage=t;update(); if(continuousMode){ const target=pagesContainer.querySelector(`.pdf-page[data-page='${currentPage}']`); if(target) target.scrollIntoView({behavior:'smooth',block:'start'}); } else { queueRender(currentPage); } }}  
     function setScale(s, anchor){
         scale=Math.min(6,Math.max(.2,s));
         fitMode='manual';
-        queueRender(currentPage, anchor);
+        if(continuousMode){ renderAllPages(); }
+        else { queueRender(currentPage, anchor); }
     }  
     if(btnPrev) btnPrev.onclick=()=>change(-1);
     if(btnNext) btnNext.onclick=()=>change(1);
@@ -257,7 +313,8 @@
     if(btnZoomOut) btnZoomOut.onclick=()=>setScale(Math.max(.25,scale/1.15));
     window.addEventListener('keydown',e=>{if(['INPUT','TEXTAREA'].includes(e.target.tagName))return; if(e.key==='ArrowLeft')change(-1); else if(e.key==='ArrowRight')change(1); else if((e.ctrlKey||e.metaKey)&&['+','=','Add'].includes(e.key)){e.preventDefault();btnZoomIn.click();} else if((e.ctrlKey||e.metaKey)&&['-','Subtract'].includes(e.key)){e.preventDefault();btnZoomOut.click();}});
         pdfjsLib.getDocument({url:menuUrl}).promise
-            .then(pdf=>{pdfDoc=pdf;enable(true);pageCountSpan.textContent=pdf.numPages;update();renderPage(currentPage).then(()=>overlay.remove());for(let i=1;i<=Math.min(pdf.numPages,120);i++){pdf.getPage(i).then(p=>{const vp=p.getViewport({scale:.25});const c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;const cx=c.getContext('2d');p.render({canvasContext:cx,viewport:vp}).promise.then(()=>{const wrap=document.createElement('div');wrap.className='thumb'+(i===1?' active':'');wrap.dataset.page=p.pageNumber;wrap.appendChild(c);wrap.onclick=()=>{currentPage=p.pageNumber;update();queueRender(currentPage);};thumbsPanel.appendChild(wrap);});});} })
+            .then(pdf=>{pdfDoc=pdf;enable(true);pageCountSpan.textContent=pdf.numPages;update(); if(continuousMode){ buildPages(); renderAllPages().then(()=>overlay.remove()); } else { renderPage(currentPage).then(()=>overlay.remove()); }
+                for(let i=1;i<=Math.min(pdf.numPages,120);i++){pdf.getPage(i).then(p=>{const vp=p.getViewport({scale:.25});const c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;const cx=c.getContext('2d');p.render({canvasContext:cx,viewport:vp}).promise.then(()=>{const wrap=document.createElement('div');wrap.className='thumb'+(i===1?' active':'');wrap.dataset.page=p.pageNumber;wrap.appendChild(c);wrap.onclick=()=>{currentPage=p.pageNumber;update(); if(continuousMode){ const target=pagesContainer.querySelector(`.pdf-page[data-page='${p.pageNumber}']`); if(target) target.scrollIntoView({behavior:'smooth'}); } else { queueRender(currentPage); } };thumbsPanel.appendChild(wrap);});});} })
             .catch(err=>{
                     console.error('Error cargando PDF', err);
                                 overlay.innerHTML = '<div style="text-align:center;padding:24px;">'+
@@ -266,7 +323,8 @@
                                     '<button style="background:#8b5cf6;border:none;color:#fff;padding:8px 16px;border-radius:6px;font:600 13px \'Inter\',var(--font-sans);" onclick="togglePanel()">Llamar al mozo</button>'+
                                 '</div>';
             });
-        window.addEventListener('resize',()=>{if(['width','page'].includes(fitMode))queueRender(currentPage);});
+    window.addEventListener('resize',()=>{if(['width','page'].includes(fitMode)){ if(continuousMode){ renderAllPages(); } else { queueRender(currentPage); } }});
+    if(continuousMode){ stage.addEventListener('scroll',()=>{ requestAnimationFrame(updateCurrentByScroll); }); }
     // === Gestos táctiles (Hammer.js) ===
     // Simplifica y hace más confiable pinch / pan / tap / swipe.
     // Fallback si Hammer no está: se conserva lógica previa (parcial abajo) 
@@ -303,29 +361,23 @@
                 hammerInitialScale=scale; pinchStartScroll={x:stage.scrollLeft,y:stage.scrollTop};
                 const rect=stage.getBoundingClientRect();
                 pinchCenter={x:ev.center.x-rect.left+stage.scrollLeft,y:ev.center.y-rect.top+stage.scrollTop};
-                canvas.style.transformOrigin='0 0';
+                const targetEl=continuousMode?pagesContainer:canvas;
+                targetEl.style.transformOrigin='0 0';
             });
             h.on('pinchmove',ev=>{
                 pinchTempScale=Math.min(6,Math.max(.2,hammerInitialScale*ev.scale));
                 const factor=pinchTempScale/hammerInitialScale;
-                canvas.style.transform=`scale(${pinchTempScale})`;
+                const targetEl=continuousMode?pagesContainer:canvas;
+                targetEl.style.transform=`scale(${pinchTempScale})`;
                 stage.scrollLeft = pinchCenter.x*factor - (ev.center.x - stage.getBoundingClientRect().left);
                 stage.scrollTop  = pinchCenter.y*factor - (ev.center.y - stage.getBoundingClientRect().top);
             });
             h.on('pinchend',ev=>{
-                // Preparar anchor antes de limpiar transform
                 const rect=stage.getBoundingClientRect();
-                const prevWidth=parseFloat(canvas.style.width)||canvas.width;
-                const prevHeight=parseFloat(canvas.style.height)||canvas.height;
-                const anchor={
-                    x: pinchCenter.x,
-                    y: pinchCenter.y,
-                    prevWidth: prevWidth,
-                    prevHeight: prevHeight,
-                    viewportCenterX: ev.center.x - rect.left,
-                    viewportCenterY: ev.center.y - rect.top
-                };
-                canvas.style.transform='';
+                const prevWidth=(continuousMode?pagesContainer:canvas).getBoundingClientRect().width;
+                const prevHeight=(continuousMode?pagesContainer:canvas).getBoundingClientRect().height;
+                const anchor={x:pinchCenter.x,y:pinchCenter.y,prevWidth,prevHeight,viewportCenterX:ev.center.x-rect.left,viewportCenterY:ev.center.y-rect.top};
+                (continuousMode?pagesContainer:canvas).style.transform='';
                 setScale(pinchTempScale, anchor);
                 if(Math.abs(scale-1)<0.08) applyFitWidth();
             });
