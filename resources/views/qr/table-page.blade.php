@@ -406,15 +406,15 @@
                     }
                     multiFingerReleased=true;
                 }
-                // Swipe logic
-                if(swipeStartX!=null){
-                    const endX = (e.changedTouches[0]||{}).clientX||swipeStartX;
-                    const dx=endX - swipeStartX; const dy=Math.abs(((e.changedTouches[0]||{}).clientY||swipeStartY)-swipeStartY);
-                    if(Math.abs(dx)>60 && dy<60){
-                        if(swipeFingerCount===2){ // salto rápido
-                            change(dx<0? Math.min(3,pdfDoc.numPages-currentPage): -Math.min(3,currentPage-1));
+                // Swipe logic (VERTICAL ahora)
+                if(swipeStartY!=null){
+                    const endY = (e.changedTouches[0]||{}).clientY||swipeStartY;
+                    const dy=endY - swipeStartY; const ax=Math.abs(((e.changedTouches[0]||{}).clientX||swipeStartX)-swipeStartX);
+                    if(Math.abs(dy)>60 && ax<60){
+                        if(swipeFingerCount===2){ // salto rápido vertical
+                            change(dy<0? Math.min(3,pdfDoc.numPages-currentPage): -Math.min(3,currentPage-1));
                         } else {
-                            if(dx<0) change(1); else change(-1);
+                            if(dy<0) change(1); else change(-1); // arriba siguiente, abajo anterior
                         }
                     }
                 }
