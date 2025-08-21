@@ -194,9 +194,15 @@ Route::get('/menu/pdf/{business_id}/{filename}', function($business_id, $filenam
         Log::error('Error sirviendo PDF de menú', [
             'business_id' => $business_id,
             'filename' => $filename,
-            'error' => $e->getMessage()
+            'error' => $e->getMessage(),
+            'trace_head' => collect(explode("\n", $e->getTraceAsString()))->take(5)->implode(" | "),
+            'exists' => file_exists($path ?? '') ? 'yes':'no'
         ]);
-        abort(500, 'Error interno del servidor');
+        return response()->json([
+            'error' => 'PDF_INTERNAL_ERROR',
+            'message' => 'No se pudo servir el PDF',
+            'hint' => 'Ver logs para más detalles',
+        ],500);
     }
 })->name('menu.pdf');
 

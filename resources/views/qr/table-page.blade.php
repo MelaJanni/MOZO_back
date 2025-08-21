@@ -40,7 +40,8 @@
     @endphp
     <style id="pdf-viewer-inline-css">{!! $cssInline !!}</style>
     <!-- Hammer.js CDN para garantizar disponibilidad en producción (fallback a node si bundler lo incluye) -->
-    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js" integrity="sha256-qG5R2UHxAnGxB1wH6mJ0G7LbcW2CYwiVdc+GdHnkM6M=" crossorigin="anonymous"></script>
+    <!-- Hammer.js sin SRI (hash previo inválido causaba bloqueo). Si quieres SRI válido, calcular y reponer -->
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js" crossorigin="anonymous"></script>
 </head>
 <body>
 @php
