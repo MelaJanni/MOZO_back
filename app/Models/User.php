@@ -19,6 +19,8 @@ class User extends Authenticatable
         'password',
         'role',
         'active_business_id',
+        'google_id',
+        'google_avatar',
     ];
 
     protected $hidden = [
@@ -79,6 +81,80 @@ class User extends Authenticatable
     public function routeNotificationForFcm(): array
     {
         return $this->deviceTokens()->pluck('token')->toArray();
+    }
+
+    /**
+     * Relación con perfiles de mozo (puede tener múltiples en diferentes negocios)
+     */
+    public function waiterProfiles()
+    {
+        return $this->hasMany(WaiterProfile::class);
+    }
+
+    /**
+     * Relación con perfiles de admin (puede tener múltiples en diferentes negocios)
+     */
+    public function adminProfiles()
+    {
+        return $this->hasMany(AdminProfile::class);
+    }
+
+    /**
+     * Obtener el perfil de mozo para un negocio específico
+     */
+    public function waiterProfileForBusiness($businessId)
+    {
+        return $this->waiterProfiles()->where('business_id', $businessId)->first();
+    }
+
+    /**
+     * Obtener el perfil de admin para un negocio específico
+     */
+    public function adminProfileForBusiness($businessId)
+    {
+        return $this->adminProfiles()->where('business_id', $businessId)->first();
+    }
+
+    /**
+     * Obtener el perfil activo según el rol y negocio actual
+     */
+    public function getActiveProfile()
+    {
+        if (!$this->active_business_id) {
+            return null;
+        }
+
+        if ($this->isAdmin()) {
+            return $this->adminProfileForBusiness($this->active_business_id);
+        }
+
+        if ($this->isWaiter()) {
+            return $this->waiterProfileForBusiness($this->active_business_id);
+        }
+
+        return null;
+    }
+
+    /**
+     * Crear o actualizar perfil según el rol
+     */
+    public function createOrUpdateProfile($businessId, $data)
+    {
+        if ($this->isAdmin()) {
+            return $this->adminProfiles()->updateOrCreate(
+                ['business_id' => $businessId],
+                $data
+            );
+        }
+
+        if ($this->isWaiter()) {
+            return $this->waiterProfiles()->updateOrCreate(
+                ['business_id' => $businessId],
+                $data
+            );
+        }
+
+        return null;
     }
 
     public function sendPasswordResetNotification($token)

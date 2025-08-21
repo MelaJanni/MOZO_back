@@ -20,6 +20,7 @@ use App\Http\Controllers\WaiterCallRealtimeController;
 use App\Http\Controllers\WaiterCallRealtimeControllerHTTP;
 use App\Http\Controllers\FcmTokenController;
 use App\Http\Controllers\StaffController;
+use App\Http\Controllers\UserProfileController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Broadcast;
@@ -114,6 +115,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/role/select', [RoleController::class, 'selectRole']);
 
+    // 🔄 PERFILES SEPARADOS POR ROL
+    Route::prefix('user-profile')->group(function () {
+        Route::get('/active', [UserProfileController::class, 'getActiveProfile']);
+        Route::get('/all', [UserProfileController::class, 'getAllProfiles']);
+        Route::post('/waiter/update', [UserProfileController::class, 'updateWaiterProfile']);
+        Route::post('/admin/update', [UserProfileController::class, 'updateAdminProfile']);
+        Route::delete('/avatar', [UserProfileController::class, 'deleteAvatar']);
+    });
+
+    // 📋 PERFILES LEGACY (mantener para compatibilidad)
     Route::prefix('profile')->group(function () {
         Route::post('/update', [ProfileController::class, 'updateProfile']);
         Route::post('/waiter/update', [ProfileController::class, 'updateWaiterProfile']); // Con validaciones obligatorias
