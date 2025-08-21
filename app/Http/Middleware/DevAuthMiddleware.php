@@ -27,7 +27,7 @@ class DevAuthMiddleware
                 $user->id = 1;
                 $user->name = 'Admin User';
                 $user->email = 'admin@example.com';
-                $user->role = 'admin';
+                // Nota: no establecer $user->role; los permisos se basan en pivots y policies
                 
                 $request->setUserResolver(function () use ($user) {
                     return $user;

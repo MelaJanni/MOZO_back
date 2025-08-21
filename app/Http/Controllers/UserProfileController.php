@@ -338,7 +338,7 @@ class UserProfileController extends Controller
                 'profile_exists' => false,
                 'is_complete' => false,
                 'completion_percentage' => 0,
-                'user_role' => $user->role,
+                'user_role' => ($user->isAdmin() ? 'admin' : ($user->isWaiter() ? 'waiter' : null)),
                 'message' => 'El perfil no ha sido creado aún',
                 'missing_fields' => [
                     [
@@ -625,7 +625,7 @@ class UserProfileController extends Controller
         return response()->json([
             'success' => true,
             'profile_exists' => true,
-            'user_role' => $user->role,
+            'user_role' => ($user->isAdmin() ? 'admin' : ($user->isWaiter() ? 'waiter' : null)),
             'is_complete' => $isComplete,
             'completion_percentage' => $overallPercentage,
             'message' => $isComplete ? 'Tu perfil está completo' : 'Tu perfil necesita información adicional',

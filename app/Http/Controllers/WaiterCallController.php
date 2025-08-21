@@ -352,10 +352,10 @@ class WaiterCallController extends Controller
 
         $query = WaiterCall::with(['table', 'waiter']);
 
-        // Aplicar filtros según el rol del usuario
-        if ($user->role === 'waiter') {
+    // Aplicar filtros según pertenencia real a roles
+    if ($user->isWaiter()) {
             $query->forWaiter($user->id);
-        } elseif ($user->role === 'admin') {
+    } elseif ($user->isAdmin($user->active_business_id ?? null)) {
             // Los admins ven todas las llamadas de su business activo
             $query->whereHas('table', function ($q) use ($user) {
                 $q->where('business_id', $user->active_business_id);

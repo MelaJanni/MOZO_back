@@ -31,8 +31,8 @@ class FcmTokenController extends Controller
 
         $user = Auth::user();
         
-        // Solo mozos pueden registrar tokens para notificaciones de llamadas
-        if ($user->role !== 'waiter') {
+    // Solo mozos pueden registrar tokens para notificaciones de llamadas
+    if (!$user->isWaiter()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Solo los mozos pueden registrar tokens para notificaciones'
@@ -174,7 +174,7 @@ class FcmTokenController extends Controller
 
         $user = Auth::user();
         
-        if ($user->role !== 'waiter') {
+    if (!$user->isWaiter()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Solo los mozos pueden probar notificaciones'
