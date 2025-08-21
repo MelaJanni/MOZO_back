@@ -23,17 +23,67 @@ class AdminController extends Controller
     public function getBusinessInfo(Request $request)
     {
         $user = $request->user();
-        
+
+        // Determinar negocio activo para el rol admin
+        $activeBusinessId = null;
+        try {
+            if (method_exists($user, 'activeRoles')) {
+                $active = $user->activeRoles()
+                    ->where('active_role', 'admin')
+                    ->latest('switched_at')
+                    ->first();
+                if ($active) { $activeBusinessId = $active->business_id; }
+            }
+        } catch (\Throwable $e) { /* noop */ }
+
+        // Fallbacks
+        if (!$activeBusinessId && !empty($user->business_id)) {
+            $activeBusinessId = $user->business_id;
+        }
+        if (!$activeBusinessId && method_exists($user, 'businessesAsAdmin')) {
+            $adminBizIds = $user->businessesAsAdmin()->pluck('business_id');
+            if ($adminBizIds->count() === 1) {
+                $activeBusinessId = (int)$adminBizIds->first();
+            }
+        }
+
+        // Último fallback: si aún no hay, seleccionar el primero de la lista del usuario
+        if (!$activeBusinessId && method_exists($user, 'businessesAsAdmin')) {
+            $activeBusinessId = optional($user->businessesAsAdmin()->first())->business_id;
+        }
+
         $business = Business::with(['tables', 'menus', 'qrCodes'])
-            ->findOrFail($user->business_id);
-        
+            ->findOrFail($activeBusinessId);
+
+        // Construir listado de negocios disponibles para este admin
+        $availableBusinesses = [];
+        try {
+            $ids = method_exists($user, 'businessesAsAdmin')
+                ? $user->businessesAsAdmin()->pluck('business_id')->toArray()
+                : (!empty($user->business_id) ? [$user->business_id] : []);
+            if (!empty($ids)) {
+                $availableBusinesses = Business::whereIn('id', $ids)
+                    ->get(['id', 'name', 'slug'])
+                    ->map(function ($b) use ($activeBusinessId) {
+                        return [
+                            'id' => $b->id,
+                            'name' => $b->name,
+                            'slug' => $b->slug ?? null,
+                            'is_active' => (int)$b->id === (int)$activeBusinessId,
+                        ];
+                    });
+            }
+        } catch (\Throwable $e) { /* noop */ }
+
         return response()->json([
             'business' => $business,
+            'active_business_id' => (int)$activeBusinessId,
             'tables_count' => $business->tables->count(),
             'menus_count' => $business->menus->count(),
             'qr_codes_count' => $business->qrCodes->count(),
             'invitation_code' => $business->invitation_code,
             'invitation_url' => config('app.frontend_url') . '/join-business?code=' . $business->invitation_code,
+            'available_businesses' => $availableBusinesses,
         ]);
     }
 
@@ -63,6 +113,53 @@ class AdminController extends Controller
             'message' => 'Vista cambiada exitosamente',
             'view' => $request->view,
             'token' => $user->createToken('api-token', ['role:' . $request->view])->plainTextToken,
+        ]);
+    }
+
+    /**
+     * Lista negocios del admin y marca el activo
+     */
+    public function getBusinesses(Request $request)
+    {
+        $user = $request->user();
+
+        // Detectar activo
+        $activeBusinessId = null;
+        try {
+            if (method_exists($user, 'activeRoles')) {
+                $active = $user->activeRoles()
+                    ->latest('switched_at')
+                    ->first();
+                if ($active) { $activeBusinessId = $active->business_id; }
+            }
+        } catch (\Throwable $e) { /* noop */ }
+        if (!$activeBusinessId && !empty($user->business_id)) {
+            $activeBusinessId = $user->business_id;
+        }
+
+        // Obtener lista
+        $ids = method_exists($user, 'businessesAsAdmin')
+            ? $user->businessesAsAdmin()->pluck('business_id')->toArray()
+            : (!empty($user->business_id) ? [$user->business_id] : []);
+
+        $businesses = [];
+        if (!empty($ids)) {
+            $businesses = Business::whereIn('id', $ids)
+                ->get(['id', 'name', 'slug'])
+                ->map(function ($b) use ($activeBusinessId) {
+                    return [
+                        'id' => $b->id,
+                        'name' => $b->name,
+                        'slug' => $b->slug ?? null,
+                        'is_active' => (int)$b->id === (int)$activeBusinessId,
+                    ];
+                });
+        }
+
+        return response()->json([
+            'active_business_id' => $activeBusinessId ? (int)$activeBusinessId : null,
+            'businesses' => $businesses,
+            'count' => is_countable($businesses) ? count($businesses) : 0,
         ]);
     }
 

@@ -14,16 +14,20 @@
     {
       "method": "GET",
       "path": "/admin/business",
-      "description": "Información del negocio del admin autenticado",
+      "description": "Información del negocio ACTIVO del admin autenticado",
       "response": {
         "business": {
           "$ref": "#/models/Business"
         },
+        "active_business_id": "integer",
         "tables_count": "number",
         "menus_count": "number",
         "qr_codes_count": "number",
         "invitation_code": "string",
-        "invitation_url": "string"
+        "invitation_url": "string",
+        "available_businesses": [
+          { "id": "integer", "name": "string", "is_active": "boolean" }
+        ]
       }
     },
     {
@@ -37,11 +41,23 @@
       }
     },
     {
+      "method": "GET",
+      "path": "/admin/businesses",
+      "description": "Lista los negocios del usuario y cuál está activo",
+      "response": {
+        "active_business_id": "integer",
+        "businesses": [
+          { "id": "integer", "name": "string", "slug": "string", "is_active": "boolean" }
+        ],
+        "count": "number"
+      }
+    },
+    {
       "method": "POST",
-      "path": "/admin/switch-view",
-      "description": "Cambiar vista entre admin/waiter",
-      "request": { "view": "admin|waiter" },
-      "response": { "message": "string", "view": "string", "token": "string" }
+      "path": "/role/select",
+      "description": "Selecciona rol y negocio activo (UI); devuelve token con scope del rol",
+      "request": { "role": "admin|waiter", "business_id": "integer?" },
+      "response": { "message": "string", "active_role": "string", "business_id": "integer", "token": "string" }
     },
     {
       "method": "GET",
