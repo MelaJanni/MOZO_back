@@ -221,7 +221,8 @@
     }
     const stage=document.getElementById('canvasStage');
     let pdfDoc=null,currentPage=1,scale=1,rotation=0,fitMode='width',rendering=false,pendingPage=null; // rotation fijo 0
-    const continuousMode=true; // NUEVO modo scroll continuo
+    const continuousMode=true; // modo scroll continuo
+    if(continuousMode){ stage.classList.add('continuous'); }
     function enable(v){[btnPrev,btnNext,btnZoomIn,btnZoomOut].forEach(b=>b&&(b.disabled=!v));}  
     function calcFitScale(page){const vw=stage.clientWidth-24;const vh=stage.clientHeight-24;const w0=page.view[2];const h0=page.view[3];const sW=(rotation%180===0)?(vw/w0):(vw/h0);const sP=Math.min(vh/h0,vw/w0);if(fitMode==='width')return sW;if(fitMode==='page')return sP;return scale;}  
     // Renderiza manteniendo opcionalmente un punto ancla (anchor) centrado tras el zoom
@@ -304,8 +305,11 @@
     function setScale(s, anchor){
         scale=Math.min(6,Math.max(.2,s));
         fitMode='manual';
-        if(continuousMode){ renderAllPages(); }
-        else { queueRender(currentPage, anchor); }
+        if(continuousMode){
+            // re-render solo página visible + adyacentes para performance
+            const targets=[currentPage-1,currentPage,currentPage+1].filter(n=>n>=1&&n<=pdfDoc.numPages);
+            targets.forEach(p=>renderPage(p));
+        } else { queueRender(currentPage, anchor); }
     }  
     if(btnPrev) btnPrev.onclick=()=>change(-1);
     if(btnNext) btnNext.onclick=()=>change(1);
@@ -354,44 +358,50 @@
             h.add(new Hammer.Tap({event:'doubletap', taps:2, interval:400, posThreshold:60}));
             h.add(new Hammer.Tap({event:'tripletap', taps:3, interval:600, posThreshold:80}));
             h.add(new Hammer.Tap()); // single
-            h.add(new Hammer.Swipe({direction: Hammer.DIRECTION_VERTICAL, velocity:0.3, threshold:18}));
+            if(!continuousMode){ h.add(new Hammer.Swipe({direction: Hammer.DIRECTION_VERTICAL, velocity:0.3, threshold:18})); }
             h.get('doubletap').recognizeWith('tripletap');
             let hammerInitialScale=scale; let pinchTempScale=scale; let pinchStartScroll=null; let pinchCenter=null;
             h.on('pinchstart',ev=>{
                 hammerInitialScale=scale; pinchStartScroll={x:stage.scrollLeft,y:stage.scrollTop};
                 const rect=stage.getBoundingClientRect();
                 pinchCenter={x:ev.center.x-rect.left+stage.scrollLeft,y:ev.center.y-rect.top+stage.scrollTop};
-                const targetEl=continuousMode?pagesContainer:canvas;
-                targetEl.style.transformOrigin='0 0';
+                if(!continuousMode){ canvas.style.transformOrigin='0 0'; }
             });
             h.on('pinchmove',ev=>{
                 pinchTempScale=Math.min(6,Math.max(.2,hammerInitialScale*ev.scale));
-                const factor=pinchTempScale/hammerInitialScale;
-                const targetEl=continuousMode?pagesContainer:canvas;
-                targetEl.style.transform=`scale(${pinchTempScale})`;
-                stage.scrollLeft = pinchCenter.x*factor - (ev.center.x - stage.getBoundingClientRect().left);
-                stage.scrollTop  = pinchCenter.y*factor - (ev.center.y - stage.getBoundingClientRect().top);
+                if(!continuousMode){
+                    const factor=pinchTempScale/hammerInitialScale;
+                    canvas.style.transform=`scale(${pinchTempScale})`;
+                    stage.scrollLeft = pinchCenter.x*factor - (ev.center.x - stage.getBoundingClientRect().left);
+                    stage.scrollTop  = pinchCenter.y*factor - (ev.center.y - stage.getBoundingClientRect().top);
+                }
             });
             h.on('pinchend',ev=>{
-                const rect=stage.getBoundingClientRect();
-                const prevWidth=(continuousMode?pagesContainer:canvas).getBoundingClientRect().width;
-                const prevHeight=(continuousMode?pagesContainer:canvas).getBoundingClientRect().height;
-                const anchor={x:pinchCenter.x,y:pinchCenter.y,prevWidth,prevHeight,viewportCenterX:ev.center.x-rect.left,viewportCenterY:ev.center.y-rect.top};
-                (continuousMode?pagesContainer:canvas).style.transform='';
-                setScale(pinchTempScale, anchor);
+                if(!continuousMode){
+                    const rect=stage.getBoundingClientRect();
+                    const prevWidth=parseFloat(canvas.style.width)||canvas.width;
+                    const prevHeight=parseFloat(canvas.style.height)||canvas.height;
+                    const anchor={x:pinchCenter.x,y:pinchCenter.y,prevWidth,prevHeight,viewportCenterX:ev.center.x-rect.left,viewportCenterY:ev.center.y-rect.top};
+                    canvas.style.transform='';
+                    setScale(pinchTempScale, anchor);
+                } else {
+                    setScale(pinchTempScale);
+                }
                 if(Math.abs(scale-1)<0.08) applyFitWidth();
             });
-            h.on('panmove',ev=>{
-                if(scale>1.02){
-                    stage.scrollLeft -= ev.deltaX - (h.prevDeltaX||0);
-                    stage.scrollTop  -= ev.deltaY - (h.prevDeltaY||0);
-                }
-                h.prevDeltaX=ev.deltaX; h.prevDeltaY=ev.deltaY;
-            });
-            h.on('panend',()=>{h.prevDeltaX=0;h.prevDeltaY=0;});
+            if(!continuousMode){
+                h.on('panmove',ev=>{
+                    if(scale>1.02){
+                        stage.scrollLeft -= ev.deltaX - (h.prevDeltaX||0);
+                        stage.scrollTop  -= ev.deltaY - (h.prevDeltaY||0);
+                    }
+                    h.prevDeltaX=ev.deltaX; h.prevDeltaY=ev.deltaY;
+                });
+                h.on('panend',()=>{h.prevDeltaX=0;h.prevDeltaY=0;});
+            }
             h.on('doubletap',()=> smartZoomToggle());
             h.on('tripletap',()=> resetView());
-            h.on('swipe',ev=>{ if(ev.direction===Hammer.DIRECTION_UP) change(1); else if(ev.direction===Hammer.DIRECTION_DOWN) change(-1); });
+            if(!continuousMode){ h.on('swipe',ev=>{ if(ev.direction===Hammer.DIRECTION_UP) change(1); else if(ev.direction===Hammer.DIRECTION_DOWN) change(-1); }); }
             // Long press manual
             let lpTimer=null; stage.addEventListener('touchstart',e=>{lpTimer=setTimeout(()=>toggleThumbs(),650);},{passive:true}); stage.addEventListener('touchend',()=>{clearTimeout(lpTimer);lpTimer=null;},{passive:true});
             // Loupe activación: pinch mantenido (>500ms) -> mostrar
