@@ -12,19 +12,13 @@ class AdminProfile extends Model
 
     protected $fillable = [
         'user_id',
-        'business_id',
         'avatar',
         'display_name',
-        'business_name',
         'position',
         'corporate_email',
         'corporate_phone',
         'office_extension',
-        'business_description',
-        'business_website',
-        'social_media',
-        'is_primary_admin',
-        'permissions',
+        'bio',
         'last_active_at',
         'notify_new_orders',
         'notify_staff_requests',
@@ -33,9 +27,6 @@ class AdminProfile extends Model
     ];
 
     protected $casts = [
-        'social_media' => 'array',
-        'permissions' => 'array',
-        'is_primary_admin' => 'boolean',
         'last_active_at' => 'datetime',
         'notify_new_orders' => 'boolean',
         'notify_staff_requests' => 'boolean',
@@ -51,13 +42,6 @@ class AdminProfile extends Model
         return $this->belongsTo(User::class);
     }
 
-    /**
-     * Relación con el negocio
-     */
-    public function business(): BelongsTo
-    {
-        return $this->belongsTo(Business::class);
-    }
 
     /**
      * Obtener el nombre a mostrar (display_name o nombre del usuario)
@@ -92,8 +76,7 @@ class AdminProfile extends Model
      */
     public function isComplete(): bool
     {
-        return !empty($this->business_name) && 
-               !empty($this->position) && 
+        return !empty($this->position) && 
                !empty($this->corporate_phone);
     }
 

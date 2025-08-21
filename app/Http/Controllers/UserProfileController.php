@@ -19,28 +19,13 @@ class UserProfileController extends Controller
     {
         try {
             $user = Auth::user();
-            $businessId = $request->get('business_id') ?: $user->active_business_id;
-
-            if (!$businessId) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No hay negocio activo seleccionado'
-                ], 400);
-            }
-
-            $profile = null;
-
-            if ($user->isAdmin()) {
-                $profile = $user->adminProfileForBusiness($businessId);
-            } elseif ($user->isWaiter()) {
-                $profile = $user->waiterProfileForBusiness($businessId);
-            }
+            $profile = $user->getActiveProfile();
 
             if (!$profile) {
                 return response()->json([
                     'success' => true,
                     'data' => null,
-                    'message' => 'No hay perfil configurado para este negocio'
+                    'message' => 'No hay perfil configurado'
                 ]);
             }
 
@@ -50,7 +35,6 @@ class UserProfileController extends Controller
                     'id' => $profile->id,
                     'type' => $user->isAdmin() ? 'admin' : 'waiter',
                     'user_id' => $user->id,
-                    'business_id' => $profile->business_id,
                     'avatar' => $profile->avatar,
                     'avatar_url' => $profile->avatar_url,
                     'display_name' => $profile->display_name,
@@ -74,7 +58,6 @@ class UserProfileController extends Controller
     public function updateWaiterProfile(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'business_id' => 'required|exists:businesses,id',
             'display_name' => 'nullable|string|max:255',
             'bio' => 'nullable|string|max:1000',
             'phone' => 'nullable|string|max:20',
@@ -120,8 +103,8 @@ class UserProfileController extends Controller
                 $data['avatar'] = $avatarPath;
             }
 
-            $profile = $user->waiterProfiles()->updateOrCreate(
-                ['business_id' => $request->business_id],
+            $profile = $user->waiterProfile()->updateOrCreate(
+                ['user_id' => $user->id],
                 $data
             );
 
@@ -152,17 +135,12 @@ class UserProfileController extends Controller
     public function updateAdminProfile(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'business_id' => 'required|exists:businesses,id',
             'display_name' => 'nullable|string|max:255',
-            'business_name' => 'nullable|string|max:255',
             'position' => 'nullable|string|max:100',
             'corporate_email' => 'nullable|email|max:255',
             'corporate_phone' => 'nullable|string|max:20',
             'office_extension' => 'nullable|string|max:10',
-            'business_description' => 'nullable|string|max:1000',
-            'business_website' => 'nullable|url|max:255',
-            'social_media' => 'nullable|array',
-            'permissions' => 'nullable|array',
+            'bio' => 'nullable|string|max:1000',
             'notify_new_orders' => 'nullable|boolean',
             'notify_staff_requests' => 'nullable|boolean',
             'notify_reviews' => 'nullable|boolean',
@@ -196,8 +174,8 @@ class UserProfileController extends Controller
                 $data['avatar'] = $avatarPath;
             }
 
-            $profile = $user->adminProfiles()->updateOrCreate(
-                ['business_id' => $request->business_id],
+            $profile = $user->adminProfile()->updateOrCreate(
+                ['user_id' => $user->id],
                 $data
             );
 
@@ -232,41 +210,38 @@ class UserProfileController extends Controller
     {
         try {
             $user = Auth::user();
+            $profiles = [];
 
-            $waiterProfiles = $user->waiterProfiles()->with('business')->get()->map(function ($profile) {
-                return [
+            if ($user->isWaiter() && $user->waiterProfile) {
+                $profile = $user->waiterProfile;
+                $profiles[] = [
                     'id' => $profile->id,
                     'type' => 'waiter',
-                    'business_id' => $profile->business_id,
-                    'business_name' => $profile->business->name,
                     'avatar_url' => $profile->avatar_url,
                     'display_name' => $profile->display_name,
                     'is_complete' => $profile->isComplete(),
                     'is_active' => $profile->is_active,
                     'is_available' => $profile->is_available
                 ];
-            });
+            }
 
-            $adminProfiles = $user->adminProfiles()->with('business')->get()->map(function ($profile) {
-                return [
+            if ($user->isAdmin() && $user->adminProfile) {
+                $profile = $user->adminProfile;
+                $profiles[] = [
                     'id' => $profile->id,
                     'type' => 'admin',
-                    'business_id' => $profile->business_id,
-                    'business_name' => $profile->business->name,
                     'avatar_url' => $profile->avatar_url,
                     'display_name' => $profile->display_name,
                     'is_complete' => $profile->isComplete(),
-                    'is_primary_admin' => $profile->is_primary_admin,
                     'position' => $profile->position
                 ];
-            });
+            }
 
             return response()->json([
                 'success' => true,
                 'data' => [
-                    'waiter_profiles' => $waiterProfiles,
-                    'admin_profiles' => $adminProfiles,
-                    'total_profiles' => $waiterProfiles->count() + $adminProfiles->count()
+                    'profiles' => $profiles,
+                    'total_profiles' => count($profiles)
                 ]
             ]);
 
@@ -284,44 +259,9 @@ class UserProfileController extends Controller
      */
     public function deleteAvatar(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'business_id' => 'required|exists:businesses,id',
-            'profile_type' => 'required|in:waiter,admin'
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Datos de validación incorrectos',
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
         try {
             $user = Auth::user();
-            $businessId = $request->business_id;
-            $profileType = $request->profile_type;
-
-            if ($profileType === 'waiter' && !$user->isWaiter()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No tienes permisos para eliminar este avatar'
-                ], 403);
-            }
-
-            if ($profileType === 'admin' && !$user->isAdmin()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No tienes permisos para eliminar este avatar'
-                ], 403);
-            }
-
-            $profile = null;
-            if ($profileType === 'waiter') {
-                $profile = $user->waiterProfileForBusiness($businessId);
-            } else {
-                $profile = $user->adminProfileForBusiness($businessId);
-            }
+            $profile = $user->getActiveProfile();
 
             if (!$profile) {
                 return response()->json([

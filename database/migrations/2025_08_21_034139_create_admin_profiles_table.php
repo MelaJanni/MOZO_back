@@ -13,41 +13,29 @@ return new class extends Migration
     {
         Schema::create('admin_profiles', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->foreignId('business_id')->constrained()->onDelete('cascade');
+            $table->foreignId('user_id')->unique()->constrained()->onDelete('cascade');
             
             // Datos del perfil de administrador
             $table->string('avatar')->nullable();
             $table->string('display_name')->nullable(); // Nombre que quiere mostrar como admin
-            $table->string('business_name')->nullable(); // Nombre del negocio para este perfil
-            $table->string('position')->default('Administrador'); // Cargo en el negocio
+            $table->string('position')->default('Administrador');
             
-            // Información de contacto corporativa
+            // Información corporativa personal
             $table->string('corporate_email')->nullable();
             $table->string('corporate_phone')->nullable();
             $table->string('office_extension')->nullable();
-            
-            // Información del negocio
-            $table->text('business_description')->nullable();
-            $table->string('business_website')->nullable();
-            $table->json('social_media')->nullable(); // redes sociales del negocio
+            $table->text('bio')->nullable();
             
             // Configuración del perfil
-            $table->boolean('is_primary_admin')->default(false); // admin principal del negocio
-            $table->json('permissions')->nullable(); // permisos específicos
             $table->timestamp('last_active_at')->nullable();
             
-            // Preferencias de notificaciones
+            // Preferencias de notificaciones generales
             $table->boolean('notify_new_orders')->default(true);
             $table->boolean('notify_staff_requests')->default(true);
             $table->boolean('notify_reviews')->default(true);
             $table->boolean('notify_payments')->default(true);
             
             $table->timestamps();
-            
-            // Índices
-            $table->unique(['user_id', 'business_id']);
-            $table->index(['business_id', 'is_primary_admin']);
         });
     }
 

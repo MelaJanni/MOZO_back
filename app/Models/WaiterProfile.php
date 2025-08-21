@@ -12,7 +12,6 @@ class WaiterProfile extends Model
 
     protected $fillable = [
         'user_id',
-        'business_id',
         'avatar',
         'display_name',
         'bio',
@@ -58,13 +57,6 @@ class WaiterProfile extends Model
         return $this->belongsTo(User::class);
     }
 
-    /**
-     * Relación con el negocio
-     */
-    public function business(): BelongsTo
-    {
-        return $this->belongsTo(Business::class);
-    }
 
     /**
      * Obtener el nombre a mostrar (display_name o nombre del usuario)

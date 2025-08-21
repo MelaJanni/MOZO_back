@@ -84,52 +84,32 @@ class User extends Authenticatable
     }
 
     /**
-     * Relación con perfiles de mozo (puede tener múltiples en diferentes negocios)
+     * Relación con perfil de mozo (único por usuario)
      */
-    public function waiterProfiles()
+    public function waiterProfile()
     {
-        return $this->hasMany(WaiterProfile::class);
+        return $this->hasOne(WaiterProfile::class);
     }
 
     /**
-     * Relación con perfiles de admin (puede tener múltiples en diferentes negocios)
+     * Relación con perfil de admin (único por usuario)
      */
-    public function adminProfiles()
+    public function adminProfile()
     {
-        return $this->hasMany(AdminProfile::class);
+        return $this->hasOne(AdminProfile::class);
     }
 
     /**
-     * Obtener el perfil de mozo para un negocio específico
-     */
-    public function waiterProfileForBusiness($businessId)
-    {
-        return $this->waiterProfiles()->where('business_id', $businessId)->first();
-    }
-
-    /**
-     * Obtener el perfil de admin para un negocio específico
-     */
-    public function adminProfileForBusiness($businessId)
-    {
-        return $this->adminProfiles()->where('business_id', $businessId)->first();
-    }
-
-    /**
-     * Obtener el perfil activo según el rol y negocio actual
+     * Obtener el perfil activo según el rol del usuario
      */
     public function getActiveProfile()
     {
-        if (!$this->active_business_id) {
-            return null;
-        }
-
         if ($this->isAdmin()) {
-            return $this->adminProfileForBusiness($this->active_business_id);
+            return $this->adminProfile;
         }
 
         if ($this->isWaiter()) {
-            return $this->waiterProfileForBusiness($this->active_business_id);
+            return $this->waiterProfile;
         }
 
         return null;
@@ -138,18 +118,18 @@ class User extends Authenticatable
     /**
      * Crear o actualizar perfil según el rol
      */
-    public function createOrUpdateProfile($businessId, $data)
+    public function createOrUpdateProfile($data)
     {
         if ($this->isAdmin()) {
-            return $this->adminProfiles()->updateOrCreate(
-                ['business_id' => $businessId],
+            return $this->adminProfile()->updateOrCreate(
+                ['user_id' => $this->id],
                 $data
             );
         }
 
         if ($this->isWaiter()) {
-            return $this->waiterProfiles()->updateOrCreate(
-                ['business_id' => $businessId],
+            return $this->waiterProfile()->updateOrCreate(
+                ['user_id' => $this->id],
                 $data
             );
         }

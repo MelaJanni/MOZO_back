@@ -13,8 +13,7 @@ return new class extends Migration
     {
         Schema::create('waiter_profiles', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->foreignId('business_id')->constrained()->onDelete('cascade');
+            $table->foreignId('user_id')->unique()->constrained()->onDelete('cascade');
             
             // Datos del perfil de mozo
             $table->string('avatar')->nullable();
@@ -47,8 +46,7 @@ return new class extends Migration
             $table->timestamps();
             
             // Índices
-            $table->unique(['user_id', 'business_id']);
-            $table->index(['business_id', 'is_active', 'is_available']);
+            $table->index(['is_active', 'is_available']);
         });
     }
 

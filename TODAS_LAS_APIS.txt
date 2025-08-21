@@ -2,12 +2,13 @@
 
 ## 📚 ÍNDICE
 1. [Autenticación](#autenticación)
-2. [APIs del Mozo - Perfil Personal](#apis-del-mozo---perfil-personal)
-3. [APIs del Mozo - Gestión de Mesas](#apis-del-mozo---gestión-de-mesas)
-4. [APIs del Admin - Gestión de Personal](#apis-del-admin---gestión-de-personal)
-5. [APIs del Admin - Panel de Control](#apis-del-admin---panel-de-control)
-6. [APIs Generales](#apis-generales)
-7. [APIs Públicas (QR)](#apis-públicas-qr)
+2. [Perfiles Separados por Rol (NUEVO)](#perfiles-separados-por-rol-nuevo-sistema)
+3. [APIs del Mozo - Perfil Personal (Legacy)](#apis-del-mozo---perfil-personal-legacy)
+4. [APIs del Mozo - Gestión de Mesas](#apis-del-mozo---gestión-de-mesas)
+5. [APIs del Admin - Gestión de Personal](#apis-del-admin---gestión-de-personal)
+6. [APIs del Admin - Panel de Control](#apis-del-admin---panel-de-control)
+7. [APIs Generales](#apis-generales)
+8. [APIs Públicas (QR)](#apis-públicas-qr)
 
 ---
 
@@ -79,7 +80,156 @@ Response: { message, view, token }
 
 ---
 
-## 👨‍🍳 APIS DEL MOZO - PERFIL PERSONAL
+## 🔄 PERFILES SEPARADOS POR ROL (NUEVO SISTEMA)
+
+### Obtener Perfil Activo
+```
+GET /api/user-profile/active
+Headers: Authorization: Bearer {token}
+Query: business_id=number (opcional, usa active_business_id si no se especifica)
+Response: {
+  "success": true,
+  "data": {
+    "id": number,
+    "type": "admin|waiter",
+    "user_id": number,
+    "business_id": number,
+    "avatar": "string|null",
+    "avatar_url": "string",
+    "display_name": "string",
+    "is_complete": boolean,
+    "profile_data": {object} // datos completos del perfil
+  }
+}
+```
+
+### Obtener Todos los Perfiles
+```
+GET /api/user-profile/all
+Headers: Authorization: Bearer {token}
+Response: {
+  "success": true,
+  "data": {
+    "waiter_profiles": [
+      {
+        "id": number,
+        "type": "waiter",
+        "business_id": number,
+        "business_name": "string",
+        "avatar_url": "string",
+        "display_name": "string",
+        "is_complete": boolean,
+        "is_active": boolean,
+        "is_available": boolean
+      }
+    ],
+    "admin_profiles": [
+      {
+        "id": number,
+        "type": "admin",
+        "business_id": number,
+        "business_name": "string",
+        "avatar_url": "string",
+        "display_name": "string",
+        "is_complete": boolean,
+        "is_primary_admin": boolean,
+        "position": "string"
+      }
+    ],
+    "total_profiles": number
+  }
+}
+```
+
+### Actualizar Perfil de Mozo
+```
+POST /api/user-profile/waiter/update
+Headers: Authorization: Bearer {token}
+Content-Type: multipart/form-data
+Body: {
+  "display_name": "string" (opcional),
+  "bio": "string" (opcional),
+  "phone": "string" (opcional),
+  "birth_date": "date" (opcional, formato YYYY-MM-DD),
+  "height": "numeric" (opcional, en metros 1.0-2.5),
+  "weight": "integer" (opcional, en kg 30-200),
+  "gender": "masculino|femenino|otro" (opcional),
+  "experience_years": "integer" (opcional, 0-50),
+  "employment_type": "por horas|tiempo completo|tiempo parcial|solo fines de semana" (opcional),
+  "current_schedule": "mañana|tarde|noche|mixto" (opcional),
+  "current_location": "string" (opcional),
+  "latitude": "numeric" (opcional, -90 a 90),
+  "longitude": "numeric" (opcional, -180 a 180),
+  "availability_hours": "array" (opcional),
+  "skills": "array" (opcional),
+  "is_available": "boolean" (opcional),
+  "avatar": "file" (opcional, imagen max 2MB)
+}
+Response: {
+  "success": true,
+  "message": "Perfil de mozo actualizado exitosamente",
+  "data": {
+    "id": number,
+    "avatar_url": "string",
+    "display_name": "string",
+    "is_complete": boolean,
+    "profile_data": {object}
+  }
+}
+```
+
+### Actualizar Perfil de Administrador
+```
+POST /api/user-profile/admin/update
+Headers: Authorization: Bearer {token}
+Content-Type: multipart/form-data
+Body: {
+  "display_name": "string" (opcional),
+  "business_name": "string" (opcional),
+  "position": "string" (opcional),
+  "corporate_email": "string" (opcional),
+  "corporate_phone": "string" (opcional),
+  "office_extension": "string" (opcional),
+  "business_description": "string" (opcional),
+  "business_website": "string" (opcional),
+  "social_media": "array" (opcional),
+  "permissions": "array" (opcional),
+  "notify_new_orders": "boolean" (opcional),
+  "notify_staff_requests": "boolean" (opcional),
+  "notify_reviews": "boolean" (opcional),
+  "notify_payments": "boolean" (opcional),
+  "avatar": "file" (opcional, imagen max 2MB)
+}
+Response: {
+  "success": true,
+  "message": "Perfil de administrador actualizado exitosamente",
+  "data": {
+    "id": number,
+    "avatar_url": "string",
+    "display_name": "string",
+    "is_complete": boolean,
+    "profile_data": {object}
+  }
+}
+```
+
+### Eliminar Avatar del Perfil
+```
+DELETE /api/user-profile/avatar
+Headers: Authorization: Bearer {token}
+Body: {} // Sin parámetros - usa el negocio activo y rol del usuario
+Response: {
+  "success": true,
+  "message": "Avatar eliminado exitosamente",
+  "data": {
+    "avatar_url": "string" // URL del avatar por defecto
+  }
+}
+```
+
+---
+
+## 👨‍🍳 APIS DEL MOZO - PERFIL PERSONAL (LEGACY)
 
 ### Gestión del Perfil Personal
 ```
@@ -1063,4 +1213,102 @@ Algunas rutas soportan paginación con query params:
 
 ---
 
-*Documentación generada automáticamente - Última actualización: 2025-08-20*
+## 📊 ESTRUCTURA DE BASE DE DATOS - NUEVOS PERFILES
+
+### Tabla: waiter_profiles
+```sql
+- id (primary key)
+- user_id (foreign key to users)
+- business_id (foreign key to businesses)
+- avatar (string, nullable)
+- display_name (string, nullable)
+- bio (text, nullable)
+- phone (string, nullable)
+- birth_date (date, nullable)
+- height (decimal 3,2, nullable) - en metros
+- weight (integer, nullable) - en kg
+- gender (enum: masculino|femenino|otro, nullable)
+- experience_years (integer, default 0)
+- employment_type (enum: por horas|tiempo completo|tiempo parcial|solo fines de semana, nullable)
+- current_schedule (enum: mañana|tarde|noche|mixto, nullable)
+- current_location (string, nullable)
+- latitude (decimal 10,8, nullable)
+- longitude (decimal 11,8, nullable)
+- availability_hours (json, nullable)
+- skills (json, nullable)
+- is_active (boolean, default true)
+- is_available (boolean, default true)
+- rating (decimal 3,2, nullable)
+- total_reviews (integer, default 0)
+- created_at, updated_at
+- unique(user_id, business_id)
+```
+
+### Tabla: admin_profiles
+```sql
+- id (primary key)
+- user_id (foreign key to users)
+- business_id (foreign key to businesses)
+- avatar (string, nullable)
+- display_name (string, nullable)
+- business_name (string, nullable)
+- position (string, default 'Administrador')
+- corporate_email (string, nullable)
+- corporate_phone (string, nullable)
+- office_extension (string, nullable)
+- business_description (text, nullable)
+- business_website (string, nullable)
+- social_media (json, nullable)
+- is_primary_admin (boolean, default false)
+- permissions (json, nullable)
+- last_active_at (timestamp, nullable)
+- notify_new_orders (boolean, default true)
+- notify_staff_requests (boolean, default true)
+- notify_reviews (boolean, default true)
+- notify_payments (boolean, default true)
+- created_at, updated_at
+- unique(user_id, business_id)
+```
+
+### Tabla: users (campos agregados)
+```sql
+- google_id (string, nullable, unique)
+- google_avatar (string, nullable)
+```
+
+### Relaciones del Modelo User
+```php
+// Nuevas relaciones
+- waiterProfiles() -> hasMany(WaiterProfile)
+- adminProfiles() -> hasMany(AdminProfile)
+- waiterProfileForBusiness($businessId) -> WaiterProfile|null
+- adminProfileForBusiness($businessId) -> AdminProfile|null
+- getActiveProfile() -> WaiterProfile|AdminProfile|null
+- createOrUpdateProfile($businessId, $data) -> Profile
+```
+
+### Características del Sistema de Perfiles
+
+**✨ Perfiles Separados por Rol:**
+- Un usuario puede tener diferentes avatares como mozo vs admin
+- Datos específicos por rol: ubicación para mozos, datos corporativos para admins
+- Perfiles independientes por negocio: un usuario puede trabajar en múltiples negocios
+
+**🔄 Compatibilidad:**
+- Las APIs legacy siguen funcionando (`/api/profile/*`)
+- Los usuarios existentes no se ven afectados
+- Migración gradual al nuevo sistema de perfiles
+
+**🛡️ Validaciones:**
+- Campos obligatorios diferentes por rol
+- Validación de archivos de imagen para avatares
+- Permisos por rol para actualizar perfiles
+
+**⚡ Simplificación de APIs:**
+- Ya no se requiere enviar `business_id` en las actualizaciones
+- El sistema usa automáticamente el `active_business_id` del usuario
+- Solo se necesita estar autenticado para actualizar el perfil
+
+---
+
+*Documentación generada automáticamente - Última actualización: 2025-08-21*
