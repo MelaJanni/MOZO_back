@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
 
 class Business extends Model
 {
@@ -12,70 +13,82 @@ class Business extends Model
 
     protected $fillable = [
         'name',
-        'join_code',
-        'code',
-        'invitation_code',
         'address',
         'phone',
         'email',
+        'invitation_code',
+        'description',
         'logo',
-        'menu_pdf',
-        'working_hours',
-        'notification_preferences',
+        'settings',
+        'is_active',
     ];
 
     protected $casts = [
-        'working_hours' => 'array',
-        'notification_preferences' => 'array',
+        'settings' => 'array',
+        'is_active' => 'boolean',
     ];
 
-    public function users()
+    // ========================================
+    // RELACIONES MULTI-ROL
+    // ========================================
+
+    /** Administradores del negocio */
+    public function admins()
     {
-        return $this->hasMany(User::class);
+        return $this->belongsToMany(User::class, 'business_admins')
+                    ->withPivot(['permission_level', 'permissions', 'is_active', 'is_primary', 'joined_at'])
+                    ->withTimestamps();
     }
 
+    /** Admin primario (único actual) */
+    public function primaryAdmin()
+    {
+        return $this->admins()
+            ->wherePivot('is_active', true)
+            ->wherePivot('is_primary', true)
+            ->first();
+    }
+
+    /** Mozos del negocio */
+    public function waiters()
+    {
+        return $this->belongsToMany(User::class, 'business_waiters')
+                    ->withPivot(['employment_status', 'employment_type', 'hourly_rate', 'work_schedule', 'hired_at', 'last_shift_at'])
+                    ->withTimestamps();
+    }
+
+    /** Todos los usuarios (admins y mozos) */
+    public function allUsers()
+    {
+        $admins = $this->admins()->where('is_active', true)->get();
+        $waiters = $this->waiters()->where('employment_status', 'active')->get();
+        return $admins->merge($waiters)->unique('id');
+    }
+
+    /** Mesas del negocio */
     public function tables()
     {
         return $this->hasMany(Table::class);
     }
 
-    public function menus()
+    /** Roles activos de usuarios en este negocio */
+    public function userActiveRoles()
     {
-        return $this->hasMany(Menu::class);
-    }
-    
-    public function staff()
-    {
-        return $this->hasMany(Staff::class);
-    }
-    
-    public function archivedStaff()
-    {
-        return $this->hasMany(ArchivedStaff::class);
-    }
-    
-    public function reviews()
-    {
-        return $this->hasMany(Review::class);
+        return $this->hasMany(UserActiveRole::class);
     }
 
-    public function qrCodes()
-    {
-        return $this->hasMany(QrCode::class);
-    }
+    // ========================================
+    // MÉTODOS DE UTILIDAD
+    // ========================================
 
     public function getSlugAttribute(): string
     {
         return Str::slug($this->name);
     }
 
-    /**
-     * Generar código de invitación único al crear el negocio
-     */
     protected static function boot()
     {
         parent::boot();
-
         static::creating(function ($business) {
             if (!$business->invitation_code) {
                 $business->invitation_code = self::generateInvitationCode();
@@ -83,24 +96,86 @@ class Business extends Model
         });
     }
 
-    /**
-     * Generar código de invitación único
-     */
     public static function generateInvitationCode(): string
     {
         do {
-            $code = 'BIZ' . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
+            $code = strtoupper(substr(str_shuffle('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'), 0, 6));
         } while (self::where('invitation_code', $code)->exists());
-
         return $code;
     }
 
-    /**
-     * Regenerar código de invitación
-     */
     public function regenerateInvitationCode(): bool
     {
         $this->invitation_code = self::generateInvitationCode();
         return $this->save();
     }
-} 
+
+    public function isAdministratedBy(User $user): bool
+    {
+        return $this->admins()
+                   ->where('business_admins.user_id', $user->id)
+                   ->where('business_admins.is_active', true)
+                   ->exists();
+    }
+
+    public function hasWaiter(User $user): bool
+    {
+        return $this->waiters()
+                   ->where('user_id', $user->id)
+                   ->where('employment_status', 'active')
+                   ->exists();
+    }
+
+    /**
+     * Agregar o reemplazar administrador único.
+     * - Si no hay admin: lo agrega.
+     * - Si ya existe el mismo: actualiza datos pivot.
+     * - Si existe otro distinto: opcionalmente reemplaza (por defecto true) dentro de una transacción.
+     */
+    public function addAdmin(User $user, string $permissionLevel = 'manager', array $permissions = [], bool $replaceIfExists = true): bool
+    {
+        return DB::transaction(function () use ($user, $permissionLevel, $permissions, $replaceIfExists) {
+            $permissionsJson = empty($permissions) ? null : json_encode($permissions);
+            $current = $this->primaryAdmin();
+            if ($current && $current->id === $user->id) {
+                $this->admins()->updateExistingPivot($user->id, [
+                    'permission_level' => $permissionLevel,
+                    'permissions' => $permissionsJson,
+                    'is_active' => true,
+                    'is_primary' => true,
+                ]);
+                return true;
+            }
+            if ($current && $current->id !== $user->id) {
+                if (!$replaceIfExists) {
+                    return false;
+                }
+                $this->admins()->detach($current->id);
+            }
+            $this->admins()->syncWithoutDetaching([
+                $user->id => [
+                    'permission_level' => $permissionLevel,
+                    'permissions' => $permissionsJson,
+                    'is_active' => true,
+                    'is_primary' => true,
+                    'joined_at' => now(),
+                ]
+            ]);
+            return true;
+        });
+    }
+
+    /** Agregar un mozo */
+    public function addWaiter(User $user, string $employmentType = 'tiempo completo', ?float $hourlyRate = null): bool
+    {
+        $this->waiters()->syncWithoutDetaching([
+            $user->id => [
+                'employment_status' => 'active',
+                'employment_type' => $employmentType,
+                'hourly_rate' => $hourlyRate,
+                'hired_at' => now()
+            ]
+        ]);
+        return true;
+    }
+}

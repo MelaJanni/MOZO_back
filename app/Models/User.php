@@ -17,8 +17,6 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'role',
-        'active_business_id',
         'google_id',
         'google_avatar',
     ];
@@ -33,58 +31,40 @@ class User extends Authenticatable
         'password' => 'hashed',
     ];
 
-    public function businesses()
-    {
-        return $this->belongsToMany(Business::class, 'business_user');
-    }
+    // ========================================
+    // RELACIONES MULTI-ROL Y MULTI-NEGOCIO
+    // ========================================
 
-    public function activeBusiness()
+    /**
+     * Negocios donde el usuario es ADMINISTRADOR
+     */
+    public function businessesAsAdmin()
     {
-        return $this->belongsTo(Business::class, 'active_business_id');
-    }
-
-    public function profile()
-    {
-        return $this->hasOne(Profile::class);
-    }
-
-    public function staffRecords()
-    {
-        return $this->hasMany(Staff::class);
-    }
-
-    public function workExperiences()
-    {
-        return $this->hasMany(WorkExperience::class);
-    }
-
-    public function isAdmin()
-    {
-        return $this->role === 'admin';
-    }
-
-    public function isWaiter()
-    {
-        return $this->role === 'waiter';
-    }
-
-    public function getBusinessIdAttribute()
-    {
-        return $this->active_business_id;
-    }
-    
-    public function deviceTokens()
-    {
-        return $this->hasMany(DeviceToken::class);
-    }
-
-    public function routeNotificationForFcm(): array
-    {
-        return $this->deviceTokens()->pluck('token')->toArray();
+        return $this->belongsToMany(Business::class, 'business_admins')
+                    ->withPivot(['permission_level', 'permissions', 'is_active', 'joined_at'])
+                    ->withTimestamps();
     }
 
     /**
-     * Relación con perfil de mozo (único por usuario)
+     * Negocios donde el usuario es MOZO
+     */
+    public function businessesAsWaiter()
+    {
+        return $this->belongsToMany(Business::class, 'business_waiters')
+                    ->withPivot(['employment_status', 'employment_type', 'hourly_rate', 'work_schedule', 'hired_at', 'last_shift_at'])
+                    ->withTimestamps();
+    }
+
+    /**
+     * Roles activos del usuario por negocio
+     */
+    public function activeRoles()
+    {
+        return $this->hasMany(UserActiveRole::class);
+    }
+
+    /**
+     * Perfil de mozo (único y global)
      */
     public function waiterProfile()
     {
@@ -92,7 +72,7 @@ class User extends Authenticatable
     }
 
     /**
-     * Relación con perfil de admin (único por usuario)
+     * Perfil de admin (único y global)
      */
     public function adminProfile()
     {
@@ -100,41 +80,129 @@ class User extends Authenticatable
     }
 
     /**
-     * Obtener el perfil activo según el rol del usuario
+     * Tokens de dispositivos
      */
-    public function getActiveProfile()
+    public function deviceTokens()
     {
-        if ($this->isAdmin()) {
-            return $this->adminProfile;
+        return $this->hasMany(DeviceToken::class);
+    }
+
+    // ========================================
+    // MÉTODOS DE VERIFICACIÓN DE ROLES
+    // ========================================
+
+    /**
+     * Verifica si el usuario es admin en algún negocio
+     */
+    public function isAdmin(?int $businessId = null): bool
+    {
+        $query = $this->businessesAsAdmin()->where('business_admins.is_active', true);
+        if ($businessId) {
+            $query->where('business_admins.business_id', $businessId);
+        }
+        return $query->exists();
+    }
+
+    /**
+     * Verifica si el usuario es mozo en algún negocio
+     */
+    public function isWaiter(?int $businessId = null): bool
+    {
+        $query = $this->businessesAsWaiter()->where('business_waiters.employment_status', 'active');
+        if ($businessId) {
+            $query->where('business_waiters.business_id', $businessId);
+        }
+        return $query->exists();
+    }
+
+    /**
+     * Verifica si puede trabajar en ambos roles en un negocio
+     */
+    public function canSwitchRoles(int $businessId): bool
+    {
+        return $this->isAdmin($businessId) && $this->isWaiter($businessId);
+    }
+
+    /**
+     * Obtiene el rol activo en un negocio específico
+     */
+    public function getActiveRole(int $businessId): ?string
+    {
+        $activeRole = $this->activeRoles()
+                          ->where('business_id', $businessId)
+                          ->first();
+        
+        return $activeRole ? $activeRole->active_role : null;
+    }
+
+    /**
+     * Cambia el rol activo en un negocio
+     */
+    public function switchRole(int $businessId, string $role): bool
+    {
+        if (!in_array($role, ['admin', 'waiter'])) {
+            return false;
         }
 
-        if ($this->isWaiter()) {
+        if (!$this->canSwitchRoles($businessId)) {
+            return false;
+        }
+
+        $this->activeRoles()->updateOrCreate(
+            ['business_id' => $businessId],
+            [
+                'active_role' => $role,
+                'switched_at' => now()
+            ]
+        );
+
+        return true;
+    }
+
+    /**
+     * Obtiene todos los negocios del usuario (como admin o mozo)
+     */
+    public function getAllBusinesses()
+    {
+        $adminBusinesses = $this->businessesAsAdmin()->where('is_active', true)->get();
+        $waiterBusinesses = $this->businessesAsWaiter()->where('employment_status', 'active')->get();
+        
+        return $adminBusinesses->merge($waiterBusinesses)->unique('id');
+    }
+
+    /**
+     * Obtiene el perfil según el rol activo en un negocio
+     */
+    public function getActiveProfile(?int $businessId = null)
+    {
+        if ($businessId) {
+            $activeRole = $this->getActiveRole($businessId);
+            if ($activeRole === 'admin' && $this->adminProfile) {
+                return $this->adminProfile;
+            }
+            if ($activeRole === 'waiter' && $this->waiterProfile) {
+                return $this->waiterProfile;
+            }
+        }
+
+        // Fallback: devolver el perfil que existe
+        if ($this->adminProfile) {
+            return $this->adminProfile;
+        }
+        if ($this->waiterProfile) {
             return $this->waiterProfile;
         }
 
         return null;
     }
 
-    /**
-     * Crear o actualizar perfil según el rol
-     */
-    public function createOrUpdateProfile($data)
+    // ========================================
+    // MÉTODOS LEGACY (compatibilidad)
+    // ========================================
+
+    public function routeNotificationForFcm(): array
     {
-        if ($this->isAdmin()) {
-            return $this->adminProfile()->updateOrCreate(
-                ['user_id' => $this->id],
-                $data
-            );
-        }
-
-        if ($this->isWaiter()) {
-            return $this->waiterProfile()->updateOrCreate(
-                ['user_id' => $this->id],
-                $data
-            );
-        }
-
-        return null;
+        return $this->deviceTokens()->pluck('token')->toArray();
     }
 
     public function sendPasswordResetNotification($token)

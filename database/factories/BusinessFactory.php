@@ -19,7 +19,12 @@ class BusinessFactory extends Factory
     {
         return [
             'name' => fake()->company(),
-            'code' => Str::upper(Str::random(6)),
+            'address' => fake()->address(),
+            'phone' => fake()->phoneNumber(),
+            'email' => fake()->companyEmail(),
+            'invitation_code' => Str::upper(Str::random(6)),
+            'description' => fake()->sentence(),
+            'is_active' => true,
         ];
     }
 } 

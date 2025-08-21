@@ -7,7 +7,6 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BusinessController;
 use App\Http\Controllers\MenuController;
 use App\Http\Controllers\NotificationController;
-use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\QrCodeController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\TableController;
@@ -125,18 +124,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/avatar', [UserProfileController::class, 'deleteAvatar']);
     });
 
-    // 📋 FUNCIONES ADICIONALES DE PERFIL
-    Route::prefix('profile')->group(function () {
-        Route::post('/whatsapp/send', [ProfileController::class, 'sendWhatsAppMessage']);
-        
-        Route::get('/work-history', [ProfileController::class, 'getWorkHistory']);
-        Route::post('/work-history', [ProfileController::class, 'addWorkHistory']);
-        Route::put('/work-history/{workExperience}', [ProfileController::class, 'updateWorkHistory']);
-        Route::delete('/work-history/{workExperience}', [ProfileController::class, 'deleteWorkHistory']);
-    });
+    // 📋 FUNCIONES ADICIONALES DE PERFIL (legacy eliminadas)
 
     Route::post('/device-token', [NotificationController::class, 'storeDeviceToken']);
-    Route::delete('/device-token', [ProfileController::class, 'deleteDeviceToken']);
+    Route::delete('/device-token', [NotificationController::class, 'deleteDeviceToken']);
     Route::get('/device-tokens/{userId}', [NotificationController::class, 'getUserDeviceTokens']);
     
     // Notificaciones del usuario autenticado
@@ -188,20 +179,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/ip/debug', [WaiterCallController::class, 'debugIpStatus']);
         Route::post('/ip/force-unblock', [WaiterCallController::class, 'forceUnblockIp']);
 
-        // Perfiles de mesa - CRUD completo
-        Route::get('/table-profiles', [App\Http\Controllers\TableProfileController::class, 'index']);
-        Route::post('/table-profiles', [App\Http\Controllers\TableProfileController::class, 'store']);
-        Route::get('/table-profiles/{profile}', [App\Http\Controllers\TableProfileController::class, 'show']);
-        Route::put('/table-profiles/{profile}', [App\Http\Controllers\TableProfileController::class, 'update']);
-        Route::delete('/table-profiles/{profile}', [App\Http\Controllers\TableProfileController::class, 'destroy']);
-        
-        // Activación de perfiles
-        Route::post('/table-profiles/{profile}/activate', [App\Http\Controllers\TableProfileController::class, 'activate']);
-        Route::post('/table-profiles/{profile}/deactivate', [App\Http\Controllers\TableProfileController::class, 'deactivate']);
-        
-        // Notificaciones de auto-completar
-        Route::get('/table-profiles/notifications', [App\Http\Controllers\TableProfileController::class, 'getAutoCompleteNotifications']);
-        Route::post('/table-profiles/notifications/{notificationId}/read', [App\Http\Controllers\TableProfileController::class, 'markNotificationAsRead']);
+    // Perfiles de mesa - legacy eliminados
     });
 
     Route::prefix('admin')->group(function () {
@@ -287,9 +265,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/notifications/global', [WaiterController::class, 'globalNotifications']);
     Route::post('/tables/toggle-notifications/{tableId}', [WaiterController::class, 'toggleTableNotifications']);
     
-    Route::get('/table-profiles', [WaiterController::class, 'listProfiles']);
-    Route::post('/table-profiles', [WaiterController::class, 'createProfile']);
-    Route::delete('/table-profiles/{id}', [WaiterController::class, 'deleteProfile']);
 
     Route::post('/tables/clone/{tableId}', [TableController::class, 'cloneTable']);
 
@@ -306,11 +281,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/notifications/mark-multiple-read', [WaiterController::class, 'markMultipleNotificationsAsRead']);
         Route::post('/notifications/global', [WaiterController::class, 'globalNotifications']);
 
-        Route::get('/profiles', [WaiterController::class, 'listProfiles']);
-        Route::post('/profiles', [WaiterController::class, 'createProfile']);
-        Route::put('/profiles/{id}', [WaiterController::class, 'updateProfile']);
-        Route::delete('/profiles/{id}', [WaiterController::class, 'deleteProfile']);
-        Route::post('/profiles/{id}/activate', [WaiterController::class, 'activateProfile']);
+    // Rutas de profiles removidas (legacy)
 
         // 📱 FCM Token Management for Android Waiters
         Route::post('/fcm/register', [FcmTokenController::class, 'registerToken']);

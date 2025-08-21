@@ -87,6 +87,40 @@ Ahora SOLO se utiliza `FirebaseService` (FCM HTTP v1) + `UnifiedFirebaseService`
 - Topic FCM por negocio para métricas globales en dashboards.
 - Optimizar escrituras paralelas reales (Guzzle Pool) si la carga aumenta.
 
+### Administración de Negocios (Single Admin Actual / Multi-Admin Futuro)
+
+Estado actual:
+- Cada negocio tiene exactamente UN admin activo (enforced por índice único `business_admins_business_id_unique_single`).
+- El método `Business::addAdmin()` reemplaza al existente si se indica `$replaceIfExists = true`.
+- El "rol activo" (`user_active_roles`) solo controla qué UI ve el usuario (frontend); las políticas backend usan exclusivamente pivotes reales.
+
+Extender a multi-admin (plan futuro):
+1. Crear migración que haga `Schema::table('business_admins', fn($t) => $t->dropUnique('business_admins_business_id_unique_single'));`.
+2. Eliminar lógica de reemplazo en `addAdmin()` o permitir múltiples con validación de niveles (`permission_level`).
+3. Ajustar UI para listar admins y permitir revocar.
+4. (Opcional) Añadir columna `is_primary` para destacar uno.
+
+Políticas de autorización:
+- `BusinessPolicy::manage` verifica admin real (pivot) ignorando `active_role`.
+- `BusinessPolicy::view` permite tanto admin como waiter.
+
+Tests clave:
+- `SingleAdminTest` asegura restricción actual.
+- `ActiveRoleDoesNotAffectPermissionsTest` asegura que cambiar `active_role` no otorga permisos.
+
+### Limpieza de Código Legacy
+
+El sistema legacy de perfiles fue eliminado. Use exclusivamente los endpoints `user-profile/*`.
+
+Estado actual:
+- Eliminados: `ProfileController`, `TableProfileController`, y `App\Models\Profile`.
+- Rutas legacy removidas de `routes/api.php`.
+- Referencias a `profiles()` en controladores fueron limpiadas.
+
+Acción pendiente (frontend):
+- Migrar cualquier uso de endpoints legacy a `user-profile/*`.
+
+
 ### Variables de Entorno Clave
 ```
 FIREBASE_PROJECT_ID=mozoqr-7d32c

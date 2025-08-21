@@ -13,9 +13,17 @@ use Illuminate\Support\Str;
 use SimpleSoftwareIO\QrCode\Facades\QrCode as QrCodeGenerator;
 use ZipArchive;
 use Hashids\Hashids;
+use App\Services\QrCodeService;
 
 class QrCodeController extends Controller
 {
+    protected QrCodeService $service;
+
+    public function __construct(QrCodeService $service)
+    {
+        $this->service = $service;
+    }
+
     public function index(Request $request)
     {
         $tableId = $request->query('table_id');
@@ -91,45 +99,17 @@ class QrCodeController extends Controller
 
     public static function generateForTable(Table $table): QrCode
     {
-        $business = $table->business;
-
-        // Usar el código de la mesa o generar uno si no existe
-        $tableCode = $table->code;
-        if (!$tableCode) {
-            // Fallback: generar código usando Hashids si no existe
-            $hashids = new Hashids(config('app.key'), 6);
-            $tableCode = $hashids->encode($table->id);
-            
-            // Actualizar la mesa con el código generado
-            $table->update(['code' => $tableCode]);
-        }
-
-        $slug = $business->slug;
-
-        $baseUrl = config('app.frontend_url', 'https://mozoqr.com');
-
-        $qrUrl = rtrim($baseUrl, '/') . "/QR/{$slug}/{$tableCode}";
-
-        return QrCode::updateOrCreate(
-            ['table_id' => $table->id],
-            [
-                'business_id' => $business->id,
-                'code'        => $tableCode,
-                'url'         => $qrUrl,
-            ]
-        );
+        // Mantener compatibilidad llamando al servicio
+        return app(QrCodeService::class)->generateForTable($table);
     }
 
     public function generateQRCode($tableId)
     {
         $user = Auth::user();
-        
         $table = Table::where('id', $tableId)
             ->where('business_id', $user->business_id)
             ->firstOrFail();
-            
-        $qrCode = self::generateForTable($table);
-        
+        $qrCode = $this->service->generateForTable($table);
         return response()->json([
             'message' => 'Código QR generado/actualizado exitosamente',
             'qr_code' => $qrCode,

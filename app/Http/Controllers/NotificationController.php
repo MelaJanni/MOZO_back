@@ -491,4 +491,41 @@ class NotificationController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Delete a device token by id or token string for the authenticated user.
+     */
+    public function deleteDeviceToken(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'token' => 'sometimes|string',
+            'id'    => 'sometimes|integer|exists:device_tokens,id'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors'  => $validator->errors()
+            ], 422);
+        }
+
+        $user = $request->user();
+        $deleted = 0;
+        if ($request->filled('id')) {
+            $deleted = $user->deviceTokens()->where('id', $request->id)->delete();
+        } elseif ($request->filled('token')) {
+            $deleted = $user->deviceTokens()->where('token', $request->token)->delete();
+        } else {
+            return response()->json([
+                'success' => false,
+                'message' => 'Debe enviar id o token'
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $deleted ? 'Token eliminado' : 'Token no encontrado'
+        ]);
+    }
 }

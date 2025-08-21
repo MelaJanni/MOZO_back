@@ -42,7 +42,8 @@ class RealtimeWaiterCallController extends Controller
             // 1. 💾 CREAR EN BASE DE DATOS
             $call = WaiterCall::create([
                 'table_id' => $table->id,
-                'waiter_id' => $table->activeWaiter->user_id,
+                // active_waiter_id referencia a users.id; asegurar consistencia
+                'waiter_id' => $table->activeWaiter->id,
                 'business_id' => $table->business_id,
                 'restaurant_id' => $table->restaurant_id,
                 'status' => 'pending',
@@ -63,7 +64,7 @@ class RealtimeWaiterCallController extends Controller
             Log::info("Waiter call created", [
                 'call_id' => $call->id,
                 'table_id' => $table->id,
-                'waiter_id' => $table->activeWaiter->user_id,
+                'waiter_id' => $table->activeWaiter->id,
                 'realtime_success' => $realtimeSuccess,
                 'duration_ms' => round($totalTime, 2)
             ]);
@@ -75,7 +76,7 @@ class RealtimeWaiterCallController extends Controller
                     'call_id' => $call->id,
                     'status' => 'pending',
                     'waiter' => [
-                        'id' => $table->activeWaiter->user_id,
+                        'id' => $table->activeWaiter->id,
                         'name' => $table->activeWaiter->name
                     ],
                     'realtime_enabled' => $realtimeSuccess,

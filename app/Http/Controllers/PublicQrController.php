@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\Restaurant;
 use App\Models\Table;
 use App\Models\Business;
 use App\Models\Menu;
@@ -13,19 +12,23 @@ class PublicQrController extends Controller
 {
     public function getTableInfo($restaurantSlug, $tableCode)
     {
-        // Buscar restaurante por slug
-        $restaurant = Restaurant::where('slug', $restaurantSlug)->first();
-        
-        if (!$restaurant) {
+        // Buscar negocio por slug/nombre/código (consistente con QrWebController)
+        $business = Business::where(function($query) use ($restaurantSlug) {
+            $query->whereRaw('LOWER(name) = ?', [strtolower($restaurantSlug)])
+                  ->orWhereRaw('LOWER(REPLACE(name, " ", "")) = ?', [strtolower(str_replace(' ', '', $restaurantSlug))])
+                  ->orWhere('code', $restaurantSlug);
+        })->first();
+
+        if (!$business) {
             return response()->json([
                 'success' => false,
-                'message' => 'Restaurant not found'
+                'message' => 'Business not found'
             ], 404);
         }
 
         // Buscar mesa por código
         $table = Table::where('code', $tableCode)
-                     ->where('restaurant_id', $restaurant->id)
+                     ->where('business_id', $business->id)
                      ->with(['activeWaiter', 'business'])
                      ->first();
         
@@ -51,8 +54,6 @@ class PublicQrController extends Controller
                                 ->orderBy('called_at', 'desc')
                                 ->first();
 
-        $business = $table->business;
-
         return response()->json([
             'success' => true,
             'data' => [
@@ -65,19 +66,13 @@ class PublicQrController extends Controller
                                        !is_null($table->active_waiter_id) && 
                                        !$table->isSilenced()
                 ],
-                'business' => $business ? [
+                'business' => [
                     'id' => $business->id,
                     'name' => $business->name,
                     'address' => $business->address,
                     'phone' => $business->phone,
-                    'logo' => $business->logo
-                ] : null,
-                'restaurant' => [
-                    'id' => $restaurant->id,
-                    'name' => $restaurant->name,
-                    'slug' => $restaurant->slug,
-                    'logo' => $restaurant->logo,
-                    'menu_pdf' => $restaurant->menu_pdf
+                    'logo' => $business->logo,
+                    'slug' => $business->slug,
                 ],
                 'menu' => $menu ? [
                     'id' => $menu->id,

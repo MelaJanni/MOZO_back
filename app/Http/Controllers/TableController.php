@@ -213,8 +213,6 @@ class TableController extends Controller
             $table->qrCodes()->delete();
         }
         
-        $table->profiles()->detach();
-        
         $table->delete();
         
         return response()->json([
@@ -252,9 +250,7 @@ class TableController extends Controller
             'notifications_enabled' => $request->notifications_enabled ?? $sourceTable->notifications_enabled,
         ]);
 
-        if ($sourceTable->profiles()->count() > 0) {
-            $newTable->profiles()->sync($sourceTable->profiles->pluck('id')->toArray());
-        }
+    // Sistema legacy de profiles eliminado: no se copian asignaciones de perfiles
 
         return response()->json([
             'message' => 'Mesa clonada exitosamente',

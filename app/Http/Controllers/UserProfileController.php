@@ -95,6 +95,7 @@ class UserProfileController extends Controller
                 ], 403);
             }
 
+            // Excluir explícitamente business_id y otros campos no deseados
             $data = $request->except(['avatar', 'business_id']);
 
             // Convertir strings JSON a arrays si es necesario
@@ -111,9 +112,19 @@ class UserProfileController extends Controller
                 $data['avatar'] = $avatarPath;
             }
 
+            // Filtrar solo los campos permitidos en WaiterProfile para evitar errores de business_id
+            $allowedFields = [
+                'avatar', 'display_name', 'bio', 'phone', 'birth_date', 'height', 'weight', 
+                'gender', 'experience_years', 'employment_type', 'current_schedule', 
+                'current_location', 'latitude', 'longitude', 'availability_hours', 
+                'skills', 'is_active', 'is_available', 'rating', 'total_reviews'
+            ];
+            
+            $filteredData = array_intersect_key($data, array_flip($allowedFields));
+
             $profile = $user->waiterProfile()->updateOrCreate(
                 ['user_id' => $user->id],
-                $data
+                $filteredData
             );
 
             return response()->json([
@@ -174,6 +185,7 @@ class UserProfileController extends Controller
                 ], 403);
             }
 
+            // Excluir explícitamente business_id y otros campos no deseados
             $data = $request->except(['avatar', 'business_id']);
 
             // Manejar la subida del avatar
@@ -182,9 +194,18 @@ class UserProfileController extends Controller
                 $data['avatar'] = $avatarPath;
             }
 
+            // Filtrar solo los campos permitidos en AdminProfile para evitar errores de business_id
+            $allowedFields = [
+                'avatar', 'display_name', 'position', 'corporate_email', 'corporate_phone', 
+                'office_extension', 'bio', 'notify_new_orders', 'notify_staff_requests', 
+                'notify_reviews', 'notify_payments'
+            ];
+            
+            $filteredData = array_intersect_key($data, array_flip($allowedFields));
+
             $profile = $user->adminProfile()->updateOrCreate(
                 ['user_id' => $user->id],
-                $data
+                $filteredData
             );
 
             // Actualizar última actividad
