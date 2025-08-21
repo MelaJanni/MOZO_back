@@ -17,9 +17,11 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use App\Http\Controllers\Concerns\ResolvesActiveBusiness;
 
 class AdminController extends Controller
 {
+    use ResolvesActiveBusiness;
     public function getBusinessInfo(Request $request)
     {
         $user = $request->user();
@@ -439,7 +441,8 @@ class AdminController extends Controller
     {
         $user = Auth::user();
         
-        $archivedRequests = ArchivedStaff::where('business_id', $user->business_id)
+    $activeBusinessId = $this->activeBusinessId($user, 'admin');
+    $archivedRequests = ArchivedStaff::where('business_id', $activeBusinessId)
             ->orderBy('archived_at', 'desc')
             ->get();
         
@@ -452,9 +455,9 @@ class AdminController extends Controller
 
     public function getStaff(Request $request)
     {
-        $user = $request->user();
-
-        $query = Staff::where('business_id', $user->business_id)
+    $user = $request->user();
+    $activeBusinessId = $this->activeBusinessId($user, 'admin');
+    $query = Staff::where('business_id', $activeBusinessId)
             ->whereNotIn('status', ['rejected']);
 
         // Agregar búsqueda por nombre o email
@@ -471,7 +474,7 @@ class AdminController extends Controller
             $query->where('status', $request->status);
         }
 
-        $staff = $query->with(['user.profile', 'reviews'])
+    $staff = $query->with(['user.profile', 'reviews'])
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -504,10 +507,10 @@ class AdminController extends Controller
     public function getStaffMember(Request $request, $id)
     {
         $user = $request->user();
-
+        $activeBusinessId = $this->activeBusinessId($user, 'admin');
         $staff = Staff::with('reviews')
             ->where('id', $id)
-            ->where('business_id', $user->business_id)
+            ->where('business_id', $activeBusinessId)
             ->firstOrFail();
 
         return response()->json(['staff' => $staff]);
@@ -537,9 +540,9 @@ class AdminController extends Controller
         ]);
 
         $user = $request->user();
-
+        $activeBusinessId = $this->activeBusinessId($user, 'admin');
         $staff = Staff::where('id', $id)
-            ->where('business_id', $user->business_id)
+            ->where('business_id', $activeBusinessId)
             ->firstOrFail();
 
         $input = $request->only($staff->getFillable());
@@ -552,9 +555,9 @@ class AdminController extends Controller
         $staff->fill($input);
         if ($request->has('avatar')) {
             if ($request->file('avatar')) {
-                $path = $request->file('avatar')->store('avatars/' . $user->business_id, 'public');
+                $path = $request->file('avatar')->store('avatars/' . $activeBusinessId, 'public');
             } elseif (Str::startsWith($request->avatar, 'data:image')) {
-                $path = $this->storeBase64Image($request->avatar, $user->business_id);
+                $path = $this->storeBase64Image($request->avatar, $activeBusinessId);
             } else {
                 return response()->json(['message' => 'Formato de avatar no soportado'], 422);
             }
@@ -587,21 +590,22 @@ class AdminController extends Controller
             'avatar' => 'sometimes',
         ]);
 
-        $user = $request->user();
+    $user = $request->user();
+    $activeBusinessId = $this->activeBusinessId($user, 'admin');
 
         $avatarPath = null;
         if ($request->has('avatar')) {
             if ($request->file('avatar')) {
-                $avatarPath = $request->file('avatar')->store('avatars/' . $user->business_id, 'public');
+        $avatarPath = $request->file('avatar')->store('avatars/' . $activeBusinessId, 'public');
             } elseif (Str::startsWith($request->avatar, 'data:image')) {
-                $avatarPath = $this->storeBase64Image($request->avatar, $user->business_id);
+        $avatarPath = $this->storeBase64Image($request->avatar, $activeBusinessId);
             } else {
                 return response()->json(['message' => 'Formato de avatar no soportado'], 422);
             }
         }
 
         $staff = Staff::create([
-            'business_id' => $user->business_id,
+        'business_id' => $activeBusinessId,
             'name' => $request->name,
             'position' => $request->position,
             'email' => $request->email,
@@ -635,13 +639,13 @@ class AdminController extends Controller
         ]);
 
         $user = $request->user();
-
+        $activeBusinessId = $this->activeBusinessId($user, 'admin');
         $staff = Staff::where('id', $staffId)
-            ->where('business_id', $user->business_id)
+            ->where('business_id', $activeBusinessId)
             ->firstOrFail();
 
         $review = Review::create([
-            'business_id' => $user->business_id,
+            'business_id' => $activeBusinessId,
             'staff_id' => $staff->id,
             'rating' => $request->rating,
             'comment' => $request->comment,
@@ -656,14 +660,14 @@ class AdminController extends Controller
     public function deleteReview(Request $request, $staffId, $id)
     {
         $user = $request->user();
-
+        $activeBusinessId = $this->activeBusinessId($user, 'admin');
         $staff = Staff::where('id', $staffId)
-            ->where('business_id', $user->business_id)
+            ->where('business_id', $activeBusinessId)
             ->firstOrFail();
 
         $review = Review::where('id', $id)
             ->where('staff_id', $staff->id)
-            ->where('business_id', $user->business_id)
+            ->where('business_id', $activeBusinessId)
             ->firstOrFail();
 
         $review->delete();

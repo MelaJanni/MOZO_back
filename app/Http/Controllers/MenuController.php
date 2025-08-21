@@ -9,9 +9,11 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use App\Http\Controllers\Concerns\ResolvesActiveBusiness;
 
 class MenuController extends Controller
 {
+    use ResolvesActiveBusiness;
     public function index(Request $request)
     {
         $businessId = $request->query('business_id');
@@ -136,9 +138,9 @@ class MenuController extends Controller
 
     public function fetchMenus()
     {
-        $user = Auth::user();
-        
-        $menus = Menu::where('business_id', $user->business_id)
+    $user = Auth::user();
+    $activeBusinessId = $this->activeBusinessId($user, 'admin');
+    $menus = Menu::where('business_id', $activeBusinessId)
             ->orderBy('display_order', 'asc')
             ->orderBy('created_at', 'desc')
             ->get();
@@ -205,19 +207,19 @@ class MenuController extends Controller
             return response()->json(['errors' => $errors], 422);
         }
         
-        $user = Auth::user();
-        
-        $path = $request->file('file')->store('menus/' . $user->business_id, 'public');
+    $user = Auth::user();
+    $activeBusinessId = $this->activeBusinessId($user, 'admin');
+    $path = $request->file('file')->store('menus/' . $activeBusinessId, 'public');
         
         if ($request->has('is_default') && $request->is_default) {
-            Menu::where('business_id', $user->business_id)
+            Menu::where('business_id', $activeBusinessId)
                 ->update(['is_default' => false]);
         }
         
-        $maxOrder = Menu::where('business_id', $user->business_id)->max('display_order');
+    $maxOrder = Menu::where('business_id', $activeBusinessId)->max('display_order');
         
         $menu = Menu::create([
-            'business_id' => $user->business_id,
+            'business_id' => $activeBusinessId,
             'name' => $request->name,
             'file_path' => $path,
             'is_default' => $request->is_default ?? false,
@@ -236,7 +238,7 @@ class MenuController extends Controller
     
     public function setDefaultMenu(Request $request)
     {
-        $validator = Validator::make($request->all(), [
+    $validator = Validator::make($request->all(), [
             'menu_id' => 'required|exists:menus,id',
         ]);
 
@@ -245,12 +247,12 @@ class MenuController extends Controller
         }
         
         $user = Auth::user();
-        
+        $activeBusinessId = $this->activeBusinessId($user, 'admin');
         $menu = Menu::where('id', $request->menu_id)
-            ->where('business_id', $user->business_id)
+            ->where('business_id', $activeBusinessId)
             ->firstOrFail();
             
-        Menu::where('business_id', $user->business_id)
+    Menu::where('business_id', $activeBusinessId)
             ->update(['is_default' => false]);
             
         $menu->is_default = true;

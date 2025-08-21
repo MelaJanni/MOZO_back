@@ -9,9 +9,11 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\QrCodeController;
+use App\Http\Controllers\Concerns\ResolvesActiveBusiness;
 
 class TableController extends Controller
 {
+    use ResolvesActiveBusiness;
     public function index(Request $request)
     {
         $businessId = $request->query('business_id');
@@ -86,9 +88,9 @@ class TableController extends Controller
 
     public function fetchTables()
     {
-        $user = Auth::user();
-        
-        $tables = Table::where('business_id', $user->business_id)
+    $user = Auth::user();
+    $activeBusinessId = $this->activeBusinessId($user, 'admin');
+    $tables = Table::where('business_id', $activeBusinessId)
             ->with('qrCode')
             ->orderBy('number', 'asc')
             ->get();
@@ -113,9 +115,9 @@ class TableController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
         
-        $user = Auth::user();
-        
-        $existingTable = Table::where('business_id', $user->business_id)
+    $user = Auth::user();
+    $activeBusinessId = $this->activeBusinessId($user, 'admin');
+    $existingTable = Table::where('business_id', $activeBusinessId)
             ->where('number', $request->number)
             ->first();
             
@@ -126,7 +128,7 @@ class TableController extends Controller
         }
         
         $table = Table::create([
-            'business_id' => $user->business_id,
+            'business_id' => $activeBusinessId,
             'number' => $request->number,
             'capacity' => $request->capacity ?? 4,
             'location' => $request->location ?? 'General',
@@ -157,13 +159,13 @@ class TableController extends Controller
         }
         
         $user = Auth::user();
-        
+        $activeBusinessId = $this->activeBusinessId($user, 'admin');
         $table = Table::where('id', $tableId)
-            ->where('business_id', $user->business_id)
+            ->where('business_id', $activeBusinessId)
             ->firstOrFail();
         
         if ($request->has('number') && $request->number != $table->number) {
-            $existingTable = Table::where('business_id', $user->business_id)
+            $existingTable = Table::where('business_id', $activeBusinessId)
                 ->where('number', $request->number)
                 ->where('id', '!=', $tableId)
                 ->first();
@@ -204,9 +206,9 @@ class TableController extends Controller
     public function deleteTable($tableId)
     {
         $user = Auth::user();
-        
+        $activeBusinessId = $this->activeBusinessId($user, 'admin');
         $table = Table::where('id', $tableId)
-            ->where('business_id', $user->business_id)
+            ->where('business_id', $activeBusinessId)
             ->firstOrFail();
         
         if ($table->qrCodes()->count() > 0) {
