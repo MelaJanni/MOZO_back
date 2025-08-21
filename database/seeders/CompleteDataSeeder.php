@@ -14,54 +14,68 @@ class CompleteDataSeeder extends Seeder
 {
     public function run(): void
     {
-        // 1. Crear Business
-        $business1 = Business::create([
-            'name' => 'Restaurante La Plaza',
-            'address' => 'Av. Corrientes 1234, Buenos Aires',
-            'phone' => '+54 11 4567-8901',
-            'email' => 'info@laplaza.com',
-            'invitation_code' => 'PLAZA123',
-        ]);
+        // 1. Crear Business (usando firstOrCreate para evitar duplicados)
+        $business1 = Business::firstOrCreate(
+            ['invitation_code' => 'PLAZA123'],
+            [
+                'name' => 'Restaurante La Plaza',
+                'address' => 'Av. Corrientes 1234, Buenos Aires',
+                'phone' => '+54 11 4567-8901',
+                'email' => 'info@laplaza.com',
+            ]
+        );
 
-        $business2 = Business::create([
-            'name' => 'Café Central',
-            'address' => 'San Martín 567, Córdoba',
-            'phone' => '+54 351 123-4567',
-            'email' => 'contacto@cafecentral.com',
-            'invitation_code' => 'CAFE456',
-        ]);
+        $business2 = Business::firstOrCreate(
+            ['invitation_code' => 'CAFE456'],
+            [
+                'name' => 'Café Central',
+                'address' => 'San Martín 567, Córdoba',
+                'phone' => '+54 351 123-4567',
+                'email' => 'contacto@cafecentral.com',
+            ]
+        );
 
-        // 2. Crear Admins
-        $admin1 = User::create([
-            'name' => 'María González',
-            'email' => 'maria@laplaza.com',
-            'password' => Hash::make('password'),
-            'role' => 'admin',
-            'active_business_id' => $business1->id,
-        ]);
-        $admin1->businesses()->attach($business1->id);
+        // 2. Crear Admins (usando firstOrCreate para evitar duplicados)
+        $admin1 = User::firstOrCreate(
+            ['email' => 'maria@laplaza.com'],
+            [
+                'name' => 'María González',
+                'password' => Hash::make('password'),
+                'role' => 'admin',
+                'active_business_id' => $business1->id,
+            ]
+        );
+        $admin1->businesses()->syncWithoutDetaching($business1->id);
 
-        $admin2 = User::create([
-            'name' => 'Carlos Rodríguez',
-            'email' => 'carlos@cafecentral.com', 
-            'password' => Hash::make('password'),
-            'role' => 'admin',
-            'active_business_id' => $business2->id,
-        ]);
-        $admin2->businesses()->attach($business2->id);
+        $admin2 = User::firstOrCreate(
+            ['email' => 'carlos@cafecentral.com'],
+            [
+                'name' => 'Carlos Rodríguez',
+                'password' => Hash::make('password'),
+                'role' => 'admin',
+                'active_business_id' => $business2->id,
+            ]
+        );
+        $admin2->businesses()->syncWithoutDetaching($business2->id);
 
-        // 3. Crear Perfiles para Admins
-        $admin1->profile()->create([
-            'name' => 'María González',
-            'phone' => '+54 11 9876-5432',
-            'business_id' => $business1->id,
-        ]);
+        // 3. Crear Perfiles para Admins (usando firstOrCreate)
+        $admin1->profile()->firstOrCreate(
+            ['user_id' => $admin1->id],
+            [
+                'name' => 'María González',
+                'phone' => '+54 11 9876-5432',
+                'business_id' => $business1->id,
+            ]
+        );
 
-        $admin2->profile()->create([
-            'name' => 'Carlos Rodríguez',
-            'phone' => '+54 351 987-6543',
-            'business_id' => $business2->id,
-        ]);
+        $admin2->profile()->firstOrCreate(
+            ['user_id' => $admin2->id],
+            [
+                'name' => 'Carlos Rodríguez',
+                'phone' => '+54 351 987-6543',
+                'business_id' => $business2->id,
+            ]
+        );
 
         // 4. Crear Mozos con perfiles completos
         $mozos = [
@@ -162,45 +176,60 @@ class CompleteDataSeeder extends Seeder
         ];
 
         foreach ($mozos as $mozoData) {
-            // Crear User
-            $user = User::create([
-                'name' => $mozoData['name'],
-                'email' => $mozoData['email'],
-                'password' => Hash::make('password'),
-                'role' => 'waiter',
-                'active_business_id' => $mozoData['business_id'],
-            ]);
-            $user->businesses()->attach($mozoData['business_id']);
+            // Crear User (usando firstOrCreate)
+            $user = User::firstOrCreate(
+                ['email' => $mozoData['email']],
+                [
+                    'name' => $mozoData['name'],
+                    'password' => Hash::make('password'),
+                    'role' => 'waiter',
+                    'active_business_id' => $mozoData['business_id'],
+                ]
+            );
+            $user->businesses()->syncWithoutDetaching($mozoData['business_id']);
 
-            // Crear Profile completo
-            $profile = $user->profile()->create(array_merge([
-                'name' => $mozoData['name'],
-                'business_id' => $mozoData['business_id'],
-            ], $mozoData['profile']));
+            // Crear Profile completo (usando firstOrCreate)
+            $profile = $user->profile()->firstOrCreate(
+                ['user_id' => $user->id],
+                array_merge([
+                    'name' => $mozoData['name'],
+                    'business_id' => $mozoData['business_id'],
+                ], $mozoData['profile'])
+            );
 
-            // Crear Work Experiences
+            // Crear Work Experiences (evitar duplicados)
             foreach ($mozoData['work_experiences'] as $workExp) {
-                $user->workExperiences()->create($workExp);
+                $user->workExperiences()->firstOrCreate(
+                    [
+                        'user_id' => $user->id,
+                        'company' => $workExp['company']
+                    ],
+                    $workExp
+                );
             }
 
             // Crear Staff Request (solicitud automática)
-            Staff::create([
-                'business_id' => $mozoData['business_id'],
-                'user_id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'phone' => $mozoData['profile']['phone'],
-                'status' => 'pending', // Solicitud pendiente
-                'position' => 'Mozo',
-                'hire_date' => null, // No hay fecha de contratación para solicitudes pendientes
-                'birth_date' => $mozoData['profile']['date_of_birth'],
-                'height' => $mozoData['profile']['height'],
-                'weight' => $mozoData['profile']['weight'],
-                'gender' => $mozoData['profile']['gender'],
-                'experience_years' => $mozoData['profile']['experience_years'],
-                'employment_type' => $mozoData['profile']['employment_type'],
-                'current_schedule' => $mozoData['profile']['current_schedule'],
-            ]);
+            Staff::firstOrCreate(
+                [
+                    'business_id' => $mozoData['business_id'],
+                    'user_id' => $user->id
+                ],
+                [
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'phone' => $mozoData['profile']['phone'],
+                    'status' => 'pending', // Solicitud pendiente
+                    'position' => 'Mozo',
+                    'hire_date' => null, // No hay fecha de contratación para solicitudes pendientes
+                    'birth_date' => $mozoData['profile']['date_of_birth'],
+                    'height' => $mozoData['profile']['height'],
+                    'weight' => $mozoData['profile']['weight'],
+                    'gender' => $mozoData['profile']['gender'],
+                    'experience_years' => $mozoData['profile']['experience_years'],
+                    'employment_type' => $mozoData['profile']['employment_type'],
+                    'current_schedule' => $mozoData['profile']['current_schedule'],
+                ]
+            );
         }
 
         // 5. Crear algunos staff confirmados (empleados actuales)
@@ -228,7 +257,13 @@ class CompleteDataSeeder extends Seeder
         ];
 
         foreach ($confirmedStaff as $staffData) {
-            Staff::create($staffData);
+            Staff::firstOrCreate(
+                [
+                    'business_id' => $staffData['business_id'],
+                    'email' => $staffData['email']
+                ],
+                $staffData
+            );
         }
 
         $this->command->info('✅ Datos completos creados exitosamente!');
