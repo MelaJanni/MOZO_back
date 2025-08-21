@@ -119,6 +119,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('user-profile')->group(function () {
         Route::get('/active', [UserProfileController::class, 'getActiveProfile']);
         Route::get('/all', [UserProfileController::class, 'getAllProfiles']);
+        Route::get('/completeness', [UserProfileController::class, 'getProfileCompleteness']);
         Route::post('/waiter/update', [UserProfileController::class, 'updateWaiterProfile']);
         Route::post('/admin/update', [UserProfileController::class, 'updateAdminProfile']);
         Route::delete('/avatar', [UserProfileController::class, 'deleteAvatar']);

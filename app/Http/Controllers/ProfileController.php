@@ -216,51 +216,240 @@ class ProfileController extends Controller
         $user = Auth::user();
         $profile = $user->profile;
 
+        // Verificar si el perfil existe
         if (!$profile) {
             return response()->json([
                 'success' => true,
+                'profile_exists' => false,
                 'is_complete' => false,
-                'missing_fields' => ['profile_not_created'],
-                'completion_percentage' => 0
+                'completion_percentage' => 0,
+                'message' => 'El perfil no ha sido creado aún',
+                'missing_fields' => [
+                    [
+                        'field' => 'profile_creation',
+                        'label' => 'Creación del perfil',
+                        'description' => 'Necesitas crear tu perfil antes de completar la información',
+                        'category' => 'setup',
+                        'priority' => 'high',
+                        'required' => true
+                    ]
+                ],
+                'categories' => [
+                    'setup' => [
+                        'name' => 'Configuración inicial',
+                        'completed' => 0,
+                        'total' => 1,
+                        'percentage' => 0
+                    ]
+                ],
+                'next_steps' => [
+                    'Crear tu perfil haciendo la primera actualización de datos'
+                ]
             ]);
         }
 
-        $requiredFields = [
-            'name' => 'Nombre',
-            'phone' => 'Teléfono', 
-            'date_of_birth' => 'Fecha de nacimiento',
-            'height' => 'Altura',
-            'weight' => 'Peso',
-            'gender' => 'Género',
-            'experience_years' => 'Años de experiencia',
-            'employment_type' => 'Tipo de empleo',
-            'current_schedule' => 'Horario actual'
+        // Definir campos por categorías con más detalle
+        $fieldCategories = [
+            'basic_info' => [
+                'name' => 'Información básica',
+                'description' => 'Datos personales fundamentales',
+                'fields' => [
+                    'phone' => [
+                        'label' => 'Teléfono',
+                        'description' => 'Tu número de contacto',
+                        'required' => true,
+                        'priority' => 'high'
+                    ],
+                    'date_of_birth' => [
+                        'label' => 'Fecha de nacimiento',
+                        'description' => 'Tu fecha de nacimiento',
+                        'required' => true,
+                        'priority' => 'medium'
+                    ],
+                    'gender' => [
+                        'label' => 'Género',
+                        'description' => 'Tu identidad de género',
+                        'required' => true,
+                        'priority' => 'medium'
+                    ]
+                ]
+            ],
+            'physical_info' => [
+                'name' => 'Información física',
+                'description' => 'Características físicas para uniformes',
+                'fields' => [
+                    'height' => [
+                        'label' => 'Altura',
+                        'description' => 'Tu altura en metros (ej: 1.75)',
+                        'required' => true,
+                        'priority' => 'medium'
+                    ],
+                    'weight' => [
+                        'label' => 'Peso',
+                        'description' => 'Tu peso en kilogramos',
+                        'required' => true,
+                        'priority' => 'medium'
+                    ]
+                ]
+            ],
+            'work_info' => [
+                'name' => 'Información laboral',
+                'description' => 'Tu experiencia y preferencias de trabajo',
+                'fields' => [
+                    'experience_years' => [
+                        'label' => 'Años de experiencia',
+                        'description' => 'Cuántos años tienes trabajando como mozo',
+                        'required' => true,
+                        'priority' => 'high'
+                    ],
+                    'employment_type' => [
+                        'label' => 'Tipo de empleo',
+                        'description' => 'Tu modalidad de trabajo preferida',
+                        'required' => true,
+                        'priority' => 'high'
+                    ],
+                    'current_schedule' => [
+                        'label' => 'Horario actual',
+                        'description' => 'En qué turno prefieres trabajar',
+                        'required' => true,
+                        'priority' => 'high'
+                    ]
+                ]
+            ],
+            'optional_info' => [
+                'name' => 'Información adicional',
+                'description' => 'Datos opcionales que mejoran tu perfil',
+                'fields' => [
+                    'bio' => [
+                        'label' => 'Biografía',
+                        'description' => 'Una breve descripción sobre ti',
+                        'required' => false,
+                        'priority' => 'low'
+                    ],
+                    'address' => [
+                        'label' => 'Dirección',
+                        'description' => 'Tu dirección de residencia',
+                        'required' => false,
+                        'priority' => 'low'
+                    ],
+                    'profile_picture' => [
+                        'label' => 'Foto de perfil',
+                        'description' => 'Una foto tuya para el perfil',
+                        'required' => false,
+                        'priority' => 'low'
+                    ]
+                ]
+            ]
         ];
 
         $missingFields = [];
-        $completedFields = 0;
+        $completedFields = [];
+        $categories = [];
+        $totalRequired = 0;
+        $completedRequired = 0;
 
-        foreach ($requiredFields as $field => $label) {
-            if (empty($profile->$field)) {
-                $missingFields[] = [
-                    'field' => $field,
-                    'label' => $label
-                ];
-            } else {
-                $completedFields++;
+        // Analizar cada categoría
+        foreach ($fieldCategories as $categoryKey => $category) {
+            $categoryCompleted = 0;
+            $categoryTotal = 0;
+            $categoryRequired = 0;
+            $categoryCompletedRequired = 0;
+
+            foreach ($category['fields'] as $fieldKey => $fieldInfo) {
+                $categoryTotal++;
+                $fieldValue = $profile->$fieldKey;
+                $isEmpty = empty($fieldValue);
+
+                if ($fieldInfo['required']) {
+                    $totalRequired++;
+                    $categoryRequired++;
+                    if (!$isEmpty) {
+                        $completedRequired++;
+                        $categoryCompletedRequired++;
+                    }
+                }
+
+                if ($isEmpty) {
+                    $missingFields[] = [
+                        'field' => $fieldKey,
+                        'label' => $fieldInfo['label'],
+                        'description' => $fieldInfo['description'],
+                        'category' => $categoryKey,
+                        'category_name' => $category['name'],
+                        'priority' => $fieldInfo['priority'],
+                        'required' => $fieldInfo['required']
+                    ];
+                } else {
+                    $categoryCompleted++;
+                    $completedFields[] = [
+                        'field' => $fieldKey,
+                        'label' => $fieldInfo['label'],
+                        'value' => $fieldValue,
+                        'category' => $categoryKey
+                    ];
+                }
             }
+
+            $categories[$categoryKey] = [
+                'name' => $category['name'],
+                'description' => $category['description'],
+                'completed' => $categoryCompleted,
+                'total' => $categoryTotal,
+                'required' => $categoryRequired,
+                'completed_required' => $categoryCompletedRequired,
+                'percentage' => $categoryTotal > 0 ? round(($categoryCompleted / $categoryTotal) * 100, 2) : 0,
+                'required_percentage' => $categoryRequired > 0 ? round(($categoryCompletedRequired / $categoryRequired) * 100, 2) : 100
+            ];
         }
 
-        $totalFields = count($requiredFields);
-        $completionPercentage = ($completedFields / $totalFields) * 100;
+        // Calcular completitud general
+        $overallPercentage = $totalRequired > 0 ? round(($completedRequired / $totalRequired) * 100, 2) : 0;
+        $isComplete = count($missingFields) === 0 || array_filter($missingFields, fn($f) => $f['required']) === [];
+
+        // Generar próximos pasos
+        $nextSteps = [];
+        $highPriorityMissing = array_filter($missingFields, fn($f) => $f['priority'] === 'high' && $f['required']);
+        if (count($highPriorityMissing) > 0) {
+            $nextSteps[] = 'Completa tu información laboral (experiencia, tipo de empleo, horario)';
+        }
+        
+        $basicInfoMissing = array_filter($missingFields, fn($f) => $f['category'] === 'basic_info' && $f['required']);
+        if (count($basicInfoMissing) > 0) {
+            $nextSteps[] = 'Agrega tu información básica (teléfono, fecha de nacimiento, género)';
+        }
+
+        $physicalInfoMissing = array_filter($missingFields, fn($f) => $f['category'] === 'physical_info');
+        if (count($physicalInfoMissing) > 0) {
+            $nextSteps[] = 'Completa tu información física para uniformes (altura y peso)';
+        }
+
+        if (empty($nextSteps)) {
+            $nextSteps[] = 'Tu perfil está completo. Considera agregar información adicional para destacar más.';
+        }
 
         return response()->json([
             'success' => true,
-            'is_complete' => empty($missingFields),
+            'profile_exists' => true,
+            'is_complete' => $isComplete,
+            'completion_percentage' => $overallPercentage,
+            'message' => $isComplete ? 'Tu perfil está completo' : 'Tu perfil necesita información adicional',
+            'statistics' => [
+                'total_fields' => count($completedFields) + count($missingFields),
+                'completed_fields' => count($completedFields),
+                'missing_fields' => count($missingFields),
+                'required_fields' => $totalRequired,
+                'completed_required' => $completedRequired,
+                'missing_required' => $totalRequired - $completedRequired
+            ],
             'missing_fields' => $missingFields,
             'completed_fields' => $completedFields,
-            'total_required_fields' => $totalFields,
-            'completion_percentage' => round($completionPercentage, 2)
+            'categories' => $categories,
+            'next_steps' => $nextSteps,
+            'profile_tips' => [
+                'Una foto de perfil mejora tu presentación ante los empleadores',
+                'Una biografía personal te ayuda a destacar entre otros candidatos',
+                'Mantener tu información actualizada aumenta tus oportunidades de trabajo'
+            ]
         ]);
     }
     
