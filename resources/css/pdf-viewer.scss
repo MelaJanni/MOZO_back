@@ -268,8 +268,7 @@ body {
   background: #111418;
   overflow: auto;
   position: relative;
-  // Deshabilita gestos por defecto del navegador para manejar pinch/scroll personalizados
-  touch-action: none;
+  // Por defecto dejamos que el navegador maneje scroll vertical; en modo paginado añadimos clase .paginated
   overscroll-behavior: contain;
 }
 
@@ -280,6 +279,9 @@ body {
   justify-content: flex-start;
   scroll-behavior: smooth;
 }
+
+// Modo paginado (una sola página) mantiene touch-action none para control total de Gestos personalizados
+.canvas-stage.paginated { touch-action: none; }
 
 .pages-container { /* contenedor de páginas apiladas */
   width: 100%;

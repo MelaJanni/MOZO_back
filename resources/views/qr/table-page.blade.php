@@ -222,7 +222,7 @@
     const stage=document.getElementById('canvasStage');
     let pdfDoc=null,currentPage=1,scale=1,rotation=0,fitMode='width',rendering=false,pendingPage=null; // rotation fijo 0
     const continuousMode=true; // modo scroll continuo
-    if(continuousMode){ stage.classList.add('continuous'); }
+    if(continuousMode){ stage.classList.add('continuous'); } else { stage.classList.add('paginated'); }
     function enable(v){[btnPrev,btnNext,btnZoomIn,btnZoomOut].forEach(b=>b&&(b.disabled=!v));}  
     function calcFitScale(page){const vw=stage.clientWidth-24;const vh=stage.clientHeight-24;const w0=page.view[2];const h0=page.view[3];const sW=(rotation%180===0)?(vw/w0):(vw/h0);const sP=Math.min(vh/h0,vw/w0);if(fitMode==='width')return sW;if(fitMode==='page')return sP;return scale;}  
     // Renderiza manteniendo opcionalmente un punto ancla (anchor) centrado tras el zoom

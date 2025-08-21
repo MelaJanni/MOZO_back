@@ -228,7 +228,6 @@ body {
   background: #111418;
   overflow: auto;
   position: relative;
-  touch-action: none;
   overscroll-behavior: contain;
 }
 
@@ -237,6 +236,10 @@ body {
   align-items: flex-start;
   justify-content: flex-start;
   scroll-behavior: smooth;
+}
+
+.canvas-stage.paginated {
+  touch-action: none;
 }
 
 .pages-container { /* contenedor de páginas apiladas */
