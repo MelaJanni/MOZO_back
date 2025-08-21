@@ -11,6 +11,13 @@ p{
   margin:  0 !important;
 }
 
+/* Utilidades */
+@mixin glass-effect($opacity: 0.9) {
+  background: rgba(17,24,39,$opacity);
+  backdrop-filter: blur(16px) saturate(1.1);
+  -webkit-backdrop-filter: blur(16px) saturate(1.1);
+}
+
 /* Lupa eliminada */
 
 @mixin control-button-base {

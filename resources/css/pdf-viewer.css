@@ -7,15 +7,8 @@ p {
   margin: 0 !important;
 }
 
-:root {
-  --accent: #8b5cf6;
-  --accent-dark: #6d3ff0;
-  --bg: #0d1117;
-  --bg-alt: #161b22;
-  --border: #30363d;
-  --font-sans: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "Roboto", "Helvetica Neue", Arial, sans-serif;
-}
-
+/* Utilidades */
+/* Lupa eliminada */
 * {
   box-sizing: border-box;
 }
@@ -73,10 +66,9 @@ body {
   bottom: 0;
   left: 0;
   right: 0;
-  background: rgba(22, 27, 34, 0.92);
-  -webkit-backdrop-filter: blur(20px);
-          backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(17, 24, 39, 0.92);
+  backdrop-filter: blur(16px) saturate(1.1);
+  -webkit-backdrop-filter: blur(16px) saturate(1.1);
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   padding: 16px;
   z-index: 100;
@@ -295,6 +287,23 @@ body {
   to {
     opacity: 1;
     transform: translate(-50%, 0);
+  }
+}
+/* Landscape optimizaciones */
+@media (orientation: landscape) and (max-height: 520px) {
+  .pdf-header {
+    padding: 6px 18px;
+    font-size: 13px;
+  }
+  .page-indicator {
+    top: 46px;
+  }
+  #zoomLevel {
+    bottom: 4px;
+    left: 4px;
+  }
+  .fab {
+    transform: scale(0.9);
   }
 }
 .loupe canvas {
