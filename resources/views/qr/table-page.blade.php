@@ -442,12 +442,23 @@
     function openPanel(){document.getElementById('waiterPanel').classList.add('open');document.getElementById('mozoFab').classList.add('open');document.getElementById('mozoFab').setAttribute('aria-expanded','true');document.getElementById('waiterBackdrop').classList.add('open');}
     function closePanel(){document.getElementById('waiterPanel').classList.remove('open');document.getElementById('mozoFab').classList.remove('open');document.getElementById('mozoFab').setAttribute('aria-expanded','false');document.getElementById('waiterBackdrop').classList.remove('open');}
     document.addEventListener('keydown',e=>{if(e.key==='Escape')closePanel();});
-    // Dismiss callout al primer uso / scroll
+    // Dismiss callout al primer uso / scroll (evitar duplicar con tooltip)
     (function(){
+        const fab=document.getElementById('mozoFab');
         const callout=document.getElementById('fabCallout');
+        const tooltip=fab?fab.querySelector('.fab-tooltip'):null;
         if(!callout) return;
-        function hide(){callout.classList.add('dismissed');setTimeout(()=>callout.remove(),600);window.removeEventListener('scroll',hide);document.removeEventListener('click',hide,true);}
-        document.getElementById('mozoFab').addEventListener('click',hide,{once:true});
+        // Mientras el callout está visible ocultamos tooltip
+        if(tooltip) tooltip.style.display='none';
+        function hide(){
+            callout.classList.add('dismissed');
+            setTimeout(()=>callout.remove(),600);
+            window.removeEventListener('scroll',hide);
+            document.removeEventListener('click',hide,true);
+            // Reaparece el tooltip cuando se retira el callout
+            if(tooltip){ setTimeout(()=>{ if(!document.getElementById('fabCallout')) tooltip.style.display=''; },650); }
+        }
+        fab.addEventListener('click',hide,{once:true});
         window.addEventListener('scroll',hide,{passive:true});
         setTimeout(()=>{ // auto-dismiss tras 12s
             if(document.body.contains(callout)) hide();
