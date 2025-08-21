@@ -57,32 +57,6 @@ class UserProfileController extends Controller
      */
     public function updateWaiterProfile(Request $request)
     {
-        // Debug: Solo retornar la información que se está recibiendo
-        return response()->json([
-            'debug' => true,
-            'received_data' => $request->all(),
-            'validation_rules' => [
-                'display_name' => 'nullable|string|max:255',
-                'bio' => 'nullable|string|max:1000',
-                'phone' => 'nullable|string|max:20',
-                'birth_date' => 'nullable|date|before:today',
-                'height' => 'nullable|numeric|between:1.0,2.5',
-                'weight' => 'nullable|integer|between:30,200',
-                'gender' => 'nullable|in:masculino,femenino,otro',
-                'experience_years' => 'nullable|integer|between:0,50',
-                'employment_type' => 'nullable|in:por horas,tiempo completo,tiempo parcial,solo fines de semana',
-                'current_schedule' => 'nullable|in:mañana,tarde,noche,mixto',
-                'current_location' => 'nullable|string|max:255',
-                'latitude' => 'nullable|numeric|between:-90,90',
-                'longitude' => 'nullable|numeric|between:-180,180',
-                'availability_hours' => 'nullable',
-                'skills' => 'nullable',
-                'is_available' => 'nullable|boolean',
-                'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
-            ],
-            'message' => 'Debug mode - showing received data and validation rules'
-        ]);
-        
         $validator = Validator::make($request->all(), [
             'display_name' => 'nullable|string|max:255',
             'bio' => 'nullable|string|max:1000',
