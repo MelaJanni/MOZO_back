@@ -56,7 +56,6 @@
 @endphp
 
 <div class="viewer-shell" id="viewerShell">
-    @if($menuUrl)
     <!-- Header simplificado -->
     <div class="pdf-header" role="banner">
         <div class="brand" title="{{ $business->name }}">
@@ -99,18 +98,20 @@
             </div>
             <!-- Acciones adicionales -->
             <div class="control-group col col-btn p-0">
-                <a class="control-btn" id="btnDownload" href="{{ $menuUrl }}" target="_blank" rel="noopener" title="Abrir en nueva pestaña">
+                <a class="control-btn" id="btnDownload" href="{{ $menuUrl ?? '#' }}" target="_blank" rel="noopener" title="Abrir en nueva pestaña" @if(!$menuUrl) style="pointer-events:none;opacity:.4;" @endif>
                     <i class="fas fa-external-link-alt"></i>
                     <span class="d-none d-md-inline">Abrir</span>
                 </a>
             </div>
         </div>
     </div>
-    @else
-        <div class="pdf-fallback">
-            <h2>Menú no disponible</h2>
-            <p>No se encontró un PDF. Llamá al mozo y solicitá el menú físico.</p>
-            <button class="btn btn-primary" onclick="togglePanel()">Llamar Mozo</button>
+    @if(!$menuUrl)
+        <div id="missingMenuMsg" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:40;pointer-events:none;">
+            <div style="text-align:center;max-width:300px;padding:24px 20px;border:1px solid rgba(139,92,246,.35);background:rgba(17,24,39,.75);backdrop-filter:blur(12px);border-radius:16px;box-shadow:0 6px 24px -8px rgba(0,0,0,.7);">
+                <h3 style="margin:0 0 10px;font:600 16px var(--font-sans);color:#fff;letter-spacing:.5px;">Menú no disponible</h3>
+                <p style="margin:0 0 12px;font:13px/1.3 var(--font-sans);opacity:.75;">Todavía no se subió un PDF para este negocio o fue eliminado. Podés llamar al mozo para pedir uno físico.</p>
+                <button onclick="togglePanel()" style="background:#8b5cf6;border:none;color:#fff;font:600 13px var(--font-sans);padding:8px 14px;border-radius:6px;pointer-events:auto;">Llamar mozo</button>
+            </div>
         </div>
     @endif
 </div>
@@ -171,6 +172,10 @@
     if(menuUrl){
         // Esperar a que PDF.js esté completamente cargado
         waitForPdfjs(initPdf);
+    } else {
+        // Sin menú: desactivar overlay spinner y dejar mensaje (si no está ya)
+        const overlay=document.getElementById('loadingOverlay');
+        if(overlay){overlay.style.display='none';}
     }
 
     function initPdf(pdfjsLib){
@@ -248,7 +253,16 @@
     if(btnZoomIn) btnZoomIn.onclick=()=>setScale(scale*1.15);
     if(btnZoomOut) btnZoomOut.onclick=()=>setScale(Math.max(.25,scale/1.15));
     window.addEventListener('keydown',e=>{if(['INPUT','TEXTAREA'].includes(e.target.tagName))return; if(e.key==='ArrowLeft')change(-1); else if(e.key==='ArrowRight')change(1); else if((e.ctrlKey||e.metaKey)&&['+','=','Add'].includes(e.key)){e.preventDefault();btnZoomIn.click();} else if((e.ctrlKey||e.metaKey)&&['-','Subtract'].includes(e.key)){e.preventDefault();btnZoomOut.click();}});
-    pdfjsLib.getDocument({url:menuUrl}).promise.then(pdf=>{pdfDoc=pdf;enable(true);pageCountSpan.textContent=pdf.numPages;update();renderPage(currentPage).then(()=>overlay.remove());for(let i=1;i<=Math.min(pdf.numPages,120);i++){pdf.getPage(i).then(p=>{const vp=p.getViewport({scale:.25});const c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;const cx=c.getContext('2d');p.render({canvasContext:cx,viewport:vp}).promise.then(()=>{const wrap=document.createElement('div');wrap.className='thumb'+(i===1?' active':'');wrap.dataset.page=p.pageNumber;wrap.appendChild(c);wrap.onclick=()=>{currentPage=p.pageNumber;update();queueRender(currentPage);};thumbsPanel.appendChild(wrap);});});} });
+        pdfjsLib.getDocument({url:menuUrl}).promise
+            .then(pdf=>{pdfDoc=pdf;enable(true);pageCountSpan.textContent=pdf.numPages;update();renderPage(currentPage).then(()=>overlay.remove());for(let i=1;i<=Math.min(pdf.numPages,120);i++){pdf.getPage(i).then(p=>{const vp=p.getViewport({scale:.25});const c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;const cx=c.getContext('2d');p.render({canvasContext:cx,viewport:vp}).promise.then(()=>{const wrap=document.createElement('div');wrap.className='thumb'+(i===1?' active':'');wrap.dataset.page=p.pageNumber;wrap.appendChild(c);wrap.onclick=()=>{currentPage=p.pageNumber;update();queueRender(currentPage);};thumbsPanel.appendChild(wrap);});});} })
+            .catch(err=>{
+                    console.error('Error cargando PDF', err);
+                    overlay.innerHTML = '<div style="text-align:center;padding:24px;">'+
+                        '<h3 style="margin:0 0 8px;font:600 16px var(--font-sans);color:#fff;">Menú no disponible</h3>'+
+                        '<p style="margin:0 0 12px;font:13px/1.3 var(--font-sans);opacity:.7;">No se encontró el archivo PDF del menú.<br>Posibles causas: archivo eliminado, despliegue sin uploads, nombre distinto.</p>'+
+                        '<button style="background:#8b5cf6;border:none;color:#fff;padding:8px 14px;border-radius:6px;font:600 13px var(--font-sans);" onclick="location.reload()">Reintentar</button>'+
+                    '</div>';
+            });
         window.addEventListener('resize',()=>{if(['width','page'].includes(fitMode))queueRender(currentPage);});
     // === Gestos táctiles (Hammer.js) ===
     // Simplifica y hace más confiable pinch / pan / tap / swipe.
