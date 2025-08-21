@@ -1,9 +1,21 @@
 # 🚀 TODAS LAS APIs DEL SISTEMA MOZO - DOCUMENTACIÓN COMPLETA
 
+## ⚠️ IMPORTANTE: USO CORRECTO DE APIs
+
+**PARA ACTUALIZAR PERFILES, USA ÚNICAMENTE:**
+- `/api/user-profile/waiter/update` - Para perfiles de mozo
+- `/api/user-profile/admin/update` - Para perfiles de admin  
+- `/api/user-profile/completeness` - Para verificar completitud
+
+**❌ ELIMINADAS (YA NO FUNCIONAN):**
+- `/api/profile/update` 
+- `/api/profile/waiter/update`
+- `/api/profile/completeness` (usar `/api/user-profile/completeness`)
+
 ## 📚 ÍNDICE
 1. [Autenticación](#autenticación)
-2. [Perfiles Separados por Rol (NUEVO)](#perfiles-separados-por-rol-nuevo-sistema)
-3. [APIs del Mozo - Perfil Personal (Legacy)](#apis-del-mozo---perfil-personal-legacy)
+2. [Perfiles Separados por Rol (SISTEMA PRINCIPAL)](#perfiles-separados-por-rol-nuevo-sistema)
+3. [Funciones Adicionales de Perfil](#funciones-adicionales-de-perfil)
 4. [APIs del Mozo - Gestión de Mesas](#apis-del-mozo---gestión-de-mesas)
 5. [APIs del Admin - Gestión de Personal](#apis-del-admin---gestión-de-personal)
 6. [APIs del Admin - Panel de Control](#apis-del-admin---panel-de-control)
@@ -80,7 +92,7 @@ Response: { message, view, token }
 
 ---
 
-## 🔄 PERFILES SEPARADOS POR ROL (NUEVO SISTEMA)
+## 🔄 PERFILES SEPARADOS POR ROL (SISTEMA PRINCIPAL)
 
 ### Obtener Perfil Activo
 ```
@@ -229,67 +241,10 @@ Response: {
 
 ---
 
-## 👨‍🍳 APIS DEL MOZO - PERFIL PERSONAL (LEGACY)
+## 📋 FUNCIONES ADICIONALES DE PERFIL
 
-### Gestión del Perfil Personal
+### WhatsApp
 ```
-POST /api/profile/update
-Headers: Authorization: Bearer {token}
-Body: {
-  "name": "string" (opcional),
-  "email": "string" (opcional),
-  "password": "string" (opcional),
-  "password_confirmation": "string" (opcional),
-  "phone": "string" (opcional),
-  "address": "string" (opcional),
-  "bio": "string" (opcional),
-  "profile_picture": "string" (opcional),
-  "date_of_birth": "date" (opcional),
-  "gender": "string" (opcional),
-  "height": "numeric" (opcional),
-  "weight": "numeric" (opcional),
-  "skills": "array" (opcional),
-  "latitude": "numeric" (opcional),
-  "longitude": "numeric" (opcional),
-  "experience_years": "integer" (opcional),
-  "employment_type": "string" (opcional),
-  "current_schedule": "string" (opcional)
-}
-Response: { message, user }
-
-POST /api/profile/waiter/update
-Headers: Authorization: Bearer {token}
-Body: {
-  "name": "string" (required),
-  "email": "string" (required),
-  "phone": "string" (required),
-  "date_of_birth": "date" (required),
-  "height": "number" (required, 1.0-2.5 metros),
-  "weight": "number" (required, 30-200 kg),
-  "gender": "masculino|femenino|otro" (required),
-  "experience_years": "integer" (required, 0-50),
-  "employment_type": "tiempo_completo|medio_tiempo|por_horas" (required),
-  "current_schedule": "string" (required),
-  "address": "string" (opcional),
-  "bio": "string" (opcional),
-  "skills": "array" (opcional),
-  "latitude": "number" (opcional),
-  "longitude": "number" (opcional),
-  "avatar": "file" (opcional, imagen 2MB max)
-}
-Response: { success: true, message: "Perfil de mozo actualizado exitosamente", user, profile_complete: boolean }
-
-GET /api/profile/completeness
-Headers: Authorization: Bearer {token}
-Response: { 
-  success: true,
-  is_complete: boolean,
-  missing_fields: [ { field: "string", label: "string" } ],
-  completed_fields: integer,
-  total_required_fields: integer,
-  completion_percentage: number
-}
-
 POST /api/profile/whatsapp/send
 Headers: Authorization: Bearer {token}
 Body: { "phone": "string", "message": "string" }

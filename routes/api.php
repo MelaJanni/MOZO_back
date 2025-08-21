@@ -125,11 +125,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/avatar', [UserProfileController::class, 'deleteAvatar']);
     });
 
-    // 📋 PERFILES LEGACY (mantener para compatibilidad)
+    // 📋 FUNCIONES ADICIONALES DE PERFIL
     Route::prefix('profile')->group(function () {
-        Route::post('/update', [ProfileController::class, 'updateProfile']);
-        Route::post('/waiter/update', [ProfileController::class, 'updateWaiterProfile']); // Con validaciones obligatorias
-        Route::get('/completeness', [ProfileController::class, 'getProfileCompleteness']);
         Route::post('/whatsapp/send', [ProfileController::class, 'sendWhatsAppMessage']);
         
         Route::get('/work-history', [ProfileController::class, 'getWorkHistory']);

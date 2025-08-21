@@ -1,0 +1,1484 @@
+{
+	"info": {
+		"_postman_id": "mozo-api-collection-2025",
+		"name": "MOZO API - Complete Collection",
+		"description": "Colección completa de APIs del sistema MOZO - Actualizada 2025",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000/api",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "your-auth-token-here",
+			"type": "string"
+		},
+		{
+			"key": "user_id",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "business_id",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "table_id",
+			"value": "1",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "🔐 AUTHENTICATION",
+			"item": [
+				{
+					"name": "Register",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\",\n  \"password_confirmation\": \"password123\",\n  \"business_invitation_code\": \"ABC123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/register",
+							"host": ["{{base_url}}"],
+							"path": ["register"]
+						}
+					}
+				},
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    if (response.access_token) {",
+									"        pm.collectionVariables.set('token', response.access_token);",
+									"        console.log('Token saved:', response.access_token);",
+									"    }",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\",\n  \"fcm_token\": \"optional-fcm-token\",\n  \"platform\": \"web\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/login",
+							"host": ["{{base_url}}"],
+							"path": ["login"]
+						}
+					}
+				},
+				{
+					"name": "Login with Google",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"google_token\": \"google-oauth-token\",\n  \"fcm_token\": \"optional-fcm-token\",\n  \"platform\": \"web\",\n  \"business_invitation_code\": \"ABC123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/login/google",
+							"host": ["{{base_url}}"],
+							"path": ["login", "google"]
+						}
+					}
+				},
+				{
+					"name": "Get User",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/user",
+							"host": ["{{base_url}}"],
+							"path": ["user"]
+						}
+					}
+				},
+				{
+					"name": "Select Role",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"role\": \"waiter\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/role/select",
+							"host": ["{{base_url}}"],
+							"path": ["role", "select"]
+						}
+					}
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"token\": \"optional-fcm-token-to-remove\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/logout",
+							"host": ["{{base_url}}"],
+							"path": ["logout"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "👤 USER PROFILES",
+			"item": [
+				{
+					"name": "Get Active Profile",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/user-profile/active",
+							"host": ["{{base_url}}"],
+							"path": ["user-profile", "active"]
+						}
+					}
+				},
+				{
+					"name": "Get All Profiles",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/user-profile/all",
+							"host": ["{{base_url}}"],
+							"path": ["user-profile", "all"]
+						}
+					}
+				},
+				{
+					"name": "Get Profile Completeness",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/user-profile/completeness",
+							"host": ["{{base_url}}"],
+							"path": ["user-profile", "completeness"]
+						}
+					}
+				},
+				{
+					"name": "Update Waiter Profile",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "display_name",
+									"value": "Juan Pérez",
+									"type": "text"
+								},
+								{
+									"key": "bio",
+									"value": "Mozo experimentado con 5 años en el sector",
+									"type": "text"
+								},
+								{
+									"key": "phone",
+									"value": "+54911234567",
+									"type": "text"
+								},
+								{
+									"key": "birth_date",
+									"value": "1990-05-15",
+									"type": "text"
+								},
+								{
+									"key": "height",
+									"value": "1.75",
+									"type": "text"
+								},
+								{
+									"key": "weight",
+									"value": "70",
+									"type": "text"
+								},
+								{
+									"key": "gender",
+									"value": "masculino",
+									"type": "text"
+								},
+								{
+									"key": "experience_years",
+									"value": "5",
+									"type": "text"
+								},
+								{
+									"key": "employment_type",
+									"value": "tiempo completo",
+									"type": "text"
+								},
+								{
+									"key": "current_schedule",
+									"value": "mixto",
+									"type": "text"
+								},
+								{
+									"key": "current_location",
+									"value": "Buenos Aires, Argentina",
+									"type": "text"
+								},
+								{
+									"key": "latitude",
+									"value": "-34.6037",
+									"type": "text"
+								},
+								{
+									"key": "longitude",
+									"value": "-58.3816",
+									"type": "text"
+								},
+								{
+									"key": "availability_hours",
+									"value": "{\"monday\": \"9-17\", \"tuesday\": \"9-17\"}",
+									"type": "text"
+								},
+								{
+									"key": "skills",
+									"value": "[\"servicio al cliente\", \"coctelería\"]",
+									"type": "text"
+								},
+								{
+									"key": "is_available",
+									"value": "true",
+									"type": "text"
+								},
+								{
+									"key": "avatar",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/user-profile/waiter/update",
+							"host": ["{{base_url}}"],
+							"path": ["user-profile", "waiter", "update"]
+						}
+					}
+				},
+				{
+					"name": "Update Admin Profile",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "display_name",
+									"value": "María González",
+									"type": "text"
+								},
+								{
+									"key": "position",
+									"value": "Gerente General",
+									"type": "text"
+								},
+								{
+									"key": "corporate_email",
+									"value": "maria@restaurant.com",
+									"type": "text"
+								},
+								{
+									"key": "corporate_phone",
+									"value": "+5491187654321",
+									"type": "text"
+								},
+								{
+									"key": "office_extension",
+									"value": "101",
+									"type": "text"
+								},
+								{
+									"key": "bio",
+									"value": "Gerente con 10 años de experiencia en el sector gastronómico",
+									"type": "text"
+								},
+								{
+									"key": "notify_new_orders",
+									"value": "true",
+									"type": "text"
+								},
+								{
+									"key": "notify_staff_requests",
+									"value": "true",
+									"type": "text"
+								},
+								{
+									"key": "notify_reviews",
+									"value": "true",
+									"type": "text"
+								},
+								{
+									"key": "notify_payments",
+									"value": "false",
+									"type": "text"
+								},
+								{
+									"key": "avatar",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/user-profile/admin/update",
+							"host": ["{{base_url}}"],
+							"path": ["user-profile", "admin", "update"]
+						}
+					}
+				},
+				{
+					"name": "Delete Avatar",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/user-profile/avatar",
+							"host": ["{{base_url}}"],
+							"path": ["user-profile", "avatar"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "🍽️ WAITER APIS",
+			"item": [
+				{
+					"name": "Dashboard",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/waiter/dashboard",
+							"host": ["{{base_url}}"],
+							"path": ["waiter", "dashboard"]
+						}
+					}
+				},
+				{
+					"name": "Get Pending Calls",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/waiter/calls/pending",
+							"host": ["{{base_url}}"],
+							"path": ["waiter", "calls", "pending"]
+						}
+					}
+				},
+				{
+					"name": "Get Recent Calls",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/waiter/calls/recent",
+							"host": ["{{base_url}}"],
+							"path": ["waiter", "calls", "recent"]
+						}
+					}
+				},
+				{
+					"name": "Acknowledge Call",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/waiter/calls/1/acknowledge",
+							"host": ["{{base_url}}"],
+							"path": ["waiter", "calls", "1", "acknowledge"]
+						}
+					}
+				},
+				{
+					"name": "Complete Call",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/waiter/calls/1/complete",
+							"host": ["{{base_url}}"],
+							"path": ["waiter", "calls", "1", "complete"]
+						}
+					}
+				},
+				{
+					"name": "Get Assigned Tables",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/waiter/tables/assigned",
+							"host": ["{{base_url}}"],
+							"path": ["waiter", "tables", "assigned"]
+						}
+					}
+				},
+				{
+					"name": "Activate Table",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/waiter/tables/{{table_id}}/activate",
+							"host": ["{{base_url}}"],
+							"path": ["waiter", "tables", "{{table_id}}", "activate"]
+						}
+					}
+				},
+				{
+					"name": "Deactivate Table",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/waiter/tables/{{table_id}}/activate",
+							"host": ["{{base_url}}"],
+							"path": ["waiter", "tables", "{{table_id}}", "activate"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "👨‍💼 ADMIN APIS",
+			"item": [
+				{
+					"name": "Get Business Info",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/admin/business",
+							"host": ["{{base_url}}"],
+							"path": ["admin", "business"]
+						}
+					}
+				},
+				{
+					"name": "Get Staff",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/admin/staff?search=&status=confirmed",
+							"host": ["{{base_url}}"],
+							"path": ["admin", "staff"],
+							"query": [
+								{
+									"key": "search",
+									"value": ""
+								},
+								{
+									"key": "status",
+									"value": "confirmed"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Staff Requests",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/admin/staff/requests",
+							"host": ["{{base_url}}"],
+							"path": ["admin", "staff", "requests"]
+						}
+					}
+				},
+				{
+					"name": "Handle Staff Request",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"action\": \"confirm\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/admin/staff/request/1",
+							"host": ["{{base_url}}"],
+							"path": ["admin", "staff", "request", "1"]
+						}
+					}
+				},
+				{
+					"name": "Send Test Notification",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Test Notification\",\n  \"body\": \"This is a test notification from admin\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/admin/send-test-notification",
+							"host": ["{{base_url}}"],
+							"path": ["admin", "send-test-notification"]
+						}
+					}
+				},
+				{
+					"name": "Generate QR Code",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/admin/qr/generate/{{table_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["admin", "qr", "generate", "{{table_id}}"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "🏢 GENERAL APIS",
+			"item": [
+				{
+					"name": "Get Tables",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/tables",
+							"host": ["{{base_url}}"],
+							"path": ["tables"]
+						}
+					}
+				},
+				{
+					"name": "Create Table",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"number\": \"10\",\n  \"name\": \"Mesa VIP\",\n  \"capacity\": 4,\n  \"location\": \"Terraza\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/tables",
+							"host": ["{{base_url}}"],
+							"path": ["tables"]
+						}
+					}
+				},
+				{
+					"name": "Update Table",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"number\": \"11\",\n  \"name\": \"Mesa Premium\",\n  \"capacity\": 6\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/tables/{{table_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["tables", "{{table_id}}"]
+						}
+					}
+				},
+				{
+					"name": "Delete Table",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/tables/{{table_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["tables", "{{table_id}}"]
+						}
+					}
+				},
+				{
+					"name": "Get Menus",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/menus",
+							"host": ["{{base_url}}"],
+							"path": ["menus"]
+						}
+					}
+				},
+				{
+					"name": "Upload Menu",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "name",
+									"value": "Menu Primavera 2025",
+									"type": "text"
+								},
+								{
+									"key": "file",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "is_default",
+									"value": "false",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/menus",
+							"host": ["{{base_url}}"],
+							"path": ["menus"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "🌐 PUBLIC APIS",
+			"item": [
+				{
+					"name": "Get QR Table Info",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/qr/restaurant-slug/table-code",
+							"host": ["{{base_url}}"],
+							"path": ["qr", "restaurant-slug", "table-code"]
+						}
+					}
+				},
+				{
+					"name": "Call Waiter",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"restaurant_id\": {{business_id}},\n  \"table_id\": {{table_id}},\n  \"message\": \"Por favor, puede acercarse a nuestra mesa\",\n  \"urgency\": \"normal\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/tables/{{table_id}}/call-waiter",
+							"host": ["{{base_url}}"],
+							"path": ["tables", "{{table_id}}", "call-waiter"]
+						}
+					}
+				},
+				{
+					"name": "Get Table Status",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/table/{{table_id}}/status",
+							"host": ["{{base_url}}"],
+							"path": ["table", "{{table_id}}", "status"]
+						}
+					}
+				},
+				{
+					"name": "Get Call Status",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/table/{{table_id}}/call-status",
+							"host": ["{{base_url}}"],
+							"path": ["table", "{{table_id}}", "call-status"]
+						}
+					}
+				},
+				{
+					"name": "Firebase Config",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/firebase/config",
+							"host": ["{{base_url}}"],
+							"path": ["firebase", "config"]
+						}
+					}
+				},
+				{
+					"name": "Firebase Status",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/firebase/status",
+							"host": ["{{base_url}}"],
+							"path": ["firebase", "status"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "🔥 STAFF MANAGEMENT",
+			"item": [
+				{
+					"name": "List Staff Requests",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/staff?business_id={{business_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["staff"],
+							"query": [
+								{
+									"key": "business_id",
+									"value": "{{business_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Create Staff Request",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"business_id\": {{business_id}},\n  \"name\": \"Carlos Mendez\",\n  \"email\": \"carlos@example.com\",\n  \"phone\": \"+5491123456789\",\n  \"position\": \"Mozo\",\n  \"date_of_birth\": \"1992-03-20\",\n  \"height\": 1.80,\n  \"weight\": 75,\n  \"gender\": \"masculino\",\n  \"experience_years\": 3,\n  \"employment_type\": \"tiempo_completo\",\n  \"current_schedule\": \"mixto\",\n  \"skills\": [\"servicio al cliente\", \"manejo de POS\"],\n  \"latitude\": -34.6037,\n  \"longitude\": -58.3816\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/staff",
+							"host": ["{{base_url}}"],
+							"path": ["staff"]
+						}
+					}
+				},
+				{
+					"name": "Approve Staff Request",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"salary\": 50000,\n  \"hire_date\": \"2025-08-25\",\n  \"notes\": \"Excelente candidato, experiencia comprobada\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/staff/1/approve",
+							"host": ["{{base_url}}"],
+							"path": ["staff", "1", "approve"]
+						}
+					}
+				},
+				{
+					"name": "Reject Staff Request",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"notes\": \"No cumple con los requisitos mínimos de experiencia\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/staff/1/reject",
+							"host": ["{{base_url}}"],
+							"path": ["staff", "1", "reject"]
+						}
+					}
+				},
+				{
+					"name": "Send Staff Invitation",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/staff/1/invite",
+							"host": ["{{base_url}}"],
+							"path": ["staff", "1", "invite"]
+						}
+					}
+				},
+				{
+					"name": "Get WhatsApp Invitation",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/staff/1/whatsapp",
+							"host": ["{{base_url}}"],
+							"path": ["staff", "1", "whatsapp"]
+						}
+					}
+				},
+				{
+					"name": "Join with Token (Public)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"user_id\": {{user_id}}\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/staff/join/invitation-token-here",
+							"host": ["{{base_url}}"],
+							"path": ["staff", "join", "invitation-token-here"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "🔧 TESTING & DEBUG",
+			"item": [
+				{
+					"name": "Test Waiter Notification",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"test_data\": \"Testing waiter notification system\",\n  \"timestamp\": \"2025-08-21T10:30:00Z\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/test-waiter-notification",
+							"host": ["{{base_url}}"],
+							"path": ["test-waiter-notification"]
+						}
+					}
+				},
+				{
+					"name": "Firebase Write Test",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/firebase/write-test",
+							"host": ["{{base_url}}"],
+							"path": ["firebase", "write-test"]
+						}
+					}
+				},
+				{
+					"name": "Firebase Connection Test",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/firebase/test",
+							"host": ["{{base_url}}"],
+							"path": ["firebase", "test"]
+						}
+					}
+				},
+				{
+					"name": "Get Recent Calls Debug",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/debug/recent-calls",
+							"host": ["{{base_url}}"],
+							"path": ["debug", "recent-calls"]
+						}
+					}
+				},
+				{
+					"name": "API Documentation",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api-docs",
+							"host": ["{{base_url}}"],
+							"path": ["api-docs"]
+						}
+					}
+				}
+			]
+		}
+	]
+}
