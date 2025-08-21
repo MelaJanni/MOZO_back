@@ -192,6 +192,7 @@ class CompleteDataSeeder extends Seeder
                 'phone' => $mozoData['profile']['phone'],
                 'status' => 'pending', // Solicitud pendiente
                 'position' => 'Mozo',
+                'hire_date' => null, // No hay fecha de contratación para solicitudes pendientes
                 'birth_date' => $mozoData['profile']['date_of_birth'],
                 'height' => $mozoData['profile']['height'],
                 'weight' => $mozoData['profile']['weight'],
