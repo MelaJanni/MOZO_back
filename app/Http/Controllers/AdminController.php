@@ -424,8 +424,17 @@ class AdminController extends Controller
     public function fetchStaffRequests()
     {
         $user = Auth::user();
-        
-        $pendingRequests = Staff::where('business_id', $user->business_id)
+        $activeBusinessId = $this->activeBusinessId($user, 'admin');
+
+        if (!Schema::hasTable('staff')) {
+            return response()->json([
+                'requests' => [],
+                'count' => 0,
+                'warning' => 'Tabla staff no encontrada. Aplique las migraciones para habilitar esta funcionalidad.'
+            ]);
+        }
+
+        $pendingRequests = Staff::where('business_id', $activeBusinessId)
             ->where('status', 'pending')
             ->with(['user.profile'])
             ->orderBy('created_at', 'desc')
@@ -450,8 +459,17 @@ class AdminController extends Controller
     {
         $user = Auth::user();
         
-    $activeBusinessId = $this->activeBusinessId($user, 'admin');
-    $archivedRequests = ArchivedStaff::where('business_id', $activeBusinessId)
+        $activeBusinessId = $this->activeBusinessId($user, 'admin');
+
+        if (!Schema::hasTable('archived_staff')) {
+            return response()->json([
+                'archived_requests' => [],
+                'count' => 0,
+                'warning' => 'Tabla archived_staff no encontrada. Aplique las migraciones para habilitar esta funcionalidad.'
+            ]);
+        }
+
+        $archivedRequests = ArchivedStaff::where('business_id', $activeBusinessId)
             ->orderBy('archived_at', 'desc')
             ->get();
         
