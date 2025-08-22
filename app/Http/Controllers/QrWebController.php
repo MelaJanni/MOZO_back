@@ -18,15 +18,20 @@ class QrWebController extends Controller
             'client_ip' => $request->ip()
         ]);
 
-        // Buscar negocio por múltiples criterios
-        $business = Business::where(function($query) use ($restaurantSlug) {
-            // Exact name match (case insensitive)
-            $query->whereRaw('LOWER(name) = ?', [strtolower($restaurantSlug)])
-                  // Name without spaces (case insensitive) 
-                  ->orWhereRaw('LOWER(REPLACE(name, " ", "")) = ?', [strtolower(str_replace(' ', '', $restaurantSlug))])
-                  // Code match
-                  ->orWhere('code', $restaurantSlug);
-        })->first();
+        // Buscar negocio por slug primero, luego por nombre
+        $business = Business::all()->first(function($business) use ($restaurantSlug) {
+            return strtolower($business->slug) === strtolower($restaurantSlug);
+        });
+        
+        // Si no se encuentra por slug, buscar por nombre
+        if (!$business) {
+            $business = Business::where(function($query) use ($restaurantSlug) {
+                // Exact name match (case insensitive)
+                $query->whereRaw('LOWER(name) = ?', [strtolower($restaurantSlug)])
+                      // Name without spaces (case insensitive) 
+                      ->orWhereRaw('LOWER(REPLACE(name, " ", "")) = ?', [strtolower(str_replace(' ', '', $restaurantSlug))]);
+            })->first();
+        }
         
         \Log::info('Business Search Result', [
             'found' => $business ? 'yes' : 'no',
@@ -36,7 +41,7 @@ class QrWebController extends Controller
         
         if (!$business) {
             // Debug: Show available businesses
-            $availableBusinesses = Business::select('id', 'name', 'code')->get();
+            $availableBusinesses = Business::select('id', 'name')->get();
             \Log::error('Business not found', [
                 'searched_for' => $restaurantSlug,
                 'available_businesses' => $availableBusinesses->toArray()
@@ -244,7 +249,7 @@ startxref
             'businesses' => $businesses,
             'tables' => $tables,
             'test_lookup' => [
-                'mcdonalds_business' => Business::where('name', 'McDonalds')->orWhere('code', 'mcdonalds')->first(),
+                'mcdonalds_business' => Business::where('name', 'McDonalds')->first(),
                 'table_JoA4vw' => Table::where('code', 'JoA4vw')->first()
             ]
         ]);
@@ -379,7 +384,6 @@ startxref
             
             // 1. Verificar que existe el negocio McDonalds
             $mcdonalds = Business::where('name', 'McDonalds')
-                ->orWhere('code', 'mcdonalds')
                 ->first();
                 
             if (!$mcdonalds) {

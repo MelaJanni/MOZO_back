@@ -12,11 +12,18 @@ class PublicQrController extends Controller
 {
     public function getTableInfo($restaurantSlug, $tableCode)
     {
-        // Buscar negocio por slug/nombre (sin campo 'code' que no existe)
-        $business = Business::where(function($query) use ($restaurantSlug) {
-            $query->whereRaw('LOWER(name) = ?', [strtolower($restaurantSlug)])
-                  ->orWhereRaw('LOWER(REPLACE(name, " ", "")) = ?', [strtolower(str_replace(' ', '', $restaurantSlug))]);
-        })->first();
+        // Buscar negocio por slug/nombre - primera búsqueda por slug dinámico
+        $business = Business::all()->first(function($business) use ($restaurantSlug) {
+            return strtolower($business->slug) === strtolower($restaurantSlug);
+        });
+        
+        // Si no se encuentra por slug, buscar por nombre
+        if (!$business) {
+            $business = Business::where(function($query) use ($restaurantSlug) {
+                $query->whereRaw('LOWER(name) = ?', [strtolower($restaurantSlug)])
+                      ->orWhereRaw('LOWER(REPLACE(name, " ", "")) = ?', [strtolower(str_replace(' ', '', $restaurantSlug))]);
+            })->first();
+        }
 
         if (!$business) {
             return response()->json([

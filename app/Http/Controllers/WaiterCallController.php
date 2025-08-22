@@ -1947,7 +1947,6 @@ class WaiterCallController extends Controller
         try {
             // Buscar el negocio por código
             $business = Business::where('invitation_code', $businessCode)
-                ->orWhere('code', $businessCode)
                 ->first();
 
             if (!$business) {

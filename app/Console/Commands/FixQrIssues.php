@@ -18,7 +18,6 @@ class FixQrIssues extends Command
         
         // 1. Verificar que existe el negocio McDonalds
         $mcdonalds = Business::where('name', 'McDonalds')
-            ->orWhere('code', 'mcdonalds')
             ->first();
             
         if (!$mcdonalds) {
