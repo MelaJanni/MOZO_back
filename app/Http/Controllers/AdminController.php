@@ -69,20 +69,28 @@ class AdminController extends Controller
         // Construir listado de negocios disponibles para este admin
         $availableBusinesses = [];
         try {
-            $ids = method_exists($user, 'businessesAsAdmin')
-                ? $user->businessesAsAdmin()->pluck('business_id')->toArray()
-                : (!empty($user->business_id) ? [$user->business_id] : []);
-            if (!empty($ids)) {
-                $availableBusinesses = Business::whereIn('id', $ids)
-                    ->get(['id', 'name', 'slug'])
-                    ->map(function ($b) use ($activeBusinessId) {
-                        return [
-                            'id' => $b->id,
-                            'name' => $b->name,
-                            'slug' => $b->slug ?? null,
-                            'is_active' => (int)$b->id === (int)$activeBusinessId,
-                        ];
-                    });
+            if (method_exists($user, 'businessesAsAdmin')) {
+                $adminBusinesses = $user->businessesAsAdmin()
+                    ->select('businesses.id', 'businesses.name')
+                    ->get();
+                $availableBusinesses = $adminBusinesses->map(function ($b) use ($activeBusinessId) {
+                    return [
+                        'id' => $b->id,
+                        'name' => $b->name,
+                        'slug' => $b->slug ?? null,
+                        'is_active' => (int)$b->id === (int)$activeBusinessId,
+                    ];
+                });
+            } elseif (!empty($user->business_id)) {
+                $b = Business::find($user->business_id);
+                if ($b) {
+                    $availableBusinesses = [[
+                        'id' => $b->id,
+                        'name' => $b->name,
+                        'slug' => $b->slug ?? null,
+                        'is_active' => (int)$b->id === (int)$activeBusinessId,
+                    ]];
+                }
             }
         } catch (\Throwable $e) { /* noop */ }
 
@@ -148,23 +156,30 @@ class AdminController extends Controller
             $activeBusinessId = $user->business_id;
         }
 
-        // Obtener lista
-        $ids = method_exists($user, 'businessesAsAdmin')
-            ? $user->businessesAsAdmin()->pluck('business_id')->toArray()
-            : (!empty($user->business_id) ? [$user->business_id] : []);
-
+        // Obtener lista sin pluck del pivot ni columnas inexistentes
         $businesses = [];
-        if (!empty($ids)) {
-            $businesses = Business::whereIn('id', $ids)
-                ->get(['id', 'name', 'slug'])
-                ->map(function ($b) use ($activeBusinessId) {
-                    return [
-                        'id' => $b->id,
-                        'name' => $b->name,
-                        'slug' => $b->slug ?? null,
-                        'is_active' => (int)$b->id === (int)$activeBusinessId,
-                    ];
-                });
+        if (method_exists($user, 'businessesAsAdmin')) {
+            $adminBusinesses = $user->businessesAsAdmin()
+                ->select('businesses.id', 'businesses.name')
+                ->get();
+            $businesses = $adminBusinesses->map(function ($b) use ($activeBusinessId) {
+                return [
+                    'id' => $b->id,
+                    'name' => $b->name,
+                    'slug' => $b->slug ?? null,
+                    'is_active' => (int)$b->id === (int)$activeBusinessId,
+                ];
+            });
+        } elseif (!empty($user->business_id)) {
+            $b = Business::find($user->business_id);
+            if ($b) {
+                $businesses = [[
+                    'id' => $b->id,
+                    'name' => $b->name,
+                    'slug' => $b->slug ?? null,
+                    'is_active' => (int)$b->id === (int)$activeBusinessId,
+                ]];
+            }
         }
 
         return response()->json([
