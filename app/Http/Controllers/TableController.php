@@ -88,13 +88,19 @@ class TableController extends Controller
 
     public function fetchTables()
     {
-    $user = Auth::user();
-    $activeBusinessId = $this->activeBusinessId($user, 'admin');
-    $tables = Table::where('business_id', $activeBusinessId)
+        $user = Auth::user();
+        $activeBusinessId = $this->activeBusinessId($user, 'admin');
+        if (!\Schema::hasTable('tables')) {
+            return response()->json([
+                'tables' => [],
+                'count' => 0,
+                'warning' => 'Tabla tables no encontrada. Aplique migraciones.'
+            ]);
+        }
+        $tables = Table::where('business_id', $activeBusinessId)
             ->with('qrCode')
             ->orderBy('number', 'asc')
             ->get();
-        
         return response()->json([
             'tables' => $tables,
             'count' => $tables->count()

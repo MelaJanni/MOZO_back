@@ -248,6 +248,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/staff/{id}/whatsapp', [AdminController::class, 'getWhatsAppLink']);
         Route::get('/profile', [AdminController::class, 'getAdminProfile']);
         Route::post('/profile/update', [AdminController::class, 'updateAdminProfile']);
+
+    // Aliases admin para listas (consistencia con FE y smoke-test)
+    Route::get('/tables', [TableController::class, 'fetchTables']);
+    Route::get('/menus', [MenuController::class, 'fetchMenus']);
     });
 
     // 🔥 STAFF MANAGEMENT - Sistema de solicitudes de mozos con Firebase
