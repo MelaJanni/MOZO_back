@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
+use App\Models\Menu;
+use App\Models\QrCode;
 
 class Business extends Model
 {
@@ -69,6 +71,18 @@ class Business extends Model
     public function tables()
     {
         return $this->hasMany(Table::class);
+    }
+
+    /** Menús del negocio */
+    public function menus()
+    {
+        return $this->hasMany(Menu::class);
+    }
+
+    /** Códigos QR del negocio */
+    public function qrCodes()
+    {
+        return $this->hasMany(QrCode::class);
     }
 
     /** Roles activos de usuarios en este negocio */
