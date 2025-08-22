@@ -794,24 +794,57 @@ class AdminController extends Controller
     public function getStatistics(Request $request)
     {
         $user = $request->user();
+        $businessId = $this->activeBusinessId($user, 'admin');
 
-        $businessId = $user->business_id;
+        $warnings = [];
 
-        $tablesCount = Table::where('business_id', $businessId)->count();
-        $menusCount = Menu::where('business_id', $businessId)->count();
-        $staffCount = Staff::where('business_id', $businessId)->count();
-        $pendingRequests = Staff::where('business_id', $businessId)
-            ->where('status', 'pending')->count();
-        $qrCodesCount = QrCode::where('business_id', $businessId)->count();
-        $archivedStaffCount = ArchivedStaff::where('business_id', $businessId)->count();
+        $tablesCount = 0;
+        if (Schema::hasTable('tables')) {
+            $tablesCount = Table::where('business_id', $businessId)->count();
+        } else {
+            $warnings[] = 'Tabla tables no encontrada';
+        }
+
+        $menusCount = 0;
+        if (Schema::hasTable('menus')) {
+            $menusCount = Menu::where('business_id', $businessId)->count();
+        } else {
+            $warnings[] = 'Tabla menus no encontrada';
+        }
+
+        $staffCount = 0;
+        $pendingRequests = 0;
+        if (Schema::hasTable('staff')) {
+            $staffCount = Staff::where('business_id', $businessId)->count();
+            $pendingRequests = Staff::where('business_id', $businessId)
+                ->where('status', 'pending')->count();
+        } else {
+            $warnings[] = 'Tabla staff no encontrada';
+        }
+
+        $qrCodesCount = 0;
+        if (Schema::hasTable('qr_codes')) {
+            $qrCodesCount = QrCode::where('business_id', $businessId)->count();
+        } else {
+            $warnings[] = 'Tabla qr_codes no encontrada';
+        }
+
+        $archivedStaffCount = 0;
+        if (Schema::hasTable('archived_staff')) {
+            $archivedStaffCount = ArchivedStaff::where('business_id', $businessId)->count();
+        } else {
+            $warnings[] = 'Tabla archived_staff no encontrada';
+        }
 
         return response()->json([
+            'active_business_id' => $businessId ? (int)$businessId : null,
             'tables_count' => $tablesCount,
             'menus_count' => $menusCount,
             'staff_count' => $staffCount,
             'pending_requests_count' => $pendingRequests,
             'qr_codes_count' => $qrCodesCount,
             'archived_staff_count' => $archivedStaffCount,
+            'warnings' => $warnings,
         ]);
     }
 
