@@ -31,6 +31,25 @@ Route::post('/login/google', [AuthController::class, 'loginWithGoogle']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
+// Health check público y simple (sin tocar tablas)
+Route::get('/health', function() {
+    $status = [
+        'ok' => true,
+        'app' => config('app.name'),
+        'env' => config('app.env'),
+        'time' => now()->toIso8601String(),
+    ];
+    try {
+        // Conexión básica a DB sin tocar tablas específicas
+        \DB::connection()->getPdo();
+        $status['db'] = 'connected';
+    } catch (\Throwable $e) {
+        $status['db'] = 'error';
+        $status['db_error'] = $e->getMessage();
+    }
+    return response()->json($status);
+});
+
 // 🚀 SSE ENDPOINTS - Fuera de middleware para acceso directo
 Route::get('/test/sse', [RealtimeController::class, 'testStream']);
 Route::get('/table/{tableId}/call-status/stream', [RealtimeController::class, 'tableCallStream']);
