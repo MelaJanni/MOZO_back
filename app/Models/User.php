@@ -171,6 +171,28 @@ class User extends Authenticatable
     }
 
     /**
+     * Alias for getAllBusinesses() for compatibility
+     */
+    public function businesses()
+    {
+        return $this->getAllBusinesses();
+    }
+
+    /**
+     * Get user profile (admin or waiter)
+     */
+    public function profile()
+    {
+        if ($this->adminProfile) {
+            return $this->adminProfile;
+        }
+        if ($this->waiterProfile) {
+            return $this->waiterProfile;
+        }
+        return null;
+    }
+
+    /**
      * Obtiene el perfil según el rol activo en un negocio
      */
     public function getActiveProfile(?int $businessId = null)

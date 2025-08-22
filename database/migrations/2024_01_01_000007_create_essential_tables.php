@@ -37,6 +37,9 @@ return new class extends Migration
             $table->string('name')->nullable();
             $table->string('code')->nullable();
             $table->integer('number');
+            $table->integer('capacity')->nullable();
+            $table->string('location')->nullable();
+            $table->enum('status', ['available', 'occupied', 'reserved', 'out_of_service'])->default('available');
             $table->foreignId('business_id')->constrained()->onDelete('cascade');
             $table->boolean('notifications_enabled')->default(true);
             $table->foreignId('active_waiter_id')->nullable()->constrained('users')->onDelete('set null');

@@ -14,9 +14,12 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode as QrCodeGenerator;
 use ZipArchive;
 use Hashids\Hashids;
 use App\Services\QrCodeService;
+use App\Http\Controllers\Concerns\ResolvesActiveBusiness;
 
 class QrCodeController extends Controller
 {
+    use ResolvesActiveBusiness;
+    
     protected QrCodeService $service;
 
     public function __construct(QrCodeService $service)
@@ -150,8 +153,9 @@ class QrCodeController extends Controller
         }
         
         $user = Auth::user();
+        $businessId = $this->activeBusinessId($user, 'admin');
         $qrCodes = \App\Models\QrCode::whereIn('id', $request->qr_ids)
-            ->where('business_id', $user->business_id)
+            ->where('business_id', $businessId)
             ->with('table')
             ->get();
             
@@ -255,8 +259,9 @@ class QrCodeController extends Controller
         }
 
         $user     = Auth::user();
+        $businessId = $this->activeBusinessId($user, 'admin');
         $qrCodes  = \App\Models\QrCode::whereIn('id', $request->qr_ids)
-            ->where('business_id', $user->business_id)
+            ->where('business_id', $businessId)
             ->with('table')
             ->get();
 

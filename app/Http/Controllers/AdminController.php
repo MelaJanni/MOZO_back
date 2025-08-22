@@ -109,7 +109,8 @@ class AdminController extends Controller
     public function regenerateInvitationCode(Request $request)
     {
         $user = $request->user();
-        $business = Business::findOrFail($user->business_id);
+        $businessId = $this->activeBusinessId($user, 'admin');
+        $business = Business::findOrFail($businessId);
         
         $business->regenerateInvitationCode();
         
@@ -722,8 +723,8 @@ class AdminController extends Controller
     public function getSettings(Request $request)
     {
         $user = $request->user();
-        
-        $business = Business::findOrFail($user->business_id);
+        $businessId = $this->activeBusinessId($user, 'admin');
+        $business = Business::findOrFail($businessId);
         
         return response()->json([
             'business' => $business,
@@ -752,8 +753,8 @@ class AdminController extends Controller
         ]);
         
         $user = $request->user();
-        
-        $business = Business::findOrFail($user->business_id);
+        $businessId = $this->activeBusinessId($user, 'admin');
+        $business = Business::findOrFail($businessId);
         
         if ($request->has('name')) {
             $business->name = $request->name;

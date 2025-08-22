@@ -1,0 +1,117 @@
+{
+  "version": "2025-08-22",
+  "base_url": "https://mozoqr.com",
+  "notes": [
+    "Los endpoints marcados auth:true requieren token Bearer de Sanctum.",
+    "role indica el rol necesario (admin/waiter); usa /api/role/select para fijar el negocio/rol activo.",
+    "active_business: cuando aplique, se usa el negocio activo del usuario; si no existe, muchos endpoints devolverán 0/[] o 401/403.",
+  "Errores comunes: 401 (sin token), 403 (negocio/rol incorrecto o recurso de otro negocio), 404 (ruta inexistente o negocio activo no resuelto), 5xx (tabla/columna faltante o error interno)."
+  ],
+  "auth": {
+    "login": {
+      "method": "POST",
+      "path": "/api/login",
+      "auth": false,
+      "body": {"email": "string", "password": "string"},
+      "responses": {
+        "200": {"token": "string", "user": {"id": "int", "name": "string", "email": "string"}},
+        "422": {"message": "Credenciales inválidas"}
+      }
+    },
+    "register": {
+      "method": "POST",
+      "path": "/api/register",
+      "auth": false,
+      "body": {"name": "string", "email": "string", "password": "string", "password_confirmation": "string"},
+      "responses": {
+        "201": {"token": "string", "user": {"id": "int", "name": "string", "email": "string"}},
+        "422": {"errors": {"email": ["string"]}}
+      }
+    },
+    "logout": {"method": "POST", "path": "/api/logout", "auth": true},
+    "select_role": {
+      "method": "POST",
+      "path": "/api/role/select",
+      "auth": true,
+      "body": {"role": "admin|waiter", "business_id": "int (requerido si múltiples)"},
+      "responses": {"200": {"token": "string", "active_business_id": "int", "role": "string"}}
+    }
+  },
+  "endpoints": [
+    {
+      "group": "health",
+      "name": "health",
+      "method": "GET",
+      "path": "/api/health",
+      "auth": false,
+      "responses": {"200": {"ok": true, "app": "string", "env": "string", "time": "ISO-8601", "db": "connected|error"}}
+    },
+
+  {"group": "admin", "name": "getBusiness", "method": "GET", "path": "/api/admin/business", "auth": true, "role": "admin", "responses": {"200": {"business": {"id": "int", "name": "string"}, "active_business_id": "int", "tables_count": "int", "menus_count": "int", "qr_codes_count": "int", "invitation_code": "string", "invitation_url": "string", "available_businesses": [{"id": "int", "name": "string", "slug": "string|null", "is_active": "bool"}]}}, "errors": {"404": {"message": "No query results for model [App\\Models\\Business]"}}},
+    {"group": "admin", "name": "getBusinesses", "method": "GET", "path": "/api/admin/businesses", "auth": true, "role": "admin", "responses": {"200": {"active_business_id": "int|null", "businesses": [{"id": "int", "name": "string", "slug": "string|null", "is_active": "bool"}], "count": "int"}}},
+  {"group": "admin", "name": "statistics", "method": "GET", "path": "/api/admin/statistics", "auth": true, "role": "admin", "responses": {"200": {"active_business_id": "int|null", "tables_count": "int", "menus_count": "int", "staff_count": "int", "pending_requests_count": "int", "qr_codes_count": "int", "archived_staff_count": "int", "warnings": ["string"]}}},
+  {"group": "admin", "name": "regenerateInvitationCode", "method": "POST", "path": "/api/admin/business/regenerate-invitation-code", "auth": true, "role": "admin", "responses": {"200": {"invitation_code": "string", "invitation_url": "string"}}, "errors": {"404": {"message": "No query results for model [App\\Models\\Business]"}}},
+  {"group": "admin", "name": "getSettings", "method": "GET", "path": "/api/admin/settings", "auth": true, "role": "admin", "responses": {"200": {"settings": {"notifications": {"email": "bool", "push": "bool"}, "qr": {"size": "string", "style": "string"}}}}, "errors": {"404": {"message": "No query results for model [App\\Models\\Business]"}}},
+  {"group": "admin", "name": "updateSettings", "method": "POST", "path": "/api/admin/settings", "auth": true, "role": "admin", "body": {"notifications": {"email": "bool?", "push": "bool?"}, "qr": {"size": "string?", "style": "string?"}}, "responses": {"200": {"message": "Configuración actualizada"}}, "errors": {"404": {"message": "No query results for model [App\\Models\\Business]"}}},
+  {"group": "admin", "name": "adminProfile", "method": "GET", "path": "/api/admin/profile", "auth": true, "role": "admin", "responses": {"200": {"id": "int", "display_name": "string|null", "avatar_url": "string|null", "position": "string|null"}}},
+  {"group": "admin", "name": "adminProfileUpdate", "method": "POST", "path": "/api/admin/profile/update", "auth": true, "role": "admin", "body": {"display_name": "string?", "avatar": "file|base64?", "position": "string?"}, "responses": {"200": {"message": "Perfil actualizado"}}},
+
+    {"group": "admin.staff", "name": "pendingRequests", "method": "GET", "path": "/api/admin/staff/requests", "auth": true, "role": "admin", "responses": {"200": {"requests": [{"id": "int", "name": "string", "email": "string", "status": "pending|confirmed|rejected|invited"}], "count": "int", "warning": "string|null"}}},
+    {"group": "admin.staff", "name": "archivedRequests", "method": "GET", "path": "/api/admin/staff/requests/archived", "auth": true, "role": "admin", "responses": {"200": {"archived_requests": [{"id": "int", "name": "string", "status": "string"}], "count": "int", "warning": "string|null"}}},
+    {"group": "admin.staff", "name": "list", "method": "GET", "path": "/api/admin/staff", "auth": true, "role": "admin", "query": {"search": "string?", "status": "pending|confirmed|rejected?"}, "responses": {"200": {"staff": [{"id": "int", "name": "string", "email": "string", "status": "string", "user_profile": "object|null", "associated_businesses": [{"id": "int", "name": "string"}]}], "total": "int"}}},
+    {"group": "admin.staff", "name": "invite", "method": "POST", "path": "/api/admin/staff/invite", "auth": true, "role": "admin", "body": {"name": "string", "email": "string", "position": "string", "phone": "string?", "birth_date": "YYYY-MM-DD?", "height": "number?", "weight": "number?", "gender": "string?", "employment_type": "string?", "current_schedule": "string?", "avatar": "file|base64?"}, "responses": {"201": {"message": "Invitación enviada exitosamente", "staff": {"id": "int", "email": "string", "status": "invited"}}, "422": {"errors": {"name": ["string"], "position": ["string"]}}}},
+
+    {"group": "tables", "name": "listAdmin", "method": "GET", "path": "/api/admin/tables", "auth": true, "role": "admin", "responses": {"200": {"tables": [{"id": "int", "number": "int"}], "count": "int", "warning": "string|null"}}},
+  {"group": "tables", "name": "create", "method": "POST", "path": "/api/tables", "auth": true, "role": "admin", "body": {"number": "int", "notifications_enabled": "bool?", "capacity": "int?", "location": "string?", "status": "available|occupied|reserved|maintenance?"}, "responses": {"201": {"message": "Mesa creada exitosamente", "table": {"id": "int", "number": "int"}}, "422": {"message": "Ya existe una mesa con ese número"}, "500": {"message": "Unknown column 'capacity' in 'INSERT INTO'", "hint": "Ejecuta migraciones que agregan capacity/location/status o no envíes estos campos"}}, "notes": ["Usa el negocio activo; no enviar business_id"], "examples": {"request": {"number": 6, "notifications_enabled": true}}},
+    {"group": "tables", "name": "update", "method": "PUT", "path": "/api/tables/{tableId}", "auth": true, "role": "admin", "body": {"number": "int?", "capacity": "int?", "location": "string?", "status": "available|occupied|reserved|maintenance?", "notifications_enabled": "bool?"}},
+
+  {"group": "menus", "name": "listAdmin", "method": "GET", "path": "/api/admin/menus", "auth": true, "role": "admin", "responses": {"200": {"menus": [{"id": "int", "name": "string", "file_path": "string", "is_default": "bool", "view_url": "string"}]}}},
+    {"group": "menus", "name": "upload", "method": "POST", "path": "/api/menus", "auth": true, "role": "admin", "body": {"name": "string", "file": "file[pdf|jpg|jpeg|png]", "is_default": "bool?"}, "responses": {"201": {"message": "Menú subido exitosamente", "menu": {"id": "int"}}, "422": {"errors": {"file": ["string"]}}}},
+    {"group": "menus", "name": "setDefault", "method": "POST", "path": "/api/menus/default", "auth": true, "role": "admin", "body": {"menu_id": "int"}},
+    {"group": "menus", "name": "rename", "method": "PUT", "path": "/api/menus/{menu}", "auth": true, "role": "admin", "body": {"name": "string"}},
+  {"group": "menus", "name": "reorder", "method": "POST", "path": "/api/menus/reorder", "auth": true, "role": "admin", "body": {"menu_order": ["int"]}},
+    {"group": "menus", "name": "delete", "method": "DELETE", "path": "/api/menus/{menu}", "auth": true, "role": "admin"},
+  {"group": "menus", "name": "preview", "method": "GET", "path": "/api/menus/{menu}/preview", "auth": true, "role": "admin", "errors": {"403": {"message": "No tienes permiso para realizar esta acción", "hint": "Asegúrate de rol admin y que el menú pertenece al negocio activo"}}},
+  {"group": "menus", "name": "download", "method": "GET", "path": "/api/menus/{menu}/download", "auth": true, "role": "admin", "errors": {"403": {"message": "No tienes permiso para realizar esta acción", "hint": "Selecciona negocio con /api/role/select"}}},
+  {"group": "menus", "name": "uploadLimits", "method": "GET", "path": "/api/menus/upload-limits", "auth": true, "role": "admin"},
+
+  {"group": "qr", "name": "preview", "method": "GET", "path": "/api/admin/qr/preview/{tableId}", "auth": true, "role": "admin", "responses": {"200": {"content_type": "image/svg+xml"}}},
+  {"group": "qr", "name": "generate", "method": "POST", "path": "/api/admin/qr/generate/{tableId}", "auth": true, "role": "admin", "responses": {"200": {"message": "QR generado"}}},
+  {"group": "qr", "name": "export", "method": "POST", "path": "/api/admin/qr/export", "auth": true, "role": "admin", "body": {"qr_ids": ["int"], "format": "pdf|png"}, "responses": {"200": {"download_url": "string"}, "403": {"message": "Uno o más códigos QR no se encontraron o no pertenecen a tu negocio."}}},
+    {"group": "qr", "name": "email", "method": "POST", "path": "/api/admin/qr/email", "auth": true, "role": "admin", "body": {"qr_ids": ["int"], "email": "string"}},
+
+    {"group": "notifications", "name": "storeDeviceToken", "method": "POST", "path": "/api/device-token", "auth": true, "body": {"token": "string", "platform": "ios|android|web", "channel": "string?", "expires_at": "ISO-8601?"}},
+    {"group": "notifications", "name": "deleteDeviceToken", "method": "DELETE", "path": "/api/device-token", "auth": true, "body": {"token": "string", "platform": "ios|android|web"}},
+  {"group": "notifications", "name": "userNotifications", "method": "GET", "path": "/api/user/notifications", "auth": true, "responses": {"200": {"success": true, "data": {"unread": [{"id": "string", "data": "object"}], "read": [{"id": "string"}], "unread_count": "int", "total_count": "int"}}}, "errors": {"500": {"message": "Table '...notifications' doesn't exist", "hint": "Ejecuta la migración de notificaciones de Laravel"}}},
+  {"group": "notifications", "name": "markAsRead", "method": "POST", "path": "/api/user/notifications/{id}/read", "auth": true, "responses": {"200": {"message": "Notification marked as read"}}},
+
+    {"group": "user_profile", "name": "active", "method": "GET", "path": "/api/user-profile/active", "auth": true},
+    {"group": "user_profile", "name": "all", "method": "GET", "path": "/api/user-profile/all", "auth": true},
+  {"group": "user_profile", "name": "completeness", "method": "GET", "path": "/api/user-profile/completeness", "auth": true, "responses": {"200": {"profile_exists": "bool", "is_complete": "bool", "completion_percentage": "int", "categories": "object"}}},
+  {"group": "user_profile", "name": "waiterUpdate", "method": "POST", "path": "/api/user-profile/waiter/update", "auth": true, "body": {"display_name": "string?", "avatar": "file|base64?", "is_available": "bool?", "employment_type": "por horas|tiempo completo|tiempo parcial|solo fines de semana?", "current_schedule": "mañana|tarde|noche|mixto?"}, "responses": {"200": {"success": true}, "422": {"errors": {"employment_type": ["string"], "current_schedule": ["string"], "is_available": ["string"]}}, "500": {"message": "Unknown column 'is_available' in 'SET'", "hint": "Ejecuta migraciones de waiter_profiles para incluir is_available"}}},
+    {"group": "user_profile", "name": "adminUpdate", "method": "POST", "path": "/api/user-profile/admin/update", "auth": true, "body": {"display_name": "string?", "avatar": "file|base64?"}},
+    {"group": "user_profile", "name": "deleteAvatar", "method": "DELETE", "path": "/api/user-profile/avatar", "auth": true},
+
+  {"group": "waiter", "name": "businesses", "method": "GET", "path": "/api/waiter/businesses", "auth": true, "role": "waiter", "responses": {"200": {"businesses": [{"id": "int", "name": "string"}]}}, "errors": {"500": {"message": "Call to undefined method App\\Models\\User::businesses()", "hint": "Asegura la relación en User o usa user_active_roles"}}},
+
+    {"group": "public_qr", "name": "createCall", "method": "POST", "path": "/api/tables/{table}/call-waiter", "auth": false, "body": {"message": "string?", "urgency": "low|normal|high?"}, "responses": {"200": {"success": true, "call_id": "int"}}},
+    {"group": "public_qr", "name": "tableStatus", "method": "GET", "path": "/api/table/{tableId}/status", "auth": false},
+    {"group": "public_qr", "name": "qrTableInfo", "method": "GET", "path": "/api/qr/{restaurantSlug}/{tableCode}", "auth": false, "responses": {"200": {"business": {"id": "int", "name": "string"}, "table": {"id": "int", "number": "int"}}}},
+
+    {"group": "web", "name": "qrIndex", "method": "GET", "path": "/qr", "auth": false, "responses": {"200": {"ok": true, "usage": {"web_page": "/QR/{restaurantSlug}/{tableCode}", "public_api": "/api/qr/{restaurantSlug}/{tableCode}"}}}},
+    {"group": "web", "name": "qrPage", "method": "GET", "path": "/QR/{restaurantSlug}/{tableCode}", "auth": false}
+  ],
+  "enums": {
+    "employment_type": ["full_time", "part_time", "contractor"],
+    "current_schedule": ["morning", "afternoon", "night"],
+    "qr_export_format": ["pdf", "png"],
+    "waiter_status": ["pending", "confirmed", "rejected", "invited"]
+  },
+  "errors": {
+    "401": {"message": "No autorizado"},
+    "403": {"message": "No tienes permiso para realizar esta acción"},
+    "404": {"message": "Recurso no encontrado"},
+    "422": {"message": "Datos de validación incorrectos", "errors": {"campo": ["detalle"]}},
+    "500": {"message": "Error interno", "hint": "Puede faltar una tabla o columna; revisar migraciones"}
+  }
+}

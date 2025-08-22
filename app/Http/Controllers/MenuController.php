@@ -365,7 +365,8 @@ class MenuController extends Controller
     private function authorizeBusinessOwnership(int $businessId): void
     {
         $user = Auth::user();
-        if ($user->business_id !== $businessId) {
+        $userBusinessId = $this->activeBusinessId($user, 'admin');
+        if ($userBusinessId !== $businessId) {
             abort(403, 'No tienes permiso para realizar esta acción');
         }
     }
