@@ -12,11 +12,10 @@ class PublicQrController extends Controller
 {
     public function getTableInfo($restaurantSlug, $tableCode)
     {
-        // Buscar negocio por slug/nombre/código (consistente con QrWebController)
+        // Buscar negocio por slug/nombre (sin campo 'code' que no existe)
         $business = Business::where(function($query) use ($restaurantSlug) {
             $query->whereRaw('LOWER(name) = ?', [strtolower($restaurantSlug)])
-                  ->orWhereRaw('LOWER(REPLACE(name, " ", "")) = ?', [strtolower(str_replace(' ', '', $restaurantSlug))])
-                  ->orWhere('code', $restaurantSlug);
+                  ->orWhereRaw('LOWER(REPLACE(name, " ", "")) = ?', [strtolower(str_replace(' ', '', $restaurantSlug))]);
         })->first();
 
         if (!$business) {

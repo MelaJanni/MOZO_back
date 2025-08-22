@@ -74,16 +74,46 @@ class QrGeneratorService
     }
     
     /**
+     * Check if GD is available
+     */
+    public function isGdAvailable(): bool
+    {
+        return extension_loaded('gd');
+    }
+    
+    /**
+     * Check if any PNG-capable extension is available
+     */
+    public function canGeneratePng(): bool
+    {
+        return $this->isImageMagickAvailable() || $this->isGdAvailable();
+    }
+    
+    /**
      * Get available QR formats based on system capabilities
      */
     public function getAvailableFormats(): array
     {
         $formats = ['svg']; // SVG is always available
         
-        if ($this->isImageMagickAvailable()) {
+        if ($this->canGeneratePng()) {
             $formats[] = 'png';
         }
         
         return $formats;
+    }
+    
+    /**
+     * Get system status for debugging
+     */
+    public function getSystemStatus(): array
+    {
+        return [
+            'php_version' => phpversion(),
+            'imagick_available' => $this->isImageMagickAvailable(),
+            'gd_available' => $this->isGdAvailable(),
+            'can_generate_png' => $this->canGeneratePng(),
+            'loaded_extensions' => get_loaded_extensions()
+        ];
     }
 }

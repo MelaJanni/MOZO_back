@@ -152,9 +152,9 @@ class QrCodeController extends Controller
     
     public function exportQR(Request $request)
     {
-        // Check ImageMagick availability and adjust allowed formats
+        // Check PNG capability and adjust allowed formats
         $allowedFormats = ['svg']; // SVG always works
-        if ($this->qrGenerator->isImageMagickAvailable()) {
+        if ($this->qrGenerator->canGeneratePng()) {
             $allowedFormats = array_merge($allowedFormats, ['png', 'pdf', 'zip']);
         }
 
@@ -167,13 +167,15 @@ class QrCodeController extends Controller
         if ($validator->fails()) {
             $errors = $validator->errors();
             
-            // Add helpful message about ImageMagick if format is not allowed
-            if ($errors->has('format') && !$this->qrGenerator->isImageMagickAvailable()) {
+            // Add helpful message about PNG capability if format is not allowed
+            if ($errors->has('format') && !$this->qrGenerator->canGeneratePng()) {
+                $systemStatus = $this->qrGenerator->getSystemStatus();
                 return response()->json([
                     'errors' => $errors,
-                    'message' => 'ImageMagick extension not available. Only SVG format is supported.',
+                    'message' => 'PNG generation not available. Only SVG format is supported.',
                     'available_formats' => $allowedFormats,
-                    'install_help' => 'Contact your hosting provider to install ImageMagick extension for PNG/PDF support.'
+                    'system_status' => $systemStatus,
+                    'install_help' => 'Install ImageMagick or ensure GD extension is available for PNG/PDF support.'
                 ], 422);
             }
             
@@ -272,9 +274,9 @@ class QrCodeController extends Controller
 
     public function emailQR(Request $request)
     {
-        // Check ImageMagick availability for email formats
+        // Check PNG capability for email formats
         $allowedEmailFormats = [];
-        if ($this->qrGenerator->isImageMagickAvailable()) {
+        if ($this->qrGenerator->canGeneratePng()) {
             $allowedEmailFormats = ['png', 'pdf'];
         }
 
@@ -291,11 +293,12 @@ class QrCodeController extends Controller
         if ($validator->fails()) {
             $errors = $validator->errors();
             
-            if ($errors->has('format') && !$this->qrGenerator->isImageMagickAvailable()) {
+            if ($errors->has('format') && !$this->qrGenerator->canGeneratePng()) {
                 return response()->json([
                     'errors' => $errors,
-                    'message' => 'ImageMagick extension required for email QR functionality.',
-                    'install_help' => 'Contact your hosting provider to install ImageMagick extension.'
+                    'message' => 'PNG generation required for email QR functionality.',
+                    'system_status' => $this->qrGenerator->getSystemStatus(),
+                    'install_help' => 'Install ImageMagick or ensure GD extension is available.'
                 ], 422);
             }
             
@@ -428,26 +431,28 @@ class QrCodeController extends Controller
      */
     public function getCapabilities()
     {
+        $systemStatus = $this->qrGenerator->getSystemStatus();
+        
         return response()->json([
-            'imagick_available' => $this->qrGenerator->isImageMagickAvailable(),
+            'system_status' => $systemStatus,
             'available_formats' => [
-                'export' => $this->qrGenerator->isImageMagickAvailable() 
+                'export' => $this->qrGenerator->canGeneratePng() 
                     ? ['svg', 'png', 'pdf', 'zip'] 
                     : ['svg'],
-                'email' => $this->qrGenerator->isImageMagickAvailable() 
+                'email' => $this->qrGenerator->canGeneratePng() 
                     ? ['png', 'pdf'] 
                     : [],
                 'preview' => ['svg'] // Always available
             ],
             'recommendations' => [
                 'svg' => 'Always available, scalable, smaller file size',
-                'png' => 'Requires ImageMagick, good for printing',
-                'pdf' => 'Requires ImageMagick, best for professional documents',
-                'zip' => 'Requires ImageMagick, for bulk downloads'
+                'png' => 'Requires ImageMagick or GD, good for printing',
+                'pdf' => 'Requires ImageMagick or GD, best for professional documents',
+                'zip' => 'Requires ImageMagick or GD, for bulk downloads'
             ],
-            'install_help' => $this->qrGenerator->isImageMagickAvailable() 
+            'install_help' => $this->qrGenerator->canGeneratePng() 
                 ? null 
-                : 'Contact your hosting provider to install ImageMagick extension for full QR functionality.'
+                : 'Install ImageMagick extension or ensure GD is available for full QR functionality.'
         ]);
     }
 }
