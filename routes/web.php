@@ -136,13 +136,13 @@ Route::get('/clean-orphan-tables', [QrWebController::class, 'cleanOrphanTables']
 Route::get('/force-assign-table/{tableId}/{waiterId}', [QrWebController::class, 'forceAssignTable'])
     ->name('qr.force.assign');
 
-// Ruta para mostrar página de mesa desde QR
-Route::get('/QR/{restaurantSlug}/{tableCode}', [QrWebController::class, 'showTablePage'])
+// Ruta para mostrar página de mesa desde QR (minúscula para compatibilidad)
+Route::get('/qr/{restaurantSlug}/{tableCode}', [QrWebController::class, 'showTablePage'])
     ->name('qr.table.page');
 
 
 // Ruta para llamar al mozo desde QR (PHP form submission)
-Route::post('/QR/call-waiter', [QrWebController::class, 'callWaiter'])
+Route::post('/qr/call-waiter', [QrWebController::class, 'callWaiter'])
     ->name('waiter.call');
 
 // Servir PDFs de menús públicamente
