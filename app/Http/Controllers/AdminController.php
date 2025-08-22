@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Schema;
 use App\Http\Controllers\Concerns\ResolvesActiveBusiness;
 
 class AdminController extends Controller
@@ -54,8 +55,16 @@ class AdminController extends Controller
             $activeBusinessId = optional($user->businessesAsAdmin()->first())->business_id;
         }
 
-        $business = Business::with(['tables', 'menus', 'qrCodes'])
-            ->findOrFail($activeBusinessId);
+    // Eager load solo si las tablas existen para evitar 500 en entornos sin migraciones completas
+    $with = [];
+    if (Schema::hasTable('tables')) { $with[] = 'tables'; }
+    if (Schema::hasTable('menus')) { $with[] = 'menus'; }
+    if (Schema::hasTable('qr_codes')) { $with[] = 'qrCodes'; }
+
+    $business = Business::when(!empty($with), function ($q) use ($with) {
+        return $q->with($with);
+        })
+        ->findOrFail($activeBusinessId);
 
         // Construir listado de negocios disponibles para este admin
         $availableBusinesses = [];
@@ -80,9 +89,9 @@ class AdminController extends Controller
         return response()->json([
             'business' => $business,
             'active_business_id' => (int)$activeBusinessId,
-            'tables_count' => $business->tables->count(),
-            'menus_count' => $business->menus->count(),
-            'qr_codes_count' => $business->qrCodes->count(),
+            'tables_count' => Schema::hasTable('tables') ? $business->tables->count() : 0,
+            'menus_count' => Schema::hasTable('menus') ? ($business->relationLoaded('menus') ? $business->menus->count() : \App\Models\Menu::where('business_id', $business->id)->count()) : 0,
+            'qr_codes_count' => Schema::hasTable('qr_codes') ? ($business->relationLoaded('qrCodes') ? $business->qrCodes->count() : \App\Models\QrCode::where('business_id', $business->id)->count()) : 0,
             'invitation_code' => $business->invitation_code,
             'invitation_url' => config('app.frontend_url') . '/join-business?code=' . $business->invitation_code,
             'available_businesses' => $availableBusinesses,
