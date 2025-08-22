@@ -22,7 +22,7 @@ class QrCodeService
         }
         $slug = $business->slug;
         $baseUrl = config('app.frontend_url', 'https://mozoqr.com');
-        $qrUrl = rtrim($baseUrl, '/') . "/QR/{$slug}/{$tableCode}";
+        $qrUrl = rtrim($baseUrl, '/') . "/qr/{$slug}/{$tableCode}";
         return QrCode::updateOrCreate(
             ['table_id' => $table->id],
             [

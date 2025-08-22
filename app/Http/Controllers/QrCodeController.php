@@ -14,6 +14,7 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode as QrCodeGenerator;
 use ZipArchive;
 use Hashids\Hashids;
 use App\Services\QrCodeService;
+use App\Services\QrGeneratorService;
 use App\Http\Controllers\Concerns\ResolvesActiveBusiness;
 
 class QrCodeController extends Controller
@@ -21,10 +22,12 @@ class QrCodeController extends Controller
     use ResolvesActiveBusiness;
     
     protected QrCodeService $service;
+    protected QrGeneratorService $qrGenerator;
 
-    public function __construct(QrCodeService $service)
+    public function __construct(QrCodeService $service, QrGeneratorService $qrGenerator)
     {
         $this->service = $service;
+        $this->qrGenerator = $qrGenerator;
     }
 
     public function index(Request $request)
@@ -109,8 +112,9 @@ class QrCodeController extends Controller
     public function generateQRCode($tableId)
     {
         $user = Auth::user();
+        $businessId = $this->activeBusinessId($user, 'admin');
         $table = Table::where('id', $tableId)
-            ->where('business_id', $user->business_id)
+            ->where('business_id', $businessId)
             ->firstOrFail();
         $qrCode = $this->service->generateForTable($table);
         return response()->json([
@@ -122,8 +126,9 @@ class QrCodeController extends Controller
     public function preview($tableId)
     {
         $user = Auth::user();
+        $businessId = $this->activeBusinessId($user, 'admin');
         $table = Table::where('id', $tableId)
-            ->where('business_id', $user->business_id)
+            ->where('business_id', $businessId)
             ->firstOrFail();
 
         $qrCode = $table->qrCode;
@@ -132,24 +137,47 @@ class QrCodeController extends Controller
             return response()->json(['message' => 'Esta mesa aún no tiene un QR generado.'], 404);
         }
 
-        $svg = QrCodeGenerator::format('svg')
-            ->size(300)
-            ->errorCorrection('H')
-            ->generate($qrCode->url);
-
-        return response($svg)->header('Content-Type', 'image/svg+xml');
+        try {
+            $svg = $this->qrGenerator->generate($qrCode->url, 'svg', 300);
+            return response($svg)->header('Content-Type', 'image/svg+xml');
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Failed to generate QR preview',
+                'message' => $e->getMessage(),
+                'imagick_available' => $this->qrGenerator->isImageMagickAvailable(),
+                'available_formats' => $this->qrGenerator->getAvailableFormats()
+            ], 500);
+        }
     }
     
     public function exportQR(Request $request)
     {
+        // Check ImageMagick availability and adjust allowed formats
+        $allowedFormats = ['svg']; // SVG always works
+        if ($this->qrGenerator->isImageMagickAvailable()) {
+            $allowedFormats = array_merge($allowedFormats, ['png', 'pdf', 'zip']);
+        }
+
         $validator = Validator::make($request->all(), [
             'qr_ids'   => 'required|array',
             'qr_ids.*' => 'exists:qr_codes,id',
-            'format'   => ['required', Rule::in(['png', 'svg', 'pdf', 'zip'])],
+            'format'   => ['required', Rule::in($allowedFormats)],
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
+            $errors = $validator->errors();
+            
+            // Add helpful message about ImageMagick if format is not allowed
+            if ($errors->has('format') && !$this->qrGenerator->isImageMagickAvailable()) {
+                return response()->json([
+                    'errors' => $errors,
+                    'message' => 'ImageMagick extension not available. Only SVG format is supported.',
+                    'available_formats' => $allowedFormats,
+                    'install_help' => 'Contact your hosting provider to install ImageMagick extension for PNG/PDF support.'
+                ], 422);
+            }
+            
+            return response()->json(['errors' => $errors], 422);
         }
         
         $user = Auth::user();
@@ -244,10 +272,16 @@ class QrCodeController extends Controller
 
     public function emailQR(Request $request)
     {
+        // Check ImageMagick availability for email formats
+        $allowedEmailFormats = [];
+        if ($this->qrGenerator->isImageMagickAvailable()) {
+            $allowedEmailFormats = ['png', 'pdf'];
+        }
+
         $validator = Validator::make($request->all(), [
             'qr_ids'     => 'required|array',
             'qr_ids.*'   => 'exists:qr_codes,id',
-            'format'     => ['required', Rule::in(['png', 'pdf'])],
+            'format'     => ['required', Rule::in($allowedEmailFormats)],
             'recipients' => 'required|array|min:1',
             'recipients.*' => 'email',
             'subject'    => 'sometimes|string|max:255',
@@ -255,6 +289,16 @@ class QrCodeController extends Controller
         ]);
 
         if ($validator->fails()) {
+            $errors = $validator->errors();
+            
+            if ($errors->has('format') && !$this->qrGenerator->isImageMagickAvailable()) {
+                return response()->json([
+                    'errors' => $errors,
+                    'message' => 'ImageMagick extension required for email QR functionality.',
+                    'install_help' => 'Contact your hosting provider to install ImageMagick extension.'
+                ], 422);
+            }
+            
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
@@ -376,6 +420,34 @@ class QrCodeController extends Controller
         return response()->json([
             'message' => 'Correo(s) enviado(s) exitosamente',
             'recipients' => $request->recipients,
+        ]);
+    }
+
+    /**
+     * Get available QR formats and system capabilities
+     */
+    public function getCapabilities()
+    {
+        return response()->json([
+            'imagick_available' => $this->qrGenerator->isImageMagickAvailable(),
+            'available_formats' => [
+                'export' => $this->qrGenerator->isImageMagickAvailable() 
+                    ? ['svg', 'png', 'pdf', 'zip'] 
+                    : ['svg'],
+                'email' => $this->qrGenerator->isImageMagickAvailable() 
+                    ? ['png', 'pdf'] 
+                    : [],
+                'preview' => ['svg'] // Always available
+            ],
+            'recommendations' => [
+                'svg' => 'Always available, scalable, smaller file size',
+                'png' => 'Requires ImageMagick, good for printing',
+                'pdf' => 'Requires ImageMagick, best for professional documents',
+                'zip' => 'Requires ImageMagick, for bulk downloads'
+            ],
+            'install_help' => $this->qrGenerator->isImageMagickAvailable() 
+                ? null 
+                : 'Contact your hosting provider to install ImageMagick extension for full QR functionality.'
         ]);
     }
 }

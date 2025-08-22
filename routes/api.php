@@ -219,6 +219,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/qr/preview/{tableId}', [QrCodeController::class, 'preview']);
         Route::post('/qr/export', [QrCodeController::class, 'exportQR']);
         Route::post('/qr/email', [QrCodeController::class, 'emailQR']);
+        Route::get('/qr/capabilities', [QrCodeController::class, 'getCapabilities']);
         
         Route::post('/send-test-notification', [AdminController::class, 'sendTestNotification']);
         Route::post('/send-notification-to-user', [AdminController::class, 'sendNotificationToUser']);

@@ -10,10 +10,18 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\QrCodeController;
 use App\Http\Controllers\Concerns\ResolvesActiveBusiness;
+use App\Services\QrCodeService;
 
 class TableController extends Controller
 {
     use ResolvesActiveBusiness;
+    
+    protected QrCodeService $qrCodeService;
+
+    public function __construct(QrCodeService $qrCodeService)
+    {
+        $this->qrCodeService = $qrCodeService;
+    }
     public function index(Request $request)
     {
         $businessId = $request->query('business_id');
@@ -142,11 +150,22 @@ class TableController extends Controller
             'notifications_enabled' => $request->notifications_enabled ?? true,
         ]);
 
-        $table->load('qrCode');
+        // Generar QR automáticamente
+        try {
+            $qrCode = $this->qrCodeService->generateForTable($table);
+            $table->load('qrCode');
+        } catch (\Exception $e) {
+            // Log error but don't fail table creation
+            \Log::warning('Failed to generate QR code for table', [
+                'table_id' => $table->id,
+                'error' => $e->getMessage()
+            ]);
+        }
         
         return response()->json([
             'message' => 'Mesa creada exitosamente',
-            'table' => $table
+            'table' => $table,
+            'qr_generated' => isset($qrCode)
         ], 201);
     }
     
@@ -240,17 +259,18 @@ class TableController extends Controller
         }
 
         $user = Auth::user();
+        $businessId = $this->activeBusinessId($user, 'admin');
 
         $sourceTable = Table::where('id', $tableId)
-            ->where('business_id', $user->business_id)
+            ->where('business_id', $businessId)
             ->firstOrFail();
 
-        if (Table::where('business_id', $user->business_id)->where('number', $request->number)->exists()) {
+        if (Table::where('business_id', $businessId)->where('number', $request->number)->exists()) {
             return response()->json(['message' => 'Ya existe una mesa con ese número'], 422);
         }
 
         $newTable = Table::create([
-            'business_id' => $user->business_id,
+            'business_id' => $businessId,
             'number' => $request->number,
             'capacity' => $request->capacity ?? $sourceTable->capacity,
             'location' => $request->location ?? $sourceTable->location,
@@ -258,11 +278,21 @@ class TableController extends Controller
             'notifications_enabled' => $request->notifications_enabled ?? $sourceTable->notifications_enabled,
         ]);
 
-    // Sistema legacy de profiles eliminado: no se copian asignaciones de perfiles
+        // Generar QR automáticamente para la mesa clonada
+        try {
+            $qrCode = $this->qrCodeService->generateForTable($newTable);
+            $newTable->load('qrCode');
+        } catch (\Exception $e) {
+            \Log::warning('Failed to generate QR code for cloned table', [
+                'table_id' => $newTable->id,
+                'error' => $e->getMessage()
+            ]);
+        }
 
         return response()->json([
             'message' => 'Mesa clonada exitosamente',
             'table' => $newTable,
+            'qr_generated' => isset($qrCode)
         ], 201);
     }
 }

@@ -8,6 +8,7 @@ use App\Models\WaiterProfile;
 use App\Models\AdminProfile;
 use App\Models\UserActiveRole;
 use App\Models\Table;
+use App\Services\QrCodeService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
@@ -193,40 +194,75 @@ class DatabaseSeeder extends Seeder
         echo "✅ Luis: Mozo en Café Central\n";
 
         // ========================================
-        // 3. CREAR ALGUNAS MESAS
+        // 3. CREAR ALGUNAS MESAS CON QRS
         // ========================================
 
+        $qrService = app(QrCodeService::class);
+
         // Mesas para La Plaza
+        echo "Generando mesas y QRs para La Plaza...\n";
         for ($i = 1; $i <= 5; $i++) {
-            Table::create([
+            $table = Table::create([
                 'number' => $i,
                 'name' => "Mesa $i",
                 'business_id' => $business1->id,
+                'capacity' => 4,
+                'location' => $i <= 2 ? 'Ventana' : 'Interior',
+                'status' => 'available',
                 'notifications_enabled' => true,
             ]);
+            
+            try {
+                $qrService->generateForTable($table);
+                echo "  ✅ Mesa $i con QR generado\n";
+            } catch (\Exception $e) {
+                echo "  ⚠️  Mesa $i creada, QR falló: " . $e->getMessage() . "\n";
+            }
         }
 
         // Mesas para Café Central
+        echo "Generando mesas y QRs para Café Central...\n";
         for ($i = 1; $i <= 3; $i++) {
-            Table::create([
+            $table = Table::create([
                 'number' => $i,
                 'name' => "Mesa $i",
                 'business_id' => $business2->id,
+                'capacity' => 2,
+                'location' => 'Principal',
+                'status' => 'available',
                 'notifications_enabled' => true,
             ]);
+            
+            try {
+                $qrService->generateForTable($table);
+                echo "  ✅ Mesa $i con QR generado\n";
+            } catch (\Exception $e) {
+                echo "  ⚠️  Mesa $i creada, QR falló: " . $e->getMessage() . "\n";
+            }
         }
 
         // Mesas para Pizza Express
+        echo "Generando mesas y QRs para Pizza Express...\n";
         for ($i = 1; $i <= 4; $i++) {
-            Table::create([
+            $table = Table::create([
                 'number' => $i,
                 'name' => "Mesa $i",
                 'business_id' => $business3->id,
+                'capacity' => 6,
+                'location' => 'Salón Principal',
+                'status' => 'available',
                 'notifications_enabled' => true,
             ]);
+            
+            try {
+                $qrService->generateForTable($table);
+                echo "  ✅ Mesa $i con QR generado\n";
+            } catch (\Exception $e) {
+                echo "  ⚠️  Mesa $i creada, QR falló: " . $e->getMessage() . "\n";
+            }
         }
 
-        echo "✅ Creadas mesas para todos los negocios\n";
+        echo "✅ Creadas mesas con QRs para todos los negocios\n";
 
         // ========================================
         // RESUMEN
