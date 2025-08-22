@@ -13,6 +13,19 @@ Route::get('/', function () {
     return view('welcome');
 });
 
+// Índice público de QR (informativo y para health/smoke)
+Route::get('/qr', function() {
+    return response()->json([
+        'ok' => true,
+        'message' => 'QR index',
+        'usage' => [
+            'web_page' => '/QR/{restaurantSlug}/{tableCode}',
+            'public_api' => '/api/qr/{restaurantSlug}/{tableCode}',
+        ],
+        'timestamp' => now()->toIso8601String(),
+    ]);
+});
+
 Route::get('/password/reset/{token}', function ($token) {
     $email = request()->query('email');
     
