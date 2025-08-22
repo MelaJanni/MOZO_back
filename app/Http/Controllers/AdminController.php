@@ -55,6 +55,26 @@ class AdminController extends Controller
             $activeBusinessId = optional($user->businessesAsAdmin()->first())->business_id;
         }
 
+        // Si aún no hay negocio activo, significa que es un admin nuevo
+        if (!$activeBusinessId) {
+            return response()->json([
+                'message' => 'No businesses found. Admin needs to create or join a business.',
+                'requires_business_setup' => true,
+                'active_business_id' => null,
+                'available_businesses' => [],
+                'business' => null,
+                'tables_count' => 0,
+                'menus_count' => 0,
+                'qr_codes_count' => 0,
+                'invitation_code' => null,
+                'invitation_url' => null,
+                'setup_options' => [
+                    'create_business' => true,
+                    'join_business' => true
+                ]
+            ], 200);
+        }
+
     // Eager load solo si las tablas existen para evitar 500 en entornos sin migraciones completas
     $with = [];
     if (Schema::hasTable('tables')) { $with[] = 'tables'; }
@@ -104,6 +124,66 @@ class AdminController extends Controller
             'invitation_url' => config('app.frontend_url') . '/join-business?code=' . $business->invitation_code,
             'available_businesses' => $availableBusinesses,
         ]);
+    }
+
+    public function createBusiness(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'address' => 'required|string|max:255',
+            'phone' => 'sometimes|string|max:20',
+            'email' => 'sometimes|email|max:255',
+            'description' => 'sometimes|string|max:500',
+        ]);
+
+        $user = $request->user();
+
+        // Crear el negocio
+        $business = Business::create([
+            'name' => $request->name,
+            'address' => $request->address,
+            'phone' => $request->phone,
+            'email' => $request->email,
+            'description' => $request->description,
+            'is_active' => true,
+        ]);
+
+        // Asignar al usuario como administrador del negocio
+        $user->businessesAsAdmin()->attach($business->id, [
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // Establecer este negocio como activo para el usuario
+        if (method_exists($user, 'activeRoles')) {
+            $user->activeRoles()->updateOrCreate(
+                ['user_id' => $user->id, 'business_id' => $business->id],
+                [
+                    'active_role' => 'admin',
+                    'switched_at' => now(),
+                ]
+            );
+        }
+
+        return response()->json([
+            'message' => 'Negocio creado exitosamente',
+            'business' => [
+                'id' => $business->id,
+                'name' => $business->name,
+                'address' => $business->address,
+                'phone' => $business->phone,
+                'email' => $business->email,
+                'description' => $business->description,
+                'invitation_code' => $business->invitation_code,
+                'slug' => $business->slug,
+                'is_active' => $business->is_active,
+                'created_at' => $business->created_at,
+                'updated_at' => $business->updated_at,
+            ],
+            'invitation_url' => config('app.frontend_url') . '/join-business?code=' . $business->invitation_code,
+            'admin_assigned' => true,
+            'active_business_set' => true,
+        ], 201);
     }
 
     public function regenerateInvitationCode(Request $request)
