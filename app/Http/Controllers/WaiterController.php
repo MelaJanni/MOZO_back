@@ -907,11 +907,13 @@ class WaiterController extends Controller
                     'message' => 'Esta mesa ya está asignada a otro mozo'
                 ], 422);
             }
-
-            $table->update([
+            $updateData = [
                 'active_waiter_id' => $waiter->id,
-                'waiter_assigned_at' => now()
-            ]);
+            ];
+            if (Schema::hasColumn('tables', 'waiter_assigned_at')) {
+                $updateData['waiter_assigned_at'] = now();
+            }
+            $table->update($updateData);
 
             Log::info('Table activated', [
                 'table_id' => $table->id,
@@ -969,11 +971,13 @@ class WaiterController extends Controller
                     'message' => 'No puedes desactivar una mesa que no tienes asignada'
                 ], 422);
             }
-
-            $table->update([
+            $updateData = [
                 'active_waiter_id' => null,
-                'waiter_assigned_at' => null
-            ]);
+            ];
+            if (Schema::hasColumn('tables', 'waiter_assigned_at')) {
+                $updateData['waiter_assigned_at'] = null;
+            }
+            $table->update($updateData);
 
             Log::info('Table deactivated', [
                 'table_id' => $table->id,
@@ -1354,6 +1358,16 @@ class WaiterController extends Controller
         $waiter = Auth::user();
         
         try {
+            // Si la tabla ip_blocks no existe (producción parcial), devolver lista vacía
+            if (!Schema::hasTable('ip_blocks')) {
+                return response()->json([
+                    'success' => true,
+                    'blocked_ips' => [],
+                    'count' => 0,
+                    'active_count' => 0,
+                    'message' => 'Funcionalidad de bloqueo de IPs no instalada'
+                ]);
+            }
             // AUTO-CORRECCIÓN: Asegurar business_id
             $businessId = $this->ensureBusinessId($waiter);
             
@@ -1458,10 +1472,13 @@ class WaiterController extends Controller
                     continue;
                 }
 
-                $table->update([
+                $updateData = [
                     'active_waiter_id' => $waiter->id,
-                    'waiter_assigned_at' => now()
-                ]);
+                ];
+                if (Schema::hasColumn('tables', 'waiter_assigned_at')) {
+                    $updateData['waiter_assigned_at'] = now();
+                }
+                $table->update($updateData);
 
                 $results[] = [
                     'table_id' => $table->id,
@@ -1544,10 +1561,13 @@ class WaiterController extends Controller
             }
 
             foreach ($tables as $table) {
-                $table->update([
+                $updateData = [
                     'active_waiter_id' => null,
-                    'waiter_assigned_at' => null
-                ]);
+                ];
+                if (Schema::hasColumn('tables', 'waiter_assigned_at')) {
+                    $updateData['waiter_assigned_at'] = null;
+                }
+                $table->update($updateData);
 
                 $results[] = [
                     'table_id' => $table->id,
