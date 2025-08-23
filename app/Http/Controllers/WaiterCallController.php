@@ -1994,7 +1994,7 @@ class WaiterCallController extends Controller
                 'position' => 'waiter',
                 'status' => 'confirmed',
                 'hire_date' => now(),
-                'phone' => optional($waiter->profile)->phone,
+                'phone' => optional($waiter->waiterProfile)->phone,
             ]);
 
             // Si es su primer negocio, hacerlo activo
