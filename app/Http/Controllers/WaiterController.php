@@ -1157,6 +1157,25 @@ class WaiterController extends Controller
             }
 
             if ($call->status !== 'pending') {
+                // Idempotencia y resincronización
+                try {
+                    $call->loadMissing(['table','waiter']);
+                    if ($call->status === 'acknowledged') {
+                        $this->unifiedFirebaseService->writeCall($call, 'acknowledged');
+                        return response()->json([
+                            'success' => true,
+                            'message' => 'Llamada ya estaba reconocida (resincronizada)',
+                            'call' => [
+                                'id' => $call->id,
+                                'status' => $call->status,
+                                'acknowledged_at' => $call->acknowledged_at
+                            ]
+                        ]);
+                    }
+                    if ($call->status === 'completed') {
+                        $this->unifiedFirebaseService->removeCall($call);
+                    }
+                } catch (\Throwable $t) {}
                 return response()->json([
                     'success' => false,
                     'message' => 'Llamada ya procesada',
@@ -1233,6 +1252,20 @@ class WaiterController extends Controller
             }
 
             if (!in_array($call->status, ['pending','acknowledged'])) {
+                // Idempotencia y resincronización: si ya estaba completada, asegurar limpieza en Firebase
+                try {
+                    $call->loadMissing(['table','waiter']);
+                    if ($call->status === 'completed') {
+                        $this->unifiedFirebaseService->removeCall($call);
+                        return response()->json([
+                            'success' => true,
+                            'message' => 'Llamada ya estaba completada (resincronizada)'
+                        ]);
+                    }
+                    if ($call->status === 'acknowledged') {
+                        // Permitir completar aunque esté acknowledged (debería entrar al flujo normal arriba)
+                    }
+                } catch (\Throwable $t) {}
                 return response()->json([
                     'success' => false,
                     'message' => 'Llamada ya procesada',

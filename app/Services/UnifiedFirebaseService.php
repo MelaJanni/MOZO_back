@@ -148,6 +148,38 @@ class UnifiedFirebaseService
     }
 
     /**
+     * LEGACY SHIM: writeCallStatus(tableId, data)
+     * Mantiene compatibilidad con controladores que aún llamen a este método.
+     * No tiene toda la información de la llamada, por lo que solo actualiza
+     * un pequeño índice por mesa y registra el evento.
+     */
+    public function writeCallStatus($tableId, array $data): bool
+    {
+        try {
+            $payload = [
+                'status' => $data['status'] ?? 'unknown',
+                'acknowledged_at' => $data['acknowledged_at'] ?? null,
+                'completed_at' => $data['completed_at'] ?? null,
+                'last_update' => now()->timestamp * 1000,
+                'source' => 'legacy_shim'
+            ];
+            // Guardar estado minimal por mesa
+            $this->writeToPath("tables/{$tableId}/stats", $payload);
+            \Log::notice('UnifiedFirebaseService::writeCallStatus called (legacy shim)', [
+                'table_id' => $tableId,
+                'data' => $payload
+            ]);
+            return true;
+        } catch (\Throwable $e) {
+            \Log::warning('Legacy writeCallStatus failed', [
+                'table_id' => $tableId,
+                'error' => $e->getMessage()
+            ]);
+            return false;
+        }
+    }
+
+    /**
      * 📊 ACTUALIZAR ÍNDICE DE MOZO
      */
     private function updateWaiterIndex(WaiterCall $call): string
