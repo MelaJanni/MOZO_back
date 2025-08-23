@@ -1956,29 +1956,38 @@ class WaiterCallController extends Controller
                 ], 404);
             }
 
-            // Verificar si ya está registrado en este negocio
-            if ($waiter->businesses()->where('businesses.id', $business->id)->exists()) {
+            // Verificar si ya está registrado en este negocio como waiter
+            $existingStaff = \App\Models\Staff::where('user_id', $waiter->id)
+                ->where('business_id', $business->id)
+                ->first();
+            
+            if ($existingStaff) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Ya estás registrado en este negocio',
                     'business' => [
                         'id' => $business->id,
                         'name' => $business->name,
-                        'code' => $business->code
+                        'code' => $business->invitation_code
                     ]
                 ], 409);
             }
 
-            // Registrar al mozo en el negocio
-            $waiter->businesses()->attach($business->id, [
-                'joined_at' => now(),
-                'status' => 'active',
-                'role' => 'waiter'
+            // Registrar al mozo en el negocio a través de la tabla staff
+            \App\Models\Staff::create([
+                'user_id' => $waiter->id,
+                'business_id' => $business->id,
+                'name' => $waiter->name,
+                'email' => $waiter->email,
+                'position' => 'waiter',
+                'status' => 'confirmed',
+                'hire_date' => now(),
+                'phone' => $waiter->profile->phone ?? null,
             ]);
 
             // Si es su primer negocio, hacerlo activo
-            if (!$waiter->active_business_id) {
-                $waiter->update(['active_business_id' => $business->id]);
+            if (!$waiter->business_id) {
+                $waiter->update(['business_id' => $business->id]);
             }
 
             Log::info('Waiter joined new business', [
@@ -1995,11 +2004,11 @@ class WaiterCallController extends Controller
                 'business' => [
                     'id' => $business->id,
                     'name' => $business->name,
-                    'code' => $business->code,
+                    'code' => $business->invitation_code,
                     'address' => $business->address,
                     'phone' => $business->phone,
                     'logo' => $business->logo ? asset('storage/' . $business->logo) : null,
-                    'is_active' => $business->id === $waiter->active_business_id
+                    'is_active' => $business->id === $waiter->business_id
                 ],
                 'membership' => [
                     'joined_at' => now(),
