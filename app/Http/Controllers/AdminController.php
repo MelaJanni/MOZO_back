@@ -612,7 +612,7 @@ class AdminController extends Controller
                 
                 // Agregar negocios asociados
                 if ($staffMember->user) {
-                    $data['associated_businesses'] = $staffMember->user->businesses->map(function($business) {
+                    $data['associated_businesses'] = $staffMember->user->getAllBusinesses()->map(function($business) {
                         return [
                             'id' => $business->id,
                             'name' => $business->name,

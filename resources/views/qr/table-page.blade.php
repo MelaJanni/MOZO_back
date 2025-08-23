@@ -10,6 +10,7 @@
         <meta http-equiv="Expires" content="0" />
     {{-- IMPORTANTE: Para asegurar que nginx/apache no cachee este CSS, establecer en server:
          Cache-Control: no-store para /live-scss/ o desactivar proxy cache. --}}
+         <link rel="icon" type="image/x-icon" href="{{ asset('images/favicon.ico') }}">
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

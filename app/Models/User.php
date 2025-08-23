@@ -170,13 +170,6 @@ class User extends Authenticatable
         return $adminBusinesses->merge($waiterBusinesses)->unique('id');
     }
 
-    /**
-     * Alias for getAllBusinesses() for compatibility
-     */
-    public function businesses()
-    {
-        return $this->getAllBusinesses();
-    }
 
     /**
      * Get user profile (admin or waiter)
