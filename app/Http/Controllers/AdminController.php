@@ -597,7 +597,7 @@ class AdminController extends Controller
             $query->where('status', $request->status);
         }
 
-    $staff = $query->with(['user.profile', 'reviews'])
+    $staff = $query->with(['user.adminProfile', 'user.waiterProfile', 'reviews'])
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -697,9 +697,9 @@ class AdminController extends Controller
     public function inviteStaff(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'sometimes|string|max:255',
             'email' => 'required|email|max:255|unique:staff,email',
-            'position' => 'required|string|max:255',
+            'position' => 'sometimes|string|max:255',
             'phone' => 'sometimes|string|max:20',
             'birth_date' => 'sometimes|date',
             'height' => 'sometimes|numeric|min:0',
