@@ -711,4 +711,79 @@ class UserProfileController extends Controller
             ]
         ], 200, [], JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
     }
+
+    /**
+     * 🧾 HISTORIAL LABORAL DEL USUARIO (negocios y roles)
+     * GET /api/profile/work-history
+     */
+    public function workHistory(Request $request)
+    {
+        try {
+            $user = Auth::user();
+
+            // Negocios como mozo con metadatos del pivot
+            $waiterBusinesses = $user->businessesAsWaiter()
+                ->withPivot(['employment_status', 'employment_type', 'hourly_rate', 'work_schedule', 'hired_at', 'last_shift_at'])
+                ->get()
+                ->map(function ($business) {
+                    return [
+                        'business' => [
+                            'id' => $business->id,
+                            'name' => $business->name,
+                            'slug' => $business->slug,
+                            'is_active' => (bool)$business->is_active,
+                        ],
+                        'role' => 'waiter',
+                        'employment_status' => $business->pivot->employment_status ?? null,
+                        'employment_type' => $business->pivot->employment_type ?? null,
+                        'hourly_rate' => $business->pivot->hourly_rate !== null ? (float)$business->pivot->hourly_rate : null,
+                        'work_schedule' => $business->pivot->work_schedule ?? null,
+                        'joined_at' => $business->pivot->hired_at ? (string)$business->pivot->hired_at : null,
+                        'last_activity_at' => $business->pivot->last_shift_at ? (string)$business->pivot->last_shift_at : null,
+                    ];
+                });
+
+            // Negocios como admin
+            $adminBusinesses = $user->businessesAsAdmin()
+                ->withPivot(['permission_level', 'permissions', 'is_active', 'joined_at'])
+                ->get()
+                ->map(function ($business) {
+                    return [
+                        'business' => [
+                            'id' => $business->id,
+                            'name' => $business->name,
+                            'slug' => $business->slug,
+                            'is_active' => (bool)$business->is_active,
+                        ],
+                        'role' => 'admin',
+                        'permission_level' => $business->pivot->permission_level ?? null,
+                        'permissions' => $business->pivot->permissions ? json_decode($business->pivot->permissions, true) : null,
+                        'joined_at' => $business->pivot->joined_at ? (string)$business->pivot->joined_at : null,
+                        'last_activity_at' => $business->updated_at ? (string)$business->updated_at : null,
+                        'is_active' => (bool)($business->pivot->is_active ?? true)
+                    ];
+                });
+
+            // Unir y ordenar por actividad más reciente
+            $history = $adminBusinesses->merge($waiterBusinesses)
+                ->sortByDesc(function ($item) {
+                    return $item['last_activity_at'] ?? $item['joined_at'] ?? null;
+                })
+                ->values();
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'total' => $history->count(),
+                    'items' => $history,
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener el historial laboral',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

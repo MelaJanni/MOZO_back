@@ -143,6 +143,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Alias limpio solicitado por FE: /api/profile/completeness
     Route::get('/profile/completeness', [UserProfileController::class, 'getProfileCompleteness']);
+    // Alias limpio: /api/profile/work-history
+    Route::get('/profile/work-history', [UserProfileController::class, 'workHistory']);
 
     // 📋 FUNCIONES ADICIONALES DE PERFIL (legacy eliminadas)
 
