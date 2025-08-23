@@ -35,9 +35,9 @@ class UserProfileController extends Controller
                     'id' => $profile->id,
                     'type' => $user->isAdmin() ? 'admin' : 'waiter',
                     'user_id' => $user->id,
-                    'avatar' => $profile->avatar,
-                    'avatar_url' => $profile->avatar_url,
+                    'avatar' => $profile->avatar_url,
                     'display_name' => $profile->display_name,
+                    'birth_date' => $profile->birth_date ? $profile->birth_date->format('d-m-Y') : null,
                     'is_complete' => $profile->isComplete(),
                     'profile_data' => $profile->toArray()
                 ]
