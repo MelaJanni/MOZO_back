@@ -127,6 +127,11 @@ class UserProfileController extends Controller
                 $filteredData
             );
 
+            $profileFresh = $profile->fresh();
+            $profileArray = $profileFresh->toArray();
+            if (isset($profileFresh->birth_date) && $profileFresh->birth_date) {
+                $profileArray['birth_date'] = $profileFresh->birth_date->format('d-m-Y');
+            }
             return response()->json([
                 'success' => true,
                 'message' => 'Perfil de mozo actualizado exitosamente',
@@ -135,7 +140,7 @@ class UserProfileController extends Controller
                     'avatar_url' => $profile->avatar_url,
                     'display_name' => $profile->display_name,
                     'is_complete' => $profile->isComplete(),
-                    'profile_data' => $profile->fresh()->toArray()
+                    'profile_data' => $profileArray
                 ]
             ]);
 
@@ -211,6 +216,11 @@ class UserProfileController extends Controller
             // Actualizar última actividad
             $profile->updateLastActive();
 
+            $profileFresh = $profile->fresh();
+            $profileArray = $profileFresh->toArray();
+            if (isset($profileFresh->birth_date) && $profileFresh->birth_date) {
+                $profileArray['birth_date'] = $profileFresh->birth_date->format('d-m-Y');
+            }
             return response()->json([
                 'success' => true,
                 'message' => 'Perfil de administrador actualizado exitosamente',
@@ -219,7 +229,7 @@ class UserProfileController extends Controller
                     'avatar_url' => $profile->avatar_url,
                     'display_name' => $profile->display_name,
                     'is_complete' => $profile->isComplete(),
-                    'profile_data' => $profile->fresh()->toArray()
+                    'profile_data' => $profileArray
                 ]
             ]);
 
