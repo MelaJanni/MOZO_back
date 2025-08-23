@@ -13,9 +13,19 @@ use App\Models\WorkHistory;
 
 class UserProfileController extends Controller
 {
-    private function formatDate(?\Carbon\Carbon $date): ?string
+    private function formatDate($date): ?string
     {
-        return $date ? $date->format('d-m-Y') : null;
+        if (!$date) {
+            return null;
+        }
+        try {
+            if ($date instanceof \Carbon\Carbon) {
+                return $date->format('d-m-Y');
+            }
+            return \Carbon\Carbon::parse($date)->format('d-m-Y');
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
     /**
      * 👤 OBTENER PERFIL ACTIVO DEL USUARIO
