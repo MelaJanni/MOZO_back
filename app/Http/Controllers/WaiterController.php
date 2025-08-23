@@ -1317,6 +1317,57 @@ class WaiterController extends Controller
     }
 
     /**
+     * Re-sincronizar una llamada con Firebase (forzar estado actual)
+     */
+    public function resyncCall(Request $request, $callId): JsonResponse
+    {
+        $waiter = Auth::user();
+        try {
+            $call = WaiterCall::with(['table','waiter'])->find($callId);
+            if (!$call) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Llamada no encontrada'
+                ], 404);
+            }
+
+            // Autorización similar a acknowledge/complete
+            $isAssignedWaiter = ((int)$call->waiter_id === (int)$waiter->id);
+            $isCurrentTableWaiter = ((int)($call->table->active_waiter_id ?? 0) === (int)$waiter->id);
+            if (!($isAssignedWaiter || $isCurrentTableWaiter)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No autorizado para resincronizar esta llamada'
+                ], 403);
+            }
+
+            // Elegir acción según estado actual
+            if ($call->status === 'completed') {
+                $this->unifiedFirebaseService->removeCall($call);
+            } else {
+                $event = $call->status === 'acknowledged' ? 'acknowledged' : 'created';
+                $this->unifiedFirebaseService->writeCall($call, $event);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Re-sincronizado con Firebase',
+                'status' => $call->status
+            ]);
+
+        } catch (\Throwable $t) {
+            Log::error('Error resyncing call', [
+                'call_id' => $callId,
+                'error' => $t->getMessage()
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error en resincronización'
+            ], 500);
+        }
+    }
+
+    /**
      * Crear nueva llamada (desde QR)
      */
     public function createCall(Request $request, Table $table): JsonResponse
