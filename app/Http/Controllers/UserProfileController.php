@@ -33,11 +33,13 @@ class UserProfileController extends Controller
             if (isset($profile->birth_date) && $profile->birth_date) {
                 $profileArray['birth_date'] = $profile->birth_date->format('d-m-Y');
             }
-            return response()->json([
+        // Detectar tipo según el perfil activo (no solo por rol del usuario)
+        $activeType = $profile instanceof WaiterProfile ? 'waiter' : 'admin';
+        return response()->json([
                 'success' => true,
                 'data' => [
                     'id' => $profile->id,
-                    'type' => $user->isAdmin() ? 'admin' : 'waiter',
+            'type' => $activeType,
                     'user_id' => $user->id,
                     'avatar' => $profile->avatar_url,
                     'display_name' => $profile->display_name,
@@ -70,7 +72,7 @@ class UserProfileController extends Controller
             'weight' => 'nullable|integer|between:30,200',
             'gender' => 'nullable|in:masculino,femenino,otro',
             'experience_years' => 'nullable|integer|between:0,50',
-            'employment_type' => 'nullable|in:full-time,part-time,hourly,weekends-only',
+            'employment_type' => 'nullable|string|max:50',
             'current_schedule' => 'nullable',
             'current_location' => 'nullable|string|max:255',
             'latitude' => 'nullable|numeric|between:-90,90',
@@ -116,6 +118,30 @@ class UserProfileController extends Controller
                 $data['avatar'] = $avatarPath;
             }
 
+            // Normalizar employment_type a valores canónicos esperados por la BD
+            if (array_key_exists('employment_type', $data)) {
+                $raw = $data['employment_type'];
+                if ($raw !== null && $raw !== '') {
+                    $normalized = strtolower(trim((string)$raw));
+                    // Unificar espacios y guiones a underscore
+                    $normalized = str_replace([' ', '-'], '_', $normalized);
+                    // Sinónimos comunes
+                    if ($normalized === 'freelance') {
+                        $normalized = 'freelancer';
+                    }
+                    // Valores permitidos en la BD
+                    $allowedEnums = ['full_time', 'part_time', 'hourly', 'weekends_only', 'freelancer'];
+                    if (in_array($normalized, $allowedEnums, true)) {
+                        $data['employment_type'] = $normalized;
+                    } else {
+                        // Si no es válido, lo ponemos en null para evitar error de truncado
+                        $data['employment_type'] = null;
+                    }
+                } else {
+                    $data['employment_type'] = null;
+                }
+            }
+
             // Filtrar solo los campos permitidos en WaiterProfile para evitar errores de business_id
             $allowedFields = [
                 'avatar', 'display_name', 'bio', 'phone', 'birth_date', 'height', 'weight', 
@@ -136,14 +162,17 @@ class UserProfileController extends Controller
             if (isset($profileFresh->birth_date) && $profileFresh->birth_date) {
                 $profileArray['birth_date'] = $profileFresh->birth_date->format('d-m-Y');
             }
-            return response()->json([
+        return response()->json([
                 'success' => true,
                 'message' => 'Perfil de mozo actualizado exitosamente',
                 'data' => [
-                    'id' => $profile->id,
-                    'avatar_url' => $profile->avatar_url,
-                    'display_name' => $profile->display_name,
-                    'is_complete' => $profile->isComplete(),
+            'id' => $profile->id,
+            'type' => 'waiter',
+            'user_id' => $user->id,
+            'avatar' => $profile->avatar_url,
+            'display_name' => $profile->display_name,
+            'birth_date' => $profile->birth_date ? $profile->birth_date->format('d-m-Y') : null,
+            'is_complete' => $profile->isComplete(),
                     'profile_data' => $profileArray
                 ]
             ]);
@@ -402,8 +431,9 @@ class UserProfileController extends Controller
             'total_reviews' => $profile->total_reviews
         ];
 
-        // Definir campos por rol
-        if ($user->isWaiter()) {
+    // Definir campos por tipo de perfil activo
+    $isWaiterProfile = $profile instanceof WaiterProfile;
+    if ($isWaiterProfile) {
             $fieldCategories = [
                 'basic_info' => [
                     'name' => 'Información básica',
@@ -502,7 +532,7 @@ class UserProfileController extends Controller
                     ]
                 ]
             ];
-        } else {
+    } else {
             // Admin fields
             $fieldCategories = [
                 'basic_info' => [
@@ -634,7 +664,7 @@ class UserProfileController extends Controller
 
         // Generar próximos pasos según el rol
         $nextSteps = [];
-        if ($user->isWaiter()) {
+    if ($isWaiterProfile) {
             $highPriorityMissing = array_filter($missingFields, fn($f) => $f['priority'] === 'high' && $f['required']);
             if (count($highPriorityMissing) > 0) {
                 $nextSteps[] = 'Completa tu información laboral (experiencia, tipo de empleo, horario)';
@@ -660,11 +690,13 @@ class UserProfileController extends Controller
             $nextSteps[] = 'Tu perfil está completo. Considera agregar información adicional para destacar más.';
         }
 
-        return response()->json([
+    // Tipo basado en el perfil activo
+    $activeType = $profile instanceof WaiterProfile ? 'waiter' : 'admin';
+    return response()->json([
             'success' => true,
             'data' => [
                 'id' => $profile->id,
-                'type' => $user->isAdmin() ? 'admin' : 'waiter',
+        'type' => $activeType,
                 'user_id' => $user->id,
                 'avatar' => $profile->avatar_url,
                 'display_name' => $profile->display_name,

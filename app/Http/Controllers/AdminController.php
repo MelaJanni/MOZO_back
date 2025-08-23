@@ -822,55 +822,88 @@ class AdminController extends Controller
 
     public function updateSettings(Request $request)
     {
+        // Validar tanto en nivel raíz como anidado bajo 'business' o 'settings'
         $request->validate([
             'name' => 'sometimes|string|max:255',
+            'business.name' => 'sometimes|string|max:255',
+            'settings.name' => 'sometimes|string|max:255',
+
             'address' => 'sometimes|string|max:255',
+            'business.address' => 'sometimes|string|max:255',
+            'settings.address' => 'sometimes|string|max:255',
+
             'phone' => 'sometimes|string|max:20',
+            'business.phone' => 'sometimes|string|max:20',
+            'settings.phone' => 'sometimes|string|max:20',
+
             'email' => 'sometimes|email|max:255',
+            'business.email' => 'sometimes|email|max:255',
+            'settings.email' => 'sometimes|email|max:255',
+
+            'description' => 'sometimes|string|max:500',
+            'business.description' => 'sometimes|string|max:500',
+            'settings.description' => 'sometimes|string|max:500',
+
             'logo' => 'sometimes|file|image|max:2048',
+            'logo_base64' => 'sometimes|string',
+
             'working_hours' => 'sometimes|array',
+            'settings.working_hours' => 'sometimes|array',
+
             'notification_preferences' => 'sometimes|array',
+            'settings.notification_preferences' => 'sometimes|array',
         ]);
-        
+
         $user = $request->user();
         $businessId = $this->activeBusinessId($user, 'admin');
         $business = Business::findOrFail($businessId);
-        
-        if ($request->has('name')) {
-            $business->name = $request->name;
+
+        // Helper para extraer valor desde raíz, business.* o settings.*
+        $getVal = function (string $key) use ($request) {
+            if ($request->has($key)) return $request->input($key);
+            if ($request->has("business.$key")) return $request->input("business.$key");
+            if ($request->has("settings.$key")) return $request->input("settings.$key");
+            return null;
+        };
+
+        foreach (['name', 'address', 'phone', 'email', 'description'] as $field) {
+            $val = $getVal($field);
+            if ($val !== null) {
+                $business->$field = $val;
+            }
         }
-        
-        if ($request->has('address')) {
-            $business->address = $request->address;
-        }
-        
-        if ($request->has('phone')) {
-            $business->phone = $request->phone;
-        }
-        
-        if ($request->has('email')) {
-            $business->email = $request->email;
-        }
-        
+
+        // Logo por archivo
         if ($request->hasFile('logo')) {
             $path = $request->file('logo')->store('logos', 'public');
             $business->logo = $path;
         }
-        
-        if ($request->has('working_hours')) {
-            $business->working_hours = $request->working_hours;
+        // Logo por base64
+        if ($request->filled('logo_base64')) {
+            try {
+                $business->logo = $this->storeBase64Image($request->input('logo_base64'), $business->id);
+            } catch (\Throwable $e) {
+                // Ignorar error de logo base64 inválido; no bloquea el resto de cambios
+            }
         }
-        
-        if ($request->has('notification_preferences')) {
-            $business->notification_preferences = $request->notification_preferences;
+
+        // Campos JSON de configuración
+        $wh = $getVal('working_hours');
+        if ($wh !== null) {
+            $business->working_hours = $wh;
         }
-        
+        $np = $getVal('notification_preferences');
+        if ($np !== null) {
+            $business->notification_preferences = $np;
+        }
+
         $business->save();
-        
+        $business->refresh();
+
         return response()->json([
             'message' => 'Configuración actualizada exitosamente',
             'business' => $business,
-        ]);
+        ], 200, [], JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
     }
 
     private function storeBase64Image(string $base64Image, int $businessId): string
