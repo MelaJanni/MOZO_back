@@ -394,16 +394,25 @@ class AdminController extends Controller
     public function removeStaff($staffId)
     {
         $user = Auth::user();
-        
+        $businessId = $this->activeBusinessId($user, 'admin');
+
         $staff = Staff::where('id', $staffId)
-            ->where('business_id', $user->business_id)
-            ->firstOrFail();
-        
+            ->where('business_id', $businessId)
+            ->first();
+
+        if (!$staff) {
+            return response()->json([
+                'message' => 'El miembro de personal no existe o no pertenece a tu negocio activo',
+                'staff_id' => (int)$staffId,
+                'active_business_id' => (int)$businessId,
+            ], 404);
+        }
+
         $staff->delete();
-        
+
         return response()->json([
             'message' => 'Personal eliminado exitosamente',
-            'staff_id' => $staffId
+            'staff_id' => (int)$staffId
         ]);
     }
     
