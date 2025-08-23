@@ -30,9 +30,9 @@ class UnifiedFirebaseService
                 // Información básica
                 'id' => (string)$call->id,
                 'table_id' => (string)$call->table_id,
-                'table_number' => (int)$call->table->number,
+                'table_number' => (int)($call->table?->number ?? 0),
                 'waiter_id' => (string)$call->waiter_id,
-                'waiter_name' => $call->waiter->name ?? 'Mozo',
+                'waiter_name' => $call->waiter?->name ?? 'Mozo',
                 
                 // Estados y mensajes
                 'status' => $call->status,
@@ -47,7 +47,7 @@ class UnifiedFirebaseService
                 // Metadatos útiles
                 'response_time_seconds' => $call->response_time,
                 'source' => $call->metadata['source'] ?? 'qr_page',
-                'business_id' => (string)$call->table->business_id,
+                'business_id' => (string)($call->table?->business_id ?? ''),
                 
                 // 🛡️ Información de seguridad y tracking
                 'client_info' => [
@@ -59,16 +59,16 @@ class UnifiedFirebaseService
                 
                 // Información completa de mesa
                 'table' => [
-                    'id' => (string)$call->table->id,
-                    'number' => (int)$call->table->number,
-                    'name' => $call->table->name ?? "Mesa {$call->table->number}",
-                    'notifications_enabled' => $call->table->notifications_enabled ?? true
+                    'id' => (string)($call->table?->id ?? ''),
+                    'number' => (int)($call->table?->number ?? 0),
+                    'name' => $call->table?->name ?? (isset($call->table) ? ("Mesa ".($call->table->number ?? '')) : 'Mesa'),
+                    'notifications_enabled' => $call->table?->notifications_enabled ?? true
                 ],
                 
                 // Estado del mozo
                 'waiter' => [
                     'id' => (string)$call->waiter_id,
-                    'name' => $call->waiter->name ?? 'Mozo',
+                    'name' => $call->waiter?->name ?? 'Mozo',
                     'is_online' => true, // Podemos implementar esto después
                     'last_seen' => now()->timestamp * 1000
                 ],
@@ -442,7 +442,7 @@ class UnifiedFirebaseService
                 'type' => self::EVENT_TYPE_MAP[$eventType],
                 'call_id' => (string)$call->id,
                 'table_id' => (string)$call->table_id,
-                'table_number' => (string)$call->table->number,
+                'table_number' => (string)($call->table?->number ?? ''),
                 'waiter_id' => (string)$call->waiter_id,
                 'urgency' => $call->metadata['urgency'] ?? 'normal',
                 'status' => $call->status,
@@ -453,13 +453,13 @@ class UnifiedFirebaseService
             // Mensajes diferenciados
             switch ($eventType) {
                 case 'created':
-                    $body = $call->message ?: "Mesa {$call->table->number} solicita atención";
+                    $body = $call->message ?: "Mesa ".($call->table?->number ?? '')." solicita atención";
                     break;
                 case 'acknowledged':
-                    $body = "Mesa {$call->table->number} reconocida";
+                    $body = "Mesa ".($call->table?->number ?? '')." reconocida";
                     break;
                 case 'completed':
-                    $body = "Mesa {$call->table->number} completada";
+                    $body = "Mesa ".($call->table?->number ?? '')." completada";
                     break;
                 default:
                     $body = $call->message ?: 'Actualización de llamada';
@@ -467,7 +467,7 @@ class UnifiedFirebaseService
 
             $firebaseService->sendUnifiedNotificationToTokens(
                 $waiterTokens,
-                (int)$call->table->number,
+                (int)($call->table?->number ?? 0),
                 $body,
                 $data
             );

@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use App\Models\Business;
 use App\Models\Table;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class QrWebController extends Controller
 {
@@ -714,7 +716,19 @@ startxref
 
             // 🛡️ Verificar si la IP está bloqueada SILENCIOSAMENTE
             $clientIp = $request->ip();
-            if (\App\Models\IpBlock::isIpBlocked($clientIp, $business->id)) {
+            $isBlocked = false;
+            try {
+                if (Schema::hasTable('ip_blocks')) {
+                    $isBlocked = \App\Models\IpBlock::isIpBlocked($clientIp, $business->id);
+                } else {
+                    Log::notice('Skipping IP block check: ip_blocks table missing');
+                }
+            } catch (\Throwable $t) {
+                Log::warning('IP block check failed, continuing without blocking', [
+                    'error' => $t->getMessage()
+                ]);
+            }
+            if ($isBlocked) {
                 // Respuesta de "éxito" para no alertar al spammer
                 $fakeMessage = 'Mozo llamado exitosamente. Esperando confirmación...';
                 if ($request->expectsJson() || $request->ajax()) {
@@ -755,10 +769,21 @@ startxref
                 return redirect()->back()->with('error', $errorMessage);
             }
 
-            // Verificar si la mesa está silenciada
-            $activeSilence = \App\Models\TableSilence::where('table_id', $table->id)
-                ->active()
-                ->first();
+            // Verificar si la mesa está silenciada (si existe la tabla)
+            $activeSilence = null;
+            try {
+                if (Schema::hasTable('table_silences')) {
+                    $activeSilence = \App\Models\TableSilence::where('table_id', $table->id)
+                        ->active()
+                        ->first();
+                } else {
+                    Log::notice('Skipping table silence check: table_silences table missing');
+                }
+            } catch (\Throwable $t) {
+                Log::warning('Table silence check failed, continuing without silencing', [
+                    'error' => $t->getMessage()
+                ]);
+            }
 
             if ($activeSilence && $activeSilence->isActive()) {
                 $message = 'Solicitud procesada exitosamente.';
@@ -768,12 +793,19 @@ startxref
                 return redirect()->back()->with('success', $message);
             }
 
+            // Normalizar mensaje (evitar vacío o solo espacios)
+            $rawMessage = (string)$request->input('message', '');
+            $normalizedMessage = trim($rawMessage);
+            if ($normalizedMessage === '') {
+                $normalizedMessage = 'Llamada desde mesa ' . $table->number;
+            }
+
             // Crear la llamada usando el sistema unificado
             $call = \App\Models\WaiterCall::create([
                 'table_id' => $table->id,
                 'waiter_id' => $table->active_waiter_id,
                 'status' => 'pending',
-                'message' => $request->input('message', 'Llamada desde mesa ' . $table->number),
+                'message' => $normalizedMessage,
                 'called_at' => now(),
                 'metadata' => [
                     'urgency' => 'high', // QR calls are always high priority

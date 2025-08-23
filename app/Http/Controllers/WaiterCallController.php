@@ -156,12 +156,19 @@ class WaiterCallController extends Controller
                 ], 409);
             }
 
+            // Normalizar mensaje
+            $rawMessage = (string)$request->input('message', '');
+            $normalizedMessage = trim($rawMessage);
+            if ($normalizedMessage === '') {
+                $normalizedMessage = 'Llamada desde mesa ' . $table->number;
+            }
+
             // Crear la llamada
             $call = WaiterCall::create([
                 'table_id' => $table->id,
                 'waiter_id' => $table->active_waiter_id,
                 'status' => 'pending',
-                'message' => $request->input('message', 'Llamada desde mesa ' . $table->number),
+                'message' => $normalizedMessage,
                 'called_at' => now(),
                 'metadata' => [
                     'client_info' => $request->input('client_info'),
