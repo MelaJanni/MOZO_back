@@ -1750,10 +1750,14 @@ class WaiterCallController extends Controller
         $waiter = Auth::user();
         
         try {
-            // Versión simplificada - obtener negocios básicos sin pivot
-            $businesses = $waiter->businesses()
-                ->get()
-                ->map(function ($business) use ($waiter) {
+            // Obtener negocios donde este usuario es staff (waiter)
+            $staffRecords = \App\Models\Staff::where('user_id', $waiter->id)
+                ->where('status', 'confirmed')
+                ->with('business')
+                ->get();
+
+            $businesses = $staffRecords->map(function ($staffRecord) use ($waiter) {
+                $business = $staffRecord->business;
                     // Estadísticas básicas sin consultas complejas
                     $totalTables = $business->tables()->count();
                     $assignedToMe = $business->tables()->where('active_waiter_id', $waiter->id)->count();
@@ -1770,11 +1774,11 @@ class WaiterCallController extends Controller
                     return [
                         'id' => $business->id,
                         'name' => $business->name,
-                        'code' => $business->code,
+                        'code' => $business->invitation_code,
                         'address' => $business->address,
                         'phone' => $business->phone,
                         'logo' => $business->logo ? asset('storage/' . $business->logo) : null,
-                        'is_active' => $business->id === $waiter->active_business_id,
+                        'is_active' => $business->id === $waiter->business_id,
                         'membership' => [
                             'joined_at' => null,
                             'status' => 'active',

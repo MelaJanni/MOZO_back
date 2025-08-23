@@ -164,8 +164,8 @@ class User extends Authenticatable
      */
     public function getAllBusinesses()
     {
-        $adminBusinesses = $this->businessesAsAdmin()->where('is_active', true)->get();
-        $waiterBusinesses = $this->businessesAsWaiter()->where('employment_status', 'active')->get();
+        $adminBusinesses = $this->businessesAsAdmin()->where('business_admins.is_active', true)->get();
+        $waiterBusinesses = $this->businessesAsWaiter()->where('business_waiters.employment_status', 'active')->get();
         
         return $adminBusinesses->merge($waiterBusinesses)->unique('id');
     }
