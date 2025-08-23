@@ -1138,16 +1138,32 @@ class WaiterController extends Controller
         $waiter = Auth::user();
         
         try {
-            $call = WaiterCall::where('id', $callId)
-                ->where('waiter_id', $waiter->id)
-                ->where('status', 'pending')
-                ->first();
+            $call = WaiterCall::with('table')->find($callId);
 
             if (!$call) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Llamada no encontrada o ya procesada'
+                    'message' => 'Llamada no encontrada'
                 ], 404);
+            }
+
+            $isAssignedWaiter = ((int)$call->waiter_id === (int)$waiter->id);
+            $isCurrentTableWaiter = ((int)($call->table->active_waiter_id ?? 0) === (int)$waiter->id);
+            if (!($isAssignedWaiter || $isCurrentTableWaiter)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No autorizado para reconocer esta llamada'
+                ], 403);
+            }
+
+            if ($call->status !== 'pending') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Llamada ya procesada',
+                    'status' => $call->status,
+                    'acknowledged_at' => $call->acknowledged_at,
+                    'completed_at' => $call->completed_at
+                ], 409);
             }
 
             $call->update([
@@ -1157,11 +1173,8 @@ class WaiterController extends Controller
 
             // Notificar en Firebase que la llamada fue reconocida
             try {
-                $this->unifiedFirebaseService->writeCallStatus($call->table_id, [
-                    'status' => 'acknowledged',
-                    'acknowledged_at' => now()->timestamp * 1000,
-                    'acknowledged_by' => $waiter->name
-                ]);
+                $call->loadMissing(['table','waiter']);
+                $this->unifiedFirebaseService->writeCall($call, 'acknowledged');
             } catch (\Exception $e) {
                 Log::warning('Firebase notification failed for acknowledge', [
                     'call_id' => $call->id,
@@ -1201,16 +1214,32 @@ class WaiterController extends Controller
         $waiter = Auth::user();
         
         try {
-            $call = WaiterCall::where('id', $callId)
-                ->where('waiter_id', $waiter->id)
-                ->whereIn('status', ['pending', 'acknowledged'])
-                ->first();
+            $call = WaiterCall::with('table')->find($callId);
 
             if (!$call) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Llamada no encontrada o ya completada'
+                    'message' => 'Llamada no encontrada'
                 ], 404);
+            }
+
+            $isAssignedWaiter = ((int)$call->waiter_id === (int)$waiter->id);
+            $isCurrentTableWaiter = ((int)($call->table->active_waiter_id ?? 0) === (int)$waiter->id);
+            if (!($isAssignedWaiter || $isCurrentTableWaiter)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No autorizado para completar esta llamada'
+                ], 403);
+            }
+
+            if (!in_array($call->status, ['pending','acknowledged'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Llamada ya procesada',
+                    'status' => $call->status,
+                    'acknowledged_at' => $call->acknowledged_at,
+                    'completed_at' => $call->completed_at
+                ], 409);
             }
 
             $call->update([
@@ -1221,11 +1250,8 @@ class WaiterController extends Controller
 
             // Notificar en Firebase que la llamada fue completada
             try {
-                $this->unifiedFirebaseService->writeCallStatus($call->table_id, [
-                    'status' => 'completed',
-                    'completed_at' => now()->timestamp * 1000,
-                    'completed_by' => $waiter->name
-                ]);
+                $call->loadMissing(['table','waiter']);
+                $this->unifiedFirebaseService->writeCall($call, 'completed');
             } catch (\Exception $e) {
                 Log::warning('Firebase notification failed for complete', [
                     'call_id' => $call->id,
