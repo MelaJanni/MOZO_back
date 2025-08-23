@@ -33,6 +33,34 @@ class WaiterController extends Controller
         $this->unifiedFirebaseService = $unifiedFirebaseService;
     }
 
+    /**
+     * Auto-corregir business_id faltante
+     */
+    private function ensureBusinessId($waiter)
+    {
+        if (!$waiter->business_id) {
+            $staffRecord = Staff::where('user_id', $waiter->id)
+                ->where('status', 'confirmed')
+                ->with('business')
+                ->first();
+            
+            if ($staffRecord) {
+                $waiter->update(['business_id' => $staffRecord->business_id]);
+                $waiter->refresh();
+                
+                Log::info('Auto-fixed missing business_id', [
+                    'waiter_id' => $waiter->id,
+                    'assigned_business_id' => $staffRecord->business_id,
+                    'method' => debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1]['function'] ?? 'unknown'
+                ]);
+                
+                return $staffRecord->business_id;
+            }
+        }
+        
+        return $waiter->business_id;
+    }
+
     public function onboardBusiness(Request $request)
     {
         $request->validate([
@@ -72,16 +100,18 @@ class WaiterController extends Controller
 
     public function listTables(Request $request)
     {
-        $user = $request->user();
+    $user = $request->user();
+    // AUTO-CORRECCIÓN: Asegurar business_id
+    $businessId = $this->ensureBusinessId($user);
 
-        if (!$user->business_id) {
+    if (!$businessId) {
             return response()->json([
                 'message' => 'No estás vinculado a ningún negocio',
                 'tables' => [],
             ]);
         }
 
-        $tables = Table::where('business_id', $user->business_id)->get();
+    $tables = Table::where('business_id', $businessId)->get();
 
         return response()->json([
             'tables' => $tables,
@@ -91,9 +121,17 @@ class WaiterController extends Controller
     public function toggleTableNotifications($tableId)
     {
         $user = Auth::user();
-        
+        // AUTO-CORRECCIÓN: Asegurar business_id
+        $businessId = $this->ensureBusinessId($user);
+        if (!$businessId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No tienes un negocio activo seleccionado. Debes unirte a un negocio primero.'
+            ], 400);
+        }
+
         $table = Table::where('id', $tableId)
-            ->where('business_id', $user->business_id)
+            ->where('business_id', $businessId)
             ->firstOrFail();
             
         $table->notifications_enabled = !$table->notifications_enabled;
@@ -117,8 +155,16 @@ class WaiterController extends Controller
         }
         
         $user = Auth::user();
-        
-        Table::where('business_id', $user->business_id)
+        // AUTO-CORRECCIÓN: Asegurar business_id
+        $businessId = $this->ensureBusinessId($user);
+        if (!$businessId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No tienes un negocio activo seleccionado. Debes unirte a un negocio primero.'
+            ], 400);
+        }
+
+        Table::where('business_id', $businessId)
             ->update(['notifications_enabled' => $request->enabled]);
             
         return response()->json([
@@ -169,8 +215,18 @@ class WaiterController extends Controller
     public function fetchWaiterTables()
     {
         $user = Auth::user();
-        
-        $tables = Table::where('business_id', $user->business_id)
+        // AUTO-CORRECCIÓN: Asegurar business_id
+        $businessId = $this->ensureBusinessId($user);
+        if (!$businessId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No tienes un negocio activo seleccionado. Debes unirte a un negocio primero.',
+                'tables' => [],
+                'assigned_count' => 0
+            ], 400);
+        }
+
+        $tables = Table::where('business_id', $businessId)
             ->orderBy('number', 'asc')
             ->get();
             
@@ -362,6 +418,19 @@ class WaiterController extends Controller
                 ->where('status', 'confirmed')
                 ->with('business')
                 ->get();
+
+            // AUTO-CORRECCIÓN: Si no tiene business_id pero tiene registros staff, asignar el primero
+            if (!$waiter->business_id && $staffRecords->isNotEmpty()) {
+                $firstBusiness = $staffRecords->first()->business;
+                $waiter->update(['business_id' => $firstBusiness->id]);
+                $waiter->refresh(); // Recargar el modelo
+                
+                Log::info('Auto-fixed missing business_id in getWaiterBusinesses', [
+                    'waiter_id' => $waiter->id,
+                    'assigned_business_id' => $firstBusiness->id,
+                    'business_name' => $firstBusiness->name
+                ]);
+            }
 
             $businesses = $staffRecords->map(function ($staffRecord) use ($waiter) {
                 $business = $staffRecord->business;
@@ -718,14 +787,17 @@ class WaiterController extends Controller
         $waiter = Auth::user();
         
         try {
-            if (!$waiter->business_id) {
+            // AUTO-CORRECCIÓN: Asegurar business_id
+            $businessId = $this->ensureBusinessId($waiter);
+
+            if (!$businessId) {
                 return response()->json([
                     'success' => false,
                     'message' => 'No tienes un negocio activo seleccionado'
                 ], 400);
             }
 
-            $tables = Table::where('business_id', $waiter->business_id)
+            $tables = Table::where('business_id', $businessId)
                 ->where('active_waiter_id', $waiter->id)
                 ->with(['waiterCalls' => function($query) {
                     $query->where('status', 'pending')->latest();
@@ -757,7 +829,7 @@ class WaiterController extends Controller
                 'success' => true,
                 'assigned_tables' => $tables,
                 'count' => $tables->count(),
-                'available_to_assign' => Table::where('business_id', $waiter->business_id)
+                'available_to_assign' => Table::where('business_id', $businessId)
                     ->whereNull('active_waiter_id')
                     ->count()
             ]);
@@ -783,14 +855,17 @@ class WaiterController extends Controller
         $waiter = Auth::user();
         
         try {
-            if (!$waiter->business_id) {
+            // AUTO-CORRECCIÓN: Asegurar business_id
+            $businessId = $this->ensureBusinessId($waiter);
+
+            if (!$businessId) {
                 return response()->json([
                     'success' => false,
                     'message' => 'No tienes un negocio activo seleccionado'
                 ], 400);
             }
 
-            $availableTables = Table::where('business_id', $waiter->business_id)
+            $availableTables = Table::where('business_id', $businessId)
                 ->whereNull('active_waiter_id')
                 ->orderBy('number')
                 ->get(['id', 'number', 'name', 'capacity', 'location']);
@@ -815,9 +890,11 @@ class WaiterController extends Controller
     public function activateTable(Request $request, Table $table): JsonResponse
     {
         $waiter = Auth::user();
+        // AUTO-CORRECCIÓN: Asegurar business_id
+        $businessId = $this->ensureBusinessId($waiter);
 
         try {
-            if ($table->business_id !== $waiter->business_id) {
+            if (!$businessId || $table->business_id !== $businessId) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Esta mesa no pertenece a tu negocio activo'
@@ -875,9 +952,11 @@ class WaiterController extends Controller
     public function deactivateTable(Request $request, Table $table): JsonResponse
     {
         $waiter = Auth::user();
+        // AUTO-CORRECCIÓN: Asegurar business_id
+        $businessId = $this->ensureBusinessId($waiter);
 
         try {
-            if ($table->business_id !== $waiter->business_id) {
+            if (!$businessId || $table->business_id !== $businessId) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Esta mesa no pertenece a tu negocio activo'
@@ -933,7 +1012,10 @@ class WaiterController extends Controller
         $waiter = Auth::user();
         
         try {
-            if (!$waiter->business_id) {
+            // AUTO-CORRECCIÓN: Asegurar business_id
+            $businessId = $this->ensureBusinessId($waiter);
+
+            if (!$businessId) {
                 return response()->json([
                     'success' => false,
                     'message' => 'No tienes un negocio activo seleccionado'
@@ -942,8 +1024,8 @@ class WaiterController extends Controller
 
             $calls = WaiterCall::where('waiter_id', $waiter->id)
                 ->where('status', 'pending')
-                ->whereHas('table', function ($q) use ($waiter) {
-                    $q->where('business_id', $waiter->business_id);
+                ->whereHas('table', function ($q) use ($businessId) {
+                    $q->where('business_id', $businessId);
                 })
                 ->with(['table'])
                 ->orderBy('called_at', 'desc')
@@ -990,7 +1072,10 @@ class WaiterController extends Controller
         $waiter = Auth::user();
         
         try {
-            if (!$waiter->business_id) {
+            // AUTO-CORRECCIÓN: Asegurar business_id
+            $businessId = $this->ensureBusinessId($waiter);
+
+            if (!$businessId) {
                 return response()->json([
                     'success' => false,
                     'message' => 'No tienes un negocio activo seleccionado'
@@ -998,8 +1083,8 @@ class WaiterController extends Controller
             }
 
             $calls = WaiterCall::where('waiter_id', $waiter->id)
-                ->whereHas('table', function ($q) use ($waiter) {
-                    $q->where('business_id', $waiter->business_id);
+                ->whereHas('table', function ($q) use ($businessId) {
+                    $q->where('business_id', $businessId);
                 })
                 ->with(['table'])
                 ->orderBy('called_at', 'desc')
@@ -1240,11 +1325,14 @@ class WaiterController extends Controller
     {
         $user = Auth::user();
 
+        // AUTO-CORRECCIÓN: Asegurar business_id
+        $businessId = $this->ensureBusinessId($user);
+        
         // Verificar si el usuario tiene negocio activo
-        if (!$user->business_id) {
+        if (!$businessId) {
             return response()->json([
                 'success' => false,
-                'message' => 'No tienes un negocio activo seleccionado'
+                'message' => 'No tienes un negocio activo seleccionado. Debes unirte a un negocio primero.'
             ], 400);
         }
 
@@ -1266,15 +1354,18 @@ class WaiterController extends Controller
         $waiter = Auth::user();
         
         try {
-            if (!$waiter->business_id) {
+            // AUTO-CORRECCIÓN: Asegurar business_id
+            $businessId = $this->ensureBusinessId($waiter);
+            
+            if (!$businessId) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'No tienes un negocio activo seleccionado'
+                    'message' => 'No tienes un negocio activo seleccionado. Debes unirte a un negocio primero.'
                 ], 400);
             }
 
             $query = IpBlock::with(['blockedBy'])
-                ->where('business_id', $waiter->business_id);
+                ->where('business_id', $businessId);
 
             // Filtros opcionales
             if ($request->has('active_only') && $request->boolean('active_only')) {
@@ -1331,12 +1422,14 @@ class WaiterController extends Controller
         ]);
 
         $waiter = Auth::user();
+        // AUTO-CORRECCIÓN: Asegurar business_id
+        $businessId = $this->ensureBusinessId($waiter);
         $tableIds = $request->table_ids;
         $results = [];
         $errors = [];
 
         try {
-            if (!$waiter->business_id) {
+            if (!$businessId) {
                 return response()->json([
                     'success' => false,
                     'message' => 'No tienes un negocio activo seleccionado'
@@ -1345,7 +1438,7 @@ class WaiterController extends Controller
 
             // Verificar que todas las mesas pertenezcan al negocio del mozo
             $tables = Table::whereIn('id', $tableIds)
-                ->where('business_id', $waiter->business_id)
+                ->where('business_id', $businessId)
                 ->get();
 
             if ($tables->count() !== count($tableIds)) {
@@ -1383,7 +1476,7 @@ class WaiterController extends Controller
                 'waiter_name' => $waiter->name,
                 'activated_count' => count($results),
                 'errors_count' => count($errors),
-                'business_id' => $waiter->business_id
+                'business_id' => $businessId
             ]);
 
             return response()->json([
@@ -1423,12 +1516,14 @@ class WaiterController extends Controller
         ]);
 
         $waiter = Auth::user();
+        // AUTO-CORRECCIÓN: Asegurar business_id
+        $businessId = $this->ensureBusinessId($waiter);
         $tableIds = $request->table_ids;
         $results = [];
         $errors = [];
 
         try {
-            if (!$waiter->business_id) {
+            if (!$businessId) {
                 return response()->json([
                     'success' => false,
                     'message' => 'No tienes un negocio activo seleccionado'
@@ -1437,7 +1532,7 @@ class WaiterController extends Controller
 
             // Verificar que todas las mesas pertenezcan al negocio del mozo y estén asignadas a él
             $tables = Table::whereIn('id', $tableIds)
-                ->where('business_id', $waiter->business_id)
+                ->where('business_id', $businessId)
                 ->where('active_waiter_id', $waiter->id)
                 ->get();
 
@@ -1465,7 +1560,7 @@ class WaiterController extends Controller
                 'waiter_id' => $waiter->id,
                 'waiter_name' => $waiter->name,
                 'deactivated_count' => count($results),
-                'business_id' => $waiter->business_id
+                'business_id' => $businessId
             ]);
 
             return response()->json([
@@ -1500,7 +1595,10 @@ class WaiterController extends Controller
         $waiter = Auth::user();
         
         try {
-            if (!$waiter->business_id) {
+            // AUTO-CORRECCIÓN: Asegurar business_id
+            $businessId = $this->ensureBusinessId($waiter);
+
+            if (!$businessId) {
                 return response()->json([
                     'success' => false,
                     'message' => 'No tienes un negocio activo seleccionado'
@@ -1508,26 +1606,26 @@ class WaiterController extends Controller
             }
 
             // Estadísticas básicas del mozo
-            $assignedTables = Table::where('business_id', $waiter->business_id)
+            $assignedTables = Table::where('business_id', $businessId)
                 ->where('active_waiter_id', $waiter->id)
                 ->count();
 
-            $availableTables = Table::where('business_id', $waiter->business_id)
+            $availableTables = Table::where('business_id', $businessId)
                 ->whereNull('active_waiter_id')
                 ->count();
 
             $pendingCalls = WaiterCall::where('waiter_id', $waiter->id)
                 ->where('status', 'pending')
-                ->whereHas('table', function ($q) use ($waiter) {
-                    $q->where('business_id', $waiter->business_id);
+                ->whereHas('table', function ($q) use ($businessId) {
+                    $q->where('business_id', $businessId);
                 })
                 ->count();
 
             // Llamadas recientes (últimas 24 horas)
             $recentCalls = WaiterCall::where('waiter_id', $waiter->id)
                 ->where('called_at', '>=', now()->subDay())
-                ->whereHas('table', function ($q) use ($waiter) {
-                    $q->where('business_id', $waiter->business_id);
+                ->whereHas('table', function ($q) use ($businessId) {
+                    $q->where('business_id', $businessId);
                 })
                 ->count();
 
@@ -1536,7 +1634,7 @@ class WaiterController extends Controller
                 'waiter' => [
                     'id' => $waiter->id,
                     'name' => $waiter->name,
-                    'active_business_id' => $waiter->business_id,
+                    'active_business_id' => $businessId,
                 ],
                 'stats' => [
                     'assigned_tables' => $assignedTables,

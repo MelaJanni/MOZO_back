@@ -14,7 +14,13 @@ function Invoke-LoginIfNeeded([string]$BaseUrl, [ref]$TokenRef, [string]$Email, 
     try {
       $resp = Invoke-WebRequest -Uri "$BaseUrl/api/login" -Headers $headers -Method POST -Body $body -UseBasicParsing -TimeoutSec 20 -ErrorAction Stop
       $json = $resp.Content | ConvertFrom-Json
-      if ($json.token) { $TokenRef.Value = $json.token; Write-Host "[INFO] Login OK; token obtenido" }
+      if ($json.token) {
+        $TokenRef.Value = $json.token
+        Write-Host "[INFO] Login OK; token obtenido (token)"
+      } elseif ($json.access_token) {
+        $TokenRef.Value = $json.access_token
+        Write-Host "[INFO] Login OK; token obtenido (access_token)"
+      }
     } catch { Write-Host "[WARN] Login fallido: $_" -ForegroundColor Yellow }
   }
 }
