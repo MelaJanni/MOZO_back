@@ -606,8 +606,8 @@ class AdminController extends Controller
                 $data = $staffMember->toArray();
                 
                 // Agregar datos del perfil del usuario si está conectado
-                if ($staffMember->user && $staffMember->user->profile) {
-                    $data['user_profile'] = $staffMember->user->profile;
+                if ($staffMember->user && $staffMember->user->profile()) {
+                    $data['user_profile'] = $staffMember->user->profile();
                 }
                 
                 // Agregar negocios asociados
