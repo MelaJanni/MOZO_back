@@ -164,20 +164,21 @@ class UserProfileController extends Controller
             }
             // Asegurar que avatar dentro de profile_data sea URL y no path
             $profileArray['avatar'] = $profileFresh->avatar_url;
-        return response()->json([
+
+            return response()->json([
                 'success' => true,
                 'message' => 'Perfil de mozo actualizado exitosamente',
                 'data' => [
-            'id' => $profile->id,
-            'type' => 'waiter',
-            'user_id' => $user->id,
-            'avatar' => $profile->avatar_url,
-            'display_name' => $profile->display_name,
-            'birth_date' => $profile->birth_date ? $profile->birth_date->format('d-m-Y') : null,
-            'is_complete' => $profile->isComplete(),
+                    'id' => $profileFresh->id,
+                    'type' => 'waiter',
+                    'user_id' => $user->id,
+                    'avatar' => $profileFresh->avatar_url,
+                    'display_name' => $profileFresh->display_name,
+                    'birth_date' => $profileFresh->birth_date ? $profileFresh->birth_date->format('d-m-Y') : null,
+                    'is_complete' => $profileFresh->isComplete(),
                     'profile_data' => $profileArray
                 ]
-            ]);
+            ], 200, [], JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
 
         } catch (\Exception $e) {
             return response()->json([
