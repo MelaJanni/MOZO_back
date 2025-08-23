@@ -1,5 +1,3 @@
-// Endpoint para obtener el estado de completitud del perfil
-Route::get('profile/completeness', [App\Http\Controllers\UserProfileController::class, 'getProfileCompleteness']);
 <?php
 
 use App\Http\Controllers\AdminController;
@@ -142,6 +140,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/admin/update', [UserProfileController::class, 'updateAdminProfile']);
         Route::delete('/avatar', [UserProfileController::class, 'deleteAvatar']);
     });
+
+    // Alias limpio solicitado por FE: /api/profile/completeness
+    Route::get('/profile/completeness', [UserProfileController::class, 'getProfileCompleteness']);
 
     // 📋 FUNCIONES ADICIONALES DE PERFIL (legacy eliminadas)
 
