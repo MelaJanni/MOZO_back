@@ -2068,18 +2068,24 @@ class WaiterCallController extends Controller
         $businessId = $request->business_id;
 
         try {
-            // Verificar que el mozo tenga acceso a este negocio
-            $business = $waiter->businesses()->where('businesses.id', $businessId)->first();
+            // Verificar que el mozo tenga acceso a este negocio (debe estar registrado como staff)
+            $staffRecord = \App\Models\Staff::where('user_id', $waiter->id)
+                ->where('business_id', $businessId)
+                ->where('status', 'confirmed')
+                ->with('business')
+                ->first();
             
-            if (!$business) {
+            if (!$staffRecord) {
                 return response()->json([
                     'success' => false,
                     'message' => 'No tienes acceso a este negocio'
                 ], 403);
             }
 
+            $business = $staffRecord->business;
+
             // Actualizar negocio activo
-            $waiter->update(['active_business_id' => $businessId]);
+            $waiter->update(['business_id' => $businessId]);
 
             return response()->json([
                 'success' => true,
@@ -2087,7 +2093,7 @@ class WaiterCallController extends Controller
                 'active_business' => [
                     'id' => $business->id,
                     'name' => $business->name,
-                    'code' => $business->code
+                    'code' => $business->invitation_code
                 ]
             ]);
 
