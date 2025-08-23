@@ -1973,8 +1973,20 @@ class WaiterCallController extends Controller
                 ], 409);
             }
 
+            // Verificar si ya existe por email (constraint unique)
+            $existingByEmail = \App\Models\Staff::where('email', $waiter->email)
+                ->where('business_id', $business->id)
+                ->first();
+                
+            if ($existingByEmail) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ya existe un empleado con este email en el negocio'
+                ], 409);
+            }
+
             // Registrar al mozo en el negocio a través de la tabla staff
-            \App\Models\Staff::create([
+            $staffRecord = \App\Models\Staff::create([
                 'user_id' => $waiter->id,
                 'business_id' => $business->id,
                 'name' => $waiter->name,
@@ -1982,7 +1994,7 @@ class WaiterCallController extends Controller
                 'position' => 'waiter',
                 'status' => 'confirmed',
                 'hire_date' => now(),
-                'phone' => $waiter->profile->phone ?? null,
+                'phone' => optional($waiter->profile)->phone,
             ]);
 
             // Si es su primer negocio, hacerlo activo
@@ -2021,12 +2033,20 @@ class WaiterCallController extends Controller
             Log::error('Error joining business', [
                 'waiter_id' => $waiter->id,
                 'business_code' => $businessCode,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Error al unirse al negocio'
+                'message' => 'Error al unirse al negocio',
+                'debug' => config('app.debug') ? [
+                    'error' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine()
+                ] : null
             ], 500);
         }
     }
