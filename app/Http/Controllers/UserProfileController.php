@@ -29,6 +29,10 @@ class UserProfileController extends Controller
                 ]);
             }
 
+            $profileArray = $profile->toArray();
+            if (isset($profile->birth_date) && $profile->birth_date) {
+                $profileArray['birth_date'] = $profile->birth_date->format('d-m-Y');
+            }
             return response()->json([
                 'success' => true,
                 'data' => [
@@ -39,7 +43,7 @@ class UserProfileController extends Controller
                     'display_name' => $profile->display_name,
                     'birth_date' => $profile->birth_date ? $profile->birth_date->format('d-m-Y') : null,
                     'is_complete' => $profile->isComplete(),
-                    'profile_data' => $profile->toArray()
+                    'profile_data' => $profileArray
                 ]
             ]);
 
@@ -374,6 +378,12 @@ class UserProfileController extends Controller
             ]);
         }
 
+        // Formatear birth_date en profile_data
+        $profileArray = $profile->toArray();
+        if (isset($profile->birth_date) && $profile->birth_date) {
+            $profileArray['birth_date'] = $profile->birth_date->format('d-m-Y');
+        }
+
         // Definir campos por rol
         if ($user->isWaiter()) {
             $fieldCategories = [
@@ -634,32 +644,16 @@ class UserProfileController extends Controller
 
         return response()->json([
             'success' => true,
-            'profile_exists' => true,
-            'user_role' => ($user->isAdmin() ? 'admin' : ($user->isWaiter() ? 'waiter' : null)),
-            'is_complete' => $isComplete,
-            'completion_percentage' => $overallPercentage,
-            'message' => $isComplete ? 'Tu perfil está completo' : 'Tu perfil necesita información adicional',
-            'statistics' => [
-                'total_fields' => count($completedFields) + count($missingFields),
-                'completed_fields' => count($completedFields),
-                'missing_fields' => count($missingFields),
-                'required_fields' => $totalRequired,
-                'completed_required' => $completedRequired,
-                'missing_required' => $totalRequired - $completedRequired
-            ],
-            'missing_fields' => $missingFields,
-            'completed_fields' => $completedFields,
-            'categories' => $categories,
-            'next_steps' => $nextSteps,
-            'profile_tips' => $user->isWaiter() ? [
-                'Una foto de perfil mejora tu presentación ante los empleadores',
-                'Una biografía personal te ayuda a destacar entre otros candidatos',
-                'Mantener tu información actualizada aumenta tus oportunidades de trabajo'
-            ] : [
-                'Una foto de perfil profesional mejora tu imagen ante el personal',
-                'Mantén actualizada tu información de contacto corporativo',
-                'Una biografía profesional te ayuda a conectar mejor con tu equipo'
+            'data' => [
+                'id' => $profile->id,
+                'type' => $user->isAdmin() ? 'admin' : 'waiter',
+                'user_id' => $user->id,
+                'avatar' => $profile->avatar_url,
+                'display_name' => $profile->display_name,
+                'birth_date' => $profile->birth_date ? $profile->birth_date->format('d-m-Y') : null,
+                'is_complete' => $isComplete,
+                'profile_data' => $profileArray
             ]
-        ]);
+        ], 200, [], JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
     }
 }
