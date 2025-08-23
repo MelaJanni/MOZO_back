@@ -1,3 +1,5 @@
+// Endpoint para obtener el estado de completitud del perfil
+Route::get('profile/completeness', [App\Http\Controllers\UserProfileController::class, 'getProfileCompleteness']);
 <?php
 
 use App\Http\Controllers\AdminController;
