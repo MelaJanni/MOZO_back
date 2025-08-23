@@ -15,8 +15,6 @@ use App\Http\Controllers\WaiterCallController;
 use App\Http\Controllers\PublicQrController;
 use App\Http\Controllers\FirebaseConfigController;
 use App\Http\Controllers\RealtimeController;
-use App\Http\Controllers\WaiterCallRealtimeController;
-use App\Http\Controllers\WaiterCallRealtimeControllerHTTP;
 use App\Http\Controllers\FcmTokenController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\UserProfileController;
@@ -156,10 +154,10 @@ Route::middleware('auth:sanctum')->group(function () {
     // Llamadas de mozo - APIs para mozos autenticados
     Route::prefix('waiter')->group(function () {
         // 🔥 GESTIÓN DE LLAMADAS CON FIREBASE REAL-TIME
-        Route::get('/calls/pending', [App\Http\Controllers\RealtimeWaiterCallController::class, 'getPendingCalls']);
-        Route::get('/calls/recent', [App\Http\Controllers\RealtimeWaiterCallController::class, 'getRecentCalls']);
-        Route::post('/calls/{call}/acknowledge', [App\Http\Controllers\RealtimeWaiterCallController::class, 'acknowledgeCall']);
-        Route::post('/calls/{call}/complete', [App\Http\Controllers\RealtimeWaiterCallController::class, 'completeCall']);
+        Route::get('/calls/pending', [WaiterController::class, 'getPendingCalls']);
+        Route::get('/calls/recent', [WaiterController::class, 'getRecentCalls']);
+        Route::post('/calls/{call}/acknowledge', [WaiterController::class, 'acknowledgeCall']);
+        Route::post('/calls/{call}/complete', [WaiterController::class, 'completeCall']);
         
         // Historial (sin tiempo real)
         Route::get('/calls/history', [WaiterCallController::class, 'getCallHistory']);
@@ -169,16 +167,16 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/tables/status', [WaiterCallController::class, 'getTablesStatus']);
 
         // Gestión de negocios múltiples
-        Route::get('/businesses', [WaiterCallController::class, 'getWaiterBusinesses']);
+        Route::get('/businesses', [WaiterController::class, 'getWaiterBusinesses']);
         Route::get('/businesses/{id}/tables', [WaiterCallController::class, 'getBusinessTables']);
-        Route::post('/join-business', [WaiterCallController::class, 'joinBusiness']);
-        Route::post('/set-active-business', [WaiterCallController::class, 'setActiveBusiness']);
+        Route::post('/join-business', [WaiterController::class, 'joinBusiness']);
+        Route::post('/set-active-business', [WaiterController::class, 'setActiveBusiness']);
         
         // Gestión de mesas - Individual
-        Route::get('/tables/assigned', [WaiterCallController::class, 'getAssignedTables']);
-        Route::get('/tables/available', [WaiterCallController::class, 'getAvailableTables']);
-        Route::post('/tables/{table}/activate', [WaiterCallController::class, 'activateTable']);
-        Route::delete('/tables/{table}/activate', [WaiterCallController::class, 'deactivateTable']);
+        Route::get('/tables/assigned', [WaiterController::class, 'getAssignedTables']);
+        Route::get('/tables/available', [WaiterController::class, 'getAvailableTables']);
+        Route::post('/tables/{table}/activate', [WaiterController::class, 'activateTable']);
+        Route::delete('/tables/{table}/activate', [WaiterController::class, 'deactivateTable']);
         Route::post('/tables/{table}/silence', [WaiterCallController::class, 'silenceTable']);
         Route::delete('/tables/{table}/silence', [WaiterCallController::class, 'unsilenceTable']);
         
@@ -326,7 +324,7 @@ Route::middleware('auth:sanctum')->group(function () {
 // Rutas públicas para QR codes y llamadas de mozo (sin autenticación)
 Route::middleware('public_api')->group(function () {
     // 🔥 FIREBASE REAL-TIME DESDE CERO (LIMPIO Y ORGANIZADO)
-    Route::post('/tables/{table}/call-waiter', [App\Http\Controllers\RealtimeWaiterCallController::class, 'createCall']);
+    Route::post('/tables/{table}/call-waiter', [WaiterController::class, 'createCall']);
     
     // 🔥 TEST DIRECTO FIREBASE (ULTRA SIMPLE)
     Route::get('/firebase/write-test', function() {
@@ -445,7 +443,7 @@ Route::middleware('public_api')->group(function () {
     Route::post('/staff/join/{token}', [StaffController::class, 'joinWithToken']);
 
     // 🔍 DEBUG: Endpoint para ver llamadas recientes (para testing)
-    Route::get('/debug/recent-calls', [App\Http\Controllers\RealtimeWaiterCallController::class, 'getRecentCalls']);
+    Route::get('/debug/recent-calls', [WaiterController::class, 'getRecentCalls']);
     
     // 🔥 FIREBASE DIRECT ROUTE - BYPASS CONTROLLER CACHE - TEMPORARILY DISABLED TO AVOID DUPLICATES
     /*

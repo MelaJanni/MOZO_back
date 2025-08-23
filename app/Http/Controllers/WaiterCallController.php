@@ -1850,7 +1850,15 @@ class WaiterCallController extends Controller
                     $isAssignedToMe = $table->active_waiter_id === $waiter->id;
                     $pendingCallsCount = $table->waiterCalls()->where('status', 'pending')->count();
                     $latestCall = $table->waiterCalls()->where('status', 'pending')->latest()->first();
-                    $activeSilence = $table->silences()->active()->first();
+                    // Verificar si la mesa está silenciada
+                    $activeSilence = null;
+                    try {
+                        if (\Illuminate\Support\Facades\Schema::hasTable('table_silences')) {
+                            $activeSilence = $table->silences()->active()->first();
+                        }
+                    } catch (\Exception $e) {
+                        // Tabla no existe, continuar sin silencio
+                    }
 
                     return [
                         'id' => $table->id,
