@@ -726,19 +726,44 @@ class UserProfileController extends Controller
         try {
             $user = Auth::user();
 
-            // FUENTE: tabla work_histories propia editable por el usuario
-            $items = WorkHistory::where('user_id', $user->id)
-                ->orderByRaw('COALESCE(end_date, start_date) DESC')
+            // 1) Ítems creados por el usuario (tabla editable)
+            $customItems = WorkHistory::where('user_id', $user->id)
                 ->get()
                 ->map(function ($row) {
                     return [
                         'business_name' => $row->business_name,
                         'start_date' => $this->formatDate($row->start_date),
                         'end_date' => $this->formatDate($row->end_date),
-                        'cargo' => $row->position ?? 'mozo',
+                        'position' => $row->position ?? 'mozo',
                         'description' => $row->description,
                     ];
                 });
+
+            // 2) Ítems derivados del vínculo como mozo en negocios (pivot business_waiters)
+            $pivotItems = $user->businessesAsWaiter()
+                ->withPivot(['employment_status', 'employment_type', 'hourly_rate', 'work_schedule', 'hired_at', 'last_shift_at'])
+                ->get()
+                ->map(function ($business) use ($user) {
+                    $status = $business->pivot->employment_status ?? null;
+                    $hiredAt = $business->pivot->hired_at ?? null;
+                    $lastShiftAt = $business->pivot->last_shift_at ?? null;
+                    $endDate = ($status && strtolower($status) !== 'active') ? $lastShiftAt : null;
+                    $description = $business->pivot->work_schedule ?: (optional($user->waiterProfile)->bio ?? null);
+                    return [
+                        'business_name' => $business->name,
+                        'start_date' => $this->formatDate($hiredAt),
+                        'end_date' => $this->formatDate($endDate),
+                        'position' => 'mozo',
+                        'description' => $description,
+                    ];
+                });
+
+            // 3) Unir y ordenar
+            $items = $customItems->merge($pivotItems)
+                ->sortByDesc(function ($item) {
+                    return $item['end_date'] ?? $item['start_date'] ?? null;
+                })
+                ->values();
 
             return response()->json([
                 'success' => true,
@@ -763,12 +788,13 @@ class UserProfileController extends Controller
      */
     public function createWorkHistory(Request $request)
     {
-        $data = $request->only(['business_name', 'start_date', 'end_date', 'cargo', 'description']);
+        $data = $request->only(['business_name', 'start_date', 'end_date', 'position', 'description', 'cargo']);
         $validator = Validator::make($data, [
             'business_name' => 'required|string|max:255',
             'start_date' => 'nullable|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
-            'cargo' => 'required|string|max:100',
+            'position' => 'required_without:cargo|string|max:100',
+            'cargo' => 'sometimes|string|max:100',
             'description' => 'nullable|string|max:1000',
         ]);
         if ($validator->fails()) {
@@ -781,7 +807,7 @@ class UserProfileController extends Controller
             'business_name' => $data['business_name'],
             'start_date' => $data['start_date'] ?? null,
             'end_date' => $data['end_date'] ?? null,
-            'position' => $data['cargo'],
+            'position' => $data['position'] ?? ($data['cargo'] ?? 'mozo'),
             'description' => $data['description'] ?? null,
         ]);
 
@@ -792,7 +818,7 @@ class UserProfileController extends Controller
                 'business_name' => $row->business_name,
         'start_date' => $this->formatDate($row->start_date),
         'end_date' => $this->formatDate($row->end_date),
-                'cargo' => $row->position,
+                'position' => $row->position,
                 'description' => $row->description,
             ]
         ], 201);
@@ -808,12 +834,13 @@ class UserProfileController extends Controller
         $user = Auth::user();
         $row = WorkHistory::where('user_id', $user->id)->findOrFail($id);
 
-        $data = $request->only(['business_name', 'start_date', 'end_date', 'cargo', 'description']);
+        $data = $request->only(['business_name', 'start_date', 'end_date', 'position', 'description', 'cargo']);
         $validator = Validator::make($data, [
             'business_name' => 'sometimes|required|string|max:255',
             'start_date' => 'nullable|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
-            'cargo' => 'sometimes|required|string|max:100',
+            'position' => 'sometimes|required_without:cargo|string|max:100',
+            'cargo' => 'sometimes|string|max:100',
             'description' => 'nullable|string|max:1000',
         ]);
         if ($validator->fails()) {
@@ -824,7 +851,7 @@ class UserProfileController extends Controller
             'business_name' => $data['business_name'] ?? $row->business_name,
             'start_date' => array_key_exists('start_date', $data) ? $data['start_date'] : $row->start_date,
             'end_date' => array_key_exists('end_date', $data) ? $data['end_date'] : $row->end_date,
-            'position' => $data['cargo'] ?? $row->position,
+            'position' => $data['position'] ?? ($data['cargo'] ?? $row->position),
             'description' => array_key_exists('description', $data) ? $data['description'] : $row->description,
         ]);
 
@@ -835,7 +862,7 @@ class UserProfileController extends Controller
                 'business_name' => $row->business_name,
         'start_date' => $this->formatDate($row->start_date),
         'end_date' => $this->formatDate($row->end_date),
-                'cargo' => $row->position,
+                'position' => $row->position,
                 'description' => $row->description,
             ]
         ]);
