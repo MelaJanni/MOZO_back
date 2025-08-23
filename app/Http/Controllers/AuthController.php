@@ -120,7 +120,7 @@ class AuthController extends Controller
                 if (!$user->google_id) {
                     $user->update([
                         'google_id' => $googleUser['sub'],
-                        'avatar' => $googleUser['picture'] ?? null
+                        'google_avatar' => $googleUser['picture'] ?? null
                     ]);
                 }
             } else {
@@ -129,17 +129,19 @@ class AuthController extends Controller
                     'name' => $googleUser['name'],
                     'email' => $googleUser['email'],
                     'google_id' => $googleUser['sub'],
-                    'avatar' => $googleUser['picture'] ?? null,
+                    'google_avatar' => $googleUser['picture'] ?? null,
                     'email_verified_at' => now(),
                     'password' => Hash::make(Str::random(32)), // Contraseña aleatoria
-                    'role' => 'waiter', // Por defecto mozos
                 ]);
+                // Establecer rol por fuera del fillable
+                try { $user->role = 'waiter'; $user->save(); } catch (\Throwable $e) { /* noop */ }
 
-                // Crear perfil básico
-                $user->profile()->create([
-                    'name' => $user->name,
-                    'profile_picture' => $googleUser['picture'] ?? null,
-                ]);
+                // Crear perfil básico de mozo
+                if (method_exists($user, 'waiterProfile')) {
+                    $user->waiterProfile()->create([
+                        'display_name' => $user->name,
+                    ]);
+                }
 
                 $staffRequestCreated = false;
                 $businessName = null;
@@ -399,13 +401,16 @@ class AuthController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'role' => 'waiter', // Por defecto los registros son mozos
         ]);
+        // Establecer rol por fuera del fillable
+        try { $user->role = 'waiter'; $user->save(); } catch (\Throwable $e) { /* noop */ }
 
         // Crear perfil básico del mozo
-        $user->profile()->create([
-            'name' => $user->name,
-        ]);
+        if (method_exists($user, 'waiterProfile')) {
+            $user->waiterProfile()->create([
+                'display_name' => $user->name,
+            ]);
+        }
 
         $staffRequestCreated = false;
         $businessName = null;

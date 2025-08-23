@@ -489,6 +489,148 @@ class WaiterController extends Controller
     }
 
     /**
+     * Negocios "activos hoy" del mozo
+     * Criterio: tiene mesas asignadas actualmente en ese negocio o tuvo llamadas hoy en ese negocio.
+     */
+    public function getActiveTodayBusinesses(Request $request): JsonResponse
+    {
+        $waiter = Auth::user();
+        try {
+            $todayStart = now()->startOfDay();
+            $staffRecords = Staff::where('user_id', $waiter->id)
+                ->where('status', 'confirmed')
+                ->with('business')
+                ->get();
+
+            $businesses = $staffRecords->map(function ($staffRecord) use ($waiter, $todayStart) {
+                $business = $staffRecord->business;
+                if (!$business) { return null; }
+
+                $assignedToMe = $business->tables()->where('active_waiter_id', $waiter->id)->count();
+                $callsToday = WaiterCall::where('waiter_id', $waiter->id)
+                    ->where('called_at', '>=', $todayStart)
+                    ->whereHas('table', function ($q) use ($business) {
+                        $q->where('business_id', $business->id);
+                    })
+                    ->count();
+
+                if ($assignedToMe > 0 || $callsToday > 0) {
+                    return [
+                        'id' => $business->id,
+                        'name' => $business->name,
+                        'code' => $business->invitation_code,
+                        'is_active' => $business->id === $waiter->business_id,
+                        'assigned_tables' => $assignedToMe,
+                        'calls_today' => $callsToday,
+                    ];
+                }
+                return null;
+            })->filter()->values();
+
+            return response()->json([
+                'success' => true,
+                'businesses' => $businesses,
+                'count' => $businesses->count(),
+                'date' => now()->toDateString(),
+            ]);
+        } catch (\Throwable $e) {
+            \Log::error('Error getting active today businesses', [
+                'waiter_id' => $waiter->id,
+                'error' => $e->getMessage()
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error obteniendo negocios activos hoy'
+            ], 500);
+        }
+    }
+
+    /**
+     * Desvincularse de un negocio (el mozo se quita de Staff y se desasigna de mesas)
+     */
+    public function leaveBusiness(Request $request): JsonResponse
+    {
+        $request->validate([
+            'business_id' => 'required|integer'
+        ]);
+
+        $waiter = Auth::user();
+        $businessId = (int) $request->business_id;
+
+        try {
+            $staff = Staff::where('user_id', $waiter->id)
+                ->where('business_id', $businessId)
+                ->first();
+
+            if (!$staff) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No estás asociado a este negocio'
+                ], 404);
+            }
+
+            // Desasignar mesas del mozo en ese negocio y cancelar llamadas pendientes
+            $tables = \App\Models\Table::where('business_id', $businessId)
+                ->where('active_waiter_id', $waiter->id)
+                ->get();
+
+            foreach ($tables as $table) {
+                // Cancelar llamadas pendientes
+                try {
+                    $table->pendingCalls()->update(['status' => 'cancelled']);
+                } catch (\Throwable $e) { /* noop */ }
+
+                // Desasignar
+                try {
+                    if (method_exists($table, 'unassignWaiter')) {
+                        $table->unassignWaiter();
+                    } else {
+                        $table->active_waiter_id = null;
+                        $table->waiter_assigned_at = null;
+                        $table->save();
+                    }
+                } catch (\Throwable $e) { /* noop */ }
+            }
+
+            // Cancelar llamadas pendientes del mozo en ese negocio
+            WaiterCall::where('waiter_id', $waiter->id)
+                ->where('status', 'pending')
+                ->whereHas('table', function ($q) use ($businessId) {
+                    $q->where('business_id', $businessId);
+                })
+                ->update(['status' => 'cancelled']);
+
+            // Eliminar registro de staff
+            $staff->delete();
+
+            // Si era su negocio activo, elegir otro o limpiar
+            if ((int) $waiter->business_id === $businessId) {
+                $next = Staff::where('user_id', $waiter->id)
+                    ->where('status', 'confirmed')
+                    ->first();
+                $waiter->business_id = $next ? $next->business_id : null;
+                $waiter->save();
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Te desvinculaste del negocio correctamente',
+                'active_business_id' => $waiter->business_id,
+            ]);
+        } catch (\Throwable $e) {
+            \Log::error('Error leaving business', [
+                'waiter_id' => $waiter->id,
+                'business_id' => $businessId,
+                'error' => $e->getMessage()
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al desvincularse del negocio'
+            ], 500);
+        }
+    }
+
+    /**
      * Cambiar negocio activo
      */
     public function setActiveBusiness(Request $request): JsonResponse

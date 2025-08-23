@@ -18,6 +18,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Concerns\ResolvesActiveBusiness;
 
 class AdminController extends Controller
@@ -199,6 +200,90 @@ class AdminController extends Controller
             'invitation_code' => $business->invitation_code,
             'invitation_url' => config('app.frontend_url') . '/join-business?code=' . $business->invitation_code,
         ]);
+    }
+
+    /**
+     * Eliminar un negocio y sus entidades relacionadas (solo admins de ese negocio)
+     */
+    public function deleteBusiness(Request $request, int $businessId)
+    {
+        $user = $request->user();
+
+        // Verificar que el usuario sea admin de este negocio
+        $isAdmin = method_exists($user, 'businessesAsAdmin')
+            ? $user->businessesAsAdmin()->where('business_id', $businessId)->exists()
+            : false;
+        if (!$isAdmin) {
+            return response()->json([
+                'message' => 'No tienes permisos para eliminar este negocio'
+            ], 403);
+        }
+
+        $business = Business::find($businessId);
+        if (!$business) {
+            return response()->json([
+                'message' => 'Negocio no encontrado'
+            ], 404);
+        }
+
+        \DB::beginTransaction();
+        try {
+            // Eliminar dependencias conocidas
+            if (\Schema::hasTable('tables')) {
+                Table::where('business_id', $businessId)->each(function ($table) {
+                    // Eliminar QRs asociados a la mesa
+                    if (method_exists($table, 'qrCodes')) {
+                        $table->qrCodes()->delete();
+                    }
+                    // Eliminar llamadas de mozo
+                    if (method_exists($table, 'waiterCalls')) {
+                        $table->waiterCalls()->delete();
+                    }
+                    $table->delete();
+                });
+            }
+
+            if (\Schema::hasTable('menus')) {
+                Menu::where('business_id', $businessId)->each(function ($menu) {
+                    if (!empty($menu->file_path) && \Storage::disk('public')->exists($menu->file_path)) {
+                        \Storage::disk('public')->delete($menu->file_path);
+                    }
+                    $menu->delete();
+                });
+            }
+            if (\Schema::hasTable('qr_codes')) {
+                QrCode::where('business_id', $businessId)->delete();
+            }
+            if (\Schema::hasTable('staff')) {
+                Staff::where('business_id', $businessId)->delete();
+            }
+            if (\Schema::hasTable('business_admins')) {
+                \DB::table('business_admins')->where('business_id', $businessId)->delete();
+            }
+            if (\Schema::hasTable('business_waiters')) {
+                \DB::table('business_waiters')->where('business_id', $businessId)->delete();
+            }
+            if (\Schema::hasTable('user_active_roles')) {
+                \DB::table('user_active_roles')->where('business_id', $businessId)->delete();
+            }
+
+            // Finalmente eliminar el negocio
+            $business->delete();
+
+            \DB::commit();
+            return response()->json([
+                'message' => 'Negocio eliminado correctamente'
+            ]);
+        } catch (\Throwable $e) {
+            \DB::rollBack();
+            \Log::error('Error eliminando negocio', [
+                'business_id' => $businessId,
+                'error' => $e->getMessage(),
+            ]);
+            return response()->json([
+                'message' => 'Error interno al eliminar el negocio'
+            ], 500);
+        }
     }
 
     public function switchView(Request $request)

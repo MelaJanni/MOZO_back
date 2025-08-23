@@ -172,9 +172,11 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Gestión de negocios múltiples
         Route::get('/businesses', [WaiterController::class, 'getWaiterBusinesses']);
+    Route::get('/businesses/active-today', [WaiterController::class, 'getActiveTodayBusinesses']);
         Route::get('/businesses/{id}/tables', [WaiterController::class, 'getBusinessTables']);
         Route::post('/join-business', [WaiterController::class, 'joinBusiness']);
         Route::post('/set-active-business', [WaiterController::class, 'setActiveBusiness']);
+    Route::post('/leave-business', [WaiterController::class, 'leaveBusiness']);
         
         // Diagnóstico de usuario
         Route::get('/diagnose', [WaiterController::class, 'diagnoseUser']);
@@ -216,6 +218,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/business', [AdminController::class, 'getBusinessInfo']);
         Route::post('/business/create', [AdminController::class, 'createBusiness']);
         Route::post('/business/regenerate-invitation-code', [AdminController::class, 'regenerateInvitationCode']);
+    Route::delete('/business/{businessId}', [AdminController::class, 'deleteBusiness']);
     Route::get('/businesses', [AdminController::class, 'getBusinesses']);
         Route::post('/switch-view', [AdminController::class, 'switchView']);
         Route::get('/settings', [AdminController::class, 'getSettings']);
