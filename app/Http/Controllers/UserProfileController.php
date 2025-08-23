@@ -9,9 +9,14 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use App\Models\WorkHistory;
 
 class UserProfileController extends Controller
 {
+    private function formatDate(?\Carbon\Carbon $date): ?string
+    {
+        return $date ? $date->format('d-m-Y') : null;
+    }
     /**
      * 👤 OBTENER PERFIL ACTIVO DEL USUARIO
      */
@@ -721,61 +726,25 @@ class UserProfileController extends Controller
         try {
             $user = Auth::user();
 
-            // Negocios como mozo con metadatos del pivot
-            $waiterBusinesses = $user->businessesAsWaiter()
-                ->withPivot(['employment_status', 'employment_type', 'hourly_rate', 'work_schedule', 'hired_at', 'last_shift_at'])
+            // FUENTE: tabla work_histories propia editable por el usuario
+            $items = WorkHistory::where('user_id', $user->id)
+                ->orderByRaw('COALESCE(end_date, start_date) DESC')
                 ->get()
-                ->map(function ($business) {
+                ->map(function ($row) {
                     return [
-                        'business' => [
-                            'id' => $business->id,
-                            'name' => $business->name,
-                            'slug' => $business->slug,
-                            'is_active' => (bool)$business->is_active,
-                        ],
-                        'role' => 'waiter',
-                        'employment_status' => $business->pivot->employment_status ?? null,
-                        'employment_type' => $business->pivot->employment_type ?? null,
-                        'hourly_rate' => $business->pivot->hourly_rate !== null ? (float)$business->pivot->hourly_rate : null,
-                        'work_schedule' => $business->pivot->work_schedule ?? null,
-                        'joined_at' => $business->pivot->hired_at ? (string)$business->pivot->hired_at : null,
-                        'last_activity_at' => $business->pivot->last_shift_at ? (string)$business->pivot->last_shift_at : null,
+                        'business_name' => $row->business_name,
+                        'start_date' => $this->formatDate($row->start_date),
+                        'end_date' => $this->formatDate($row->end_date),
+                        'cargo' => $row->position ?? 'mozo',
+                        'description' => $row->description,
                     ];
                 });
-
-            // Negocios como admin
-            $adminBusinesses = $user->businessesAsAdmin()
-                ->withPivot(['permission_level', 'permissions', 'is_active', 'joined_at'])
-                ->get()
-                ->map(function ($business) {
-                    return [
-                        'business' => [
-                            'id' => $business->id,
-                            'name' => $business->name,
-                            'slug' => $business->slug,
-                            'is_active' => (bool)$business->is_active,
-                        ],
-                        'role' => 'admin',
-                        'permission_level' => $business->pivot->permission_level ?? null,
-                        'permissions' => $business->pivot->permissions ? json_decode($business->pivot->permissions, true) : null,
-                        'joined_at' => $business->pivot->joined_at ? (string)$business->pivot->joined_at : null,
-                        'last_activity_at' => $business->updated_at ? (string)$business->updated_at : null,
-                        'is_active' => (bool)($business->pivot->is_active ?? true)
-                    ];
-                });
-
-            // Unir y ordenar por actividad más reciente
-            $history = $adminBusinesses->merge($waiterBusinesses)
-                ->sortByDesc(function ($item) {
-                    return $item['last_activity_at'] ?? $item['joined_at'] ?? null;
-                })
-                ->values();
 
             return response()->json([
                 'success' => true,
                 'data' => [
-                    'total' => $history->count(),
-                    'items' => $history,
+                    'total' => $items->count(),
+                    'items' => $items,
                 ]
             ]);
         } catch (\Exception $e) {
@@ -785,5 +754,90 @@ class UserProfileController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Crear un item de historial laboral (solo campos requeridos)
+     * POST /api/profile/work-history
+     * body: { business_name, start_date, end_date?, cargo, description? }
+     */
+    public function createWorkHistory(Request $request)
+    {
+        $data = $request->only(['business_name', 'start_date', 'end_date', 'cargo', 'description']);
+        $validator = Validator::make($data, [
+            'business_name' => 'required|string|max:255',
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
+            'cargo' => 'required|string|max:100',
+            'description' => 'nullable|string|max:1000',
+        ]);
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        $user = Auth::user();
+        $row = WorkHistory::create([
+            'user_id' => $user->id,
+            'business_name' => $data['business_name'],
+            'start_date' => $data['start_date'] ?? null,
+            'end_date' => $data['end_date'] ?? null,
+            'position' => $data['cargo'],
+            'description' => $data['description'] ?? null,
+        ]);
+
+    return response()->json([
+            'success' => true,
+            'data' => [
+                'id' => $row->id,
+                'business_name' => $row->business_name,
+        'start_date' => $this->formatDate($row->start_date),
+        'end_date' => $this->formatDate($row->end_date),
+                'cargo' => $row->position,
+                'description' => $row->description,
+            ]
+        ], 201);
+    }
+
+    /**
+     * Actualizar un item de historial laboral
+     * PUT /api/profile/work-history/{id}
+     * body: { business_name, start_date, end_date?, cargo, description? }
+     */
+    public function updateWorkHistory(Request $request, int $id)
+    {
+        $user = Auth::user();
+        $row = WorkHistory::where('user_id', $user->id)->findOrFail($id);
+
+        $data = $request->only(['business_name', 'start_date', 'end_date', 'cargo', 'description']);
+        $validator = Validator::make($data, [
+            'business_name' => 'sometimes|required|string|max:255',
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
+            'cargo' => 'sometimes|required|string|max:100',
+            'description' => 'nullable|string|max:1000',
+        ]);
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        $row->update([
+            'business_name' => $data['business_name'] ?? $row->business_name,
+            'start_date' => array_key_exists('start_date', $data) ? $data['start_date'] : $row->start_date,
+            'end_date' => array_key_exists('end_date', $data) ? $data['end_date'] : $row->end_date,
+            'position' => $data['cargo'] ?? $row->position,
+            'description' => array_key_exists('description', $data) ? $data['description'] : $row->description,
+        ]);
+
+    return response()->json([
+            'success' => true,
+            'data' => [
+                'id' => $row->id,
+                'business_name' => $row->business_name,
+        'start_date' => $this->formatDate($row->start_date),
+        'end_date' => $this->formatDate($row->end_date),
+                'cargo' => $row->position,
+                'description' => $row->description,
+            ]
+        ]);
     }
 }
