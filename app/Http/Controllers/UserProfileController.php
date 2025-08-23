@@ -162,6 +162,8 @@ class UserProfileController extends Controller
             if (isset($profileFresh->birth_date) && $profileFresh->birth_date) {
                 $profileArray['birth_date'] = $profileFresh->birth_date->format('d-m-Y');
             }
+            // Asegurar que avatar dentro de profile_data sea URL y no path
+            $profileArray['avatar'] = $profileFresh->avatar_url;
         return response()->json([
                 'success' => true,
                 'message' => 'Perfil de mozo actualizado exitosamente',
