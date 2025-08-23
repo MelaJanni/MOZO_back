@@ -378,11 +378,29 @@ class UserProfileController extends Controller
             ]);
         }
 
-        // Formatear birth_date en profile_data
-        $profileArray = $profile->toArray();
-        if (isset($profile->birth_date) && $profile->birth_date) {
-            $profileArray['birth_date'] = $profile->birth_date->format('d-m-Y');
-        }
+        // Construir profile_data solo con los campos relevantes
+        $profileData = [
+            'avatar' => $profile->avatar_url,
+            'display_name' => $profile->display_name,
+            'bio' => $profile->bio,
+            'phone' => $profile->phone,
+            'birth_date' => $profile->birth_date ? $profile->birth_date->format('d-m-Y') : null,
+            'height' => $profile->height,
+            'weight' => $profile->weight,
+            'gender' => $profile->gender,
+            'experience_years' => $profile->experience_years,
+            'current_location' => $profile->current_location,
+            'latitude' => $profile->latitude,
+            'longitude' => $profile->longitude,
+            'availability_hours' => $profile->availability_hours,
+            'skills' => $profile->skills,
+            'is_available_for_hire' => $profile->is_available_for_hire ?? null,
+            'is_available' => $profile->is_available,
+            'current_schedule' => $profile->current_schedule,
+            'employment_type' => $profile->employment_type,
+            'rating' => $profile->rating,
+            'total_reviews' => $profile->total_reviews
+        ];
 
         // Definir campos por rol
         if ($user->isWaiter()) {
@@ -652,7 +670,7 @@ class UserProfileController extends Controller
                 'display_name' => $profile->display_name,
                 'birth_date' => $profile->birth_date ? $profile->birth_date->format('d-m-Y') : null,
                 'is_complete' => $isComplete,
-                'profile_data' => $profileArray
+                'profile_data' => $profileData
             ]
         ], 200, [], JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
     }
