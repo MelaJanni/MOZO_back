@@ -116,4 +116,43 @@ class TableSilence extends Model
             ? "{$minutes}m {$remainingSeconds}s"
             : "{$seconds}s";
     }
+
+    /**
+     * Safe wrapper methods that handle missing table gracefully
+     */
+    public static function safeWhere(...$args)
+    {
+        try {
+            if (!\Illuminate\Support\Facades\Schema::hasTable('table_silences')) {
+                return collect(); // Return empty collection
+            }
+            return static::where(...$args);
+        } catch (\Exception $e) {
+            return collect();
+        }
+    }
+
+    public static function safeWhereIn(...$args)
+    {
+        try {
+            if (!\Illuminate\Support\Facades\Schema::hasTable('table_silences')) {
+                return collect();
+            }
+            return static::whereIn(...$args);
+        } catch (\Exception $e) {
+            return collect();
+        }
+    }
+
+    public static function safeCreate(array $attributes = [])
+    {
+        try {
+            if (!\Illuminate\Support\Facades\Schema::hasTable('table_silences')) {
+                return null; // Table doesn't exist, return null
+            }
+            return static::create($attributes);
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
 }

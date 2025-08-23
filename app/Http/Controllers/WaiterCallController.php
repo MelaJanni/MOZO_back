@@ -95,9 +95,16 @@ class WaiterCallController extends Controller
             }
 
             // Verificar si la mesa está silenciada
-            $activeSilence = TableSilence::where('table_id', $table->id)
-                ->active()
-                ->first();
+            $activeSilence = null;
+            try {
+                if (\Illuminate\Support\Facades\Schema::hasTable('table_silences')) {
+                    $activeSilence = TableSilence::where('table_id', $table->id)
+                        ->active()
+                        ->first();
+                }
+            } catch (\Exception $e) {
+                // Tabla no existe, continuar sin silencio
+            }
 
             if ($activeSilence && $activeSilence->isActive()) {
                 return response()->json([
@@ -355,10 +362,10 @@ class WaiterCallController extends Controller
     // Aplicar filtros según pertenencia real a roles
     if ($user->isWaiter()) {
             $query->forWaiter($user->id);
-    } elseif ($user->isAdmin($user->active_business_id ?? null)) {
+    } elseif ($user->isAdmin($user->business_id ?? null)) {
             // Los admins ven todas las llamadas de su business activo
             $query->whereHas('table', function ($q) use ($user) {
-                $q->where('business_id', $user->active_business_id);
+                $q->where('business_id', $user->business_id);
             });
         }
 
@@ -427,9 +434,16 @@ class WaiterCallController extends Controller
         $durationMinutes = $request->input('duration_minutes', 30);
 
         // Verificar si ya está silenciada
-        $existingSilence = TableSilence::where('table_id', $table->id)
-            ->active()
-            ->first();
+        $existingSilence = null;
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('table_silences')) {
+                $existingSilence = TableSilence::where('table_id', $table->id)
+                    ->active()
+                    ->first();
+            }
+        } catch (\Exception $e) {
+            // Tabla no existe, continuar sin silencio
+        }
 
         if ($existingSilence && $existingSilence->isActive()) {
             return response()->json([
@@ -584,7 +598,7 @@ class WaiterCallController extends Controller
         $waiter = Auth::user();
 
         // Verificar que la mesa pertenezca al negocio activo del mozo
-        if ($table->business_id !== $waiter->active_business_id) {
+        if ($table->business_id !== $waiter->business_id) {
             return response()->json([
                 'success' => false,
                 'message' => 'No tienes acceso a esta mesa'
@@ -698,7 +712,7 @@ class WaiterCallController extends Controller
         
         // Obtener mesas y verificar permisos
         $tables = Table::whereIn('id', $tableIds)
-            ->where('business_id', $waiter->active_business_id)
+            ->where('business_id', $waiter->business_id)
             ->get();
 
         if ($tables->count() !== count($tableIds)) {
@@ -781,7 +795,7 @@ class WaiterCallController extends Controller
         // Obtener solo las mesas donde este mozo está asignado
         $tables = Table::whereIn('id', $tableIds)
             ->where('active_waiter_id', $waiter->id)
-            ->where('business_id', $waiter->active_business_id)
+            ->where('business_id', $waiter->business_id)
             ->get();
 
         $results = [];
@@ -872,7 +886,7 @@ class WaiterCallController extends Controller
         
         // Obtener mesas del mismo negocio
         $tables = Table::whereIn('id', $tableIds)
-            ->where('business_id', $waiter->active_business_id)
+            ->where('business_id', $waiter->business_id)
             ->get();
 
         if ($tables->count() !== count($tableIds)) {
@@ -968,7 +982,7 @@ class WaiterCallController extends Controller
         // Obtener mesas silenciadas del mismo negocio
         $silences = TableSilence::whereIn('table_id', $tableIds)
             ->whereHas('table', function ($q) use ($waiter) {
-                $q->where('business_id', $waiter->active_business_id);
+                $q->where('business_id', $waiter->business_id);
             })
             ->active()
             ->get();
@@ -1042,7 +1056,7 @@ class WaiterCallController extends Controller
         $waiter = Auth::user();
         
         $tables = Table::where('active_waiter_id', $waiter->id)
-            ->where('business_id', $waiter->active_business_id)
+            ->where('business_id', $waiter->business_id)
             ->with(['pendingCalls', 'activeSilence'])
             ->get()
             ->map(function ($table) {
@@ -1076,7 +1090,7 @@ class WaiterCallController extends Controller
     {
         $waiter = Auth::user();
         
-        $tables = Table::where('business_id', $waiter->active_business_id)
+        $tables = Table::where('business_id', $waiter->business_id)
             ->whereNull('active_waiter_id')
             ->get()
             ->map(function ($table) {
@@ -1390,14 +1404,14 @@ class WaiterCallController extends Controller
         
         try {
             // Si no tiene negocio activo, obtener el primer negocio disponible
-            if (!$waiter->active_business_id && $waiter->businesses()->exists()) {
+            if (!$waiter->business_id && $waiter->businesses()->exists()) {
                 $firstBusiness = $waiter->businesses()->first();
-                $waiter->update(['active_business_id' => $firstBusiness->id]);
+                $waiter->update(['business_id' => $firstBusiness->id]);
                 $waiter->refresh();
             }
 
             // Si aún no tiene negocio activo, devolver dashboard vacío
-            if (!$waiter->active_business_id) {
+            if (!$waiter->business_id) {
                 return response()->json([
                     'success' => true,
                     'dashboard' => [
@@ -1420,7 +1434,7 @@ class WaiterCallController extends Controller
 
             // Obtener mesas asignadas con información relevante del negocio activo
             $assignedTables = Table::where('active_waiter_id', $waiter->id)
-                ->where('business_id', $waiter->active_business_id)
+                ->where('business_id', $waiter->business_id)
                 ->with(['pendingCalls', 'activeSilence'])
                 ->get();
 
@@ -1457,7 +1471,7 @@ class WaiterCallController extends Controller
                 'total_assigned' => $assignedTables->count(),
                 'with_pending_calls' => $assignedTables->filter(fn($t) => $t->pendingCalls->count() > 0)->count(),
                 'silenced' => $assignedTables->filter(fn($t) => $t->activeSilence() && $t->activeSilence()->isActive())->count(),
-                'available_to_assign' => Table::where('business_id', $waiter->active_business_id)
+                'available_to_assign' => Table::where('business_id', $waiter->business_id)
                     ->whereNull('active_waiter_id')
                     ->count()
             ];
@@ -1549,7 +1563,7 @@ class WaiterCallController extends Controller
         
         try {
             // Si no tiene negocio activo, devolver error
-            if (!$waiter->active_business_id) {
+            if (!$waiter->business_id) {
                 return response()->json([
                     'success' => false,
                     'message' => 'No tienes un negocio activo seleccionado',
@@ -1559,7 +1573,7 @@ class WaiterCallController extends Controller
 
             // Obtener todas las mesas asignadas con información completa del negocio activo
             $assignedTables = Table::where('active_waiter_id', $waiter->id)
-                ->where('business_id', $waiter->active_business_id)
+                ->where('business_id', $waiter->business_id)
                 ->with(['pendingCalls', 'activeSilence', 'business'])
                 ->get();
 
@@ -1568,7 +1582,7 @@ class WaiterCallController extends Controller
             $availableTables = collect();
             
             if ($includeAvailable) {
-                $availableTables = Table::where('business_id', $waiter->active_business_id)
+                $availableTables = Table::where('business_id', $waiter->business_id)
                     ->whereNull('active_waiter_id')
                     ->get();
             }
@@ -1786,7 +1800,7 @@ class WaiterCallController extends Controller
             return response()->json([
                 'success' => true,
                 'businesses' => $businesses,
-                'active_business_id' => $waiter->active_business_id,
+                'business_id' => $waiter->business_id,
                 'total_businesses' => $businesses->count()
             ]);
 
@@ -2284,7 +2298,7 @@ class WaiterCallController extends Controller
 
         try {
             $ipAddress = $request->ip_address;
-            $businessId = $request->input('business_id', $waiter->active_business_id);
+            $businessId = $request->input('business_id', $waiter->business_id);
 
             // Verificar que el mozo tenga acceso al negocio
             if (!$waiter->businesses()->where('businesses.id', $businessId)->exists()) {
@@ -2501,7 +2515,7 @@ class WaiterCallController extends Controller
         try {
             $ipAddress = $request->input('ip_address', $request->ip());
             $waiter = Auth::user();
-            $businessId = $request->input('business_id', $waiter?->active_business_id);
+            $businessId = $request->input('business_id', $waiter?->business_id);
 
             if (!$businessId) {
                 return response()->json([
@@ -2584,7 +2598,7 @@ class WaiterCallController extends Controller
         try {
             $ipAddress = $request->ip_address;
             $waiter = Auth::user();
-            $businessId = $request->input('business_id', $waiter?->active_business_id);
+            $businessId = $request->input('business_id', $waiter?->business_id);
 
             if (!$businessId) {
                 return response()->json([
