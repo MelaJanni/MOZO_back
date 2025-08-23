@@ -501,33 +501,21 @@ class WaiterCallController extends Controller
     {
         $user = Auth::user();
 
-        $query = TableSilence::with(['table', 'silencedBy'])
-            ->active()
-            ->whereHas('table', function ($q) use ($user) {
-                $q->where('business_id', $user->active_business_id);
-            });
+        // Verificar si el usuario tiene negocio activo
+        if (!$user->business_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No tienes un negocio activo seleccionado'
+            ], 400);
+        }
 
-        $silences = $query->get()->map(function ($silence) {
-            return [
-                'id' => $silence->id,
-                'table' => [
-                    'id' => $silence->table->id,
-                    'number' => $silence->table->number,
-                    'name' => $silence->table->name
-                ],
-                'reason' => $silence->reason,
-                'silenced_by' => $silence->silencedBy->name ?? 'Sistema',
-                'silenced_at' => $silence->silenced_at,
-                'remaining_time' => $silence->formatted_remaining_time,
-                'notes' => $silence->notes,
-                'can_unsilence' => $silence->reason === 'manual'
-            ];
-        });
-
+        // Por ahora, retornar lista vacía ya que la tabla table_silences no está migrada
+        // TODO: Implementar cuando se migre la tabla table_silences
         return response()->json([
             'success' => true,
-            'silenced_tables' => $silences,
-            'count' => $silences->count()
+            'silenced_tables' => [],
+            'count' => 0,
+            'message' => 'Funcionalidad de silencio de mesas pendiente de implementación'
         ]);
     }
 
@@ -1823,15 +1811,21 @@ class WaiterCallController extends Controller
         $waiter = Auth::user();
         
         try {
-            // Verificar que el mozo tenga acceso a este negocio
-            $business = $waiter->businesses()->where('businesses.id', $businessId)->first();
+            // Verificar que el mozo tenga acceso a este negocio (debe estar registrado como staff)
+            $staffRecord = \App\Models\Staff::where('user_id', $waiter->id)
+                ->where('business_id', $businessId)
+                ->where('status', 'confirmed')
+                ->with('business')
+                ->first();
             
-            if (!$business) {
+            if (!$staffRecord) {
                 return response()->json([
                     'success' => false,
                     'message' => 'No tienes acceso a este negocio'
                 ], 403);
             }
+
+            $business = $staffRecord->business;
 
             // Obtener todas las mesas del negocio con información básica
             $tables = Table::where('business_id', $businessId)
@@ -2342,7 +2336,7 @@ class WaiterCallController extends Controller
         $waiter = Auth::user();
         
         try {
-            if (!$waiter->active_business_id) {
+            if (!$waiter->business_id) {
                 return response()->json([
                     'success' => false,
                     'message' => 'No tienes un negocio activo seleccionado'
@@ -2350,7 +2344,7 @@ class WaiterCallController extends Controller
             }
 
             $query = IpBlock::with(['blockedBy'])
-                ->where('business_id', $waiter->active_business_id);
+                ->where('business_id', $waiter->business_id);
 
             // Filtros opcionales
             if ($request->has('active_only') && $request->boolean('active_only')) {
