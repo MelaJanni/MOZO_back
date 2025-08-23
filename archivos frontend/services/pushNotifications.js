@@ -520,6 +520,62 @@ const processBackendNotification = (notification) => {
 
     // Procesar según el tipo de notificación del nuevo backend
     switch (notificationData.type) {
+      case 'staff_request': {
+        const event = notificationData.event_type || 'created'
+        if (event === 'created') {
+          processedNotification = {
+            title: '🧑‍🍳 Nueva solicitud de personal',
+            body: `${notificationData.title || notificationData.name || 'Candidato'} quiere unirse como ${notificationData.position || 'mozo'}`,
+            data: {
+              ...notificationData,
+              icon: '🧑‍🍳',
+              priority: 'high',
+              route: '/admin/staff/requests',
+              channels: ['Database', 'Realtime', 'FCM']
+            }
+          }
+        } else if (event === 'confirmed') {
+          processedNotification = {
+            title: '✅ Solicitud aprobada',
+            body: `Tu solicitud para ${notificationData.position || 'mozo'} fue aprobada`,
+            data: {
+              ...notificationData,
+              icon: '✅',
+              priority: 'high',
+              route: '/staff/requests',
+              channels: ['Database', 'Realtime', 'FCM']
+            }
+          }
+        } else if (event === 'rejected') {
+          processedNotification = {
+            title: '❌ Solicitud rechazada',
+            body: `Tu solicitud para ${notificationData.position || 'mozo'} fue rechazada`,
+            data: {
+              ...notificationData,
+              icon: '❌',
+              priority: 'normal',
+              route: '/staff/requests',
+              channels: ['Database', 'Realtime', 'FCM']
+            }
+          }
+        }
+        break
+      }
+
+      case 'staff_invitation': {
+        processedNotification = {
+          title: '📩 Invitación a un negocio',
+          body: 'Has recibido una invitación para trabajar. Revisa y acepta desde la app.',
+          data: {
+            ...notificationData,
+            icon: '📩',
+            priority: 'high',
+            route: '/staff/invitations',
+            channels: ['Email', 'WhatsApp', 'FCM']
+          }
+        }
+        break
+      }
       case 'TestNotification':
         processedNotification = {
           title: 'Notificación de Prueba',

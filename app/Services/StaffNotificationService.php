@@ -242,13 +242,12 @@ class StaffNotificationService
                                 'timestamp' => (string) now()->timestamp,
                                 'source' => 'staff_system'
                             ];
-                            
-                            $firebaseService->sendUnifiedNotificationToTokens(
-                                $tokens,
-                                $staff->name,
-                                $body,
-                                $data
-                            );
+                                $firebaseService->sendUnifiedGenericToTokens(
+                                    $tokens,
+                                    $title,
+                                    $body,
+                                    $data
+                                );
                         }
                     }
                     return;
@@ -274,12 +273,12 @@ class StaffNotificationService
                 'source' => 'staff_system'
             ];
 
-            $firebaseService->sendUnifiedNotificationToTokens(
-                $tokens,
-                $staff->name,
-                $body,
-                $data
-            );
+                $firebaseService->sendUnifiedGenericToTokens(
+                    $tokens,
+                    $title,
+                    $body,
+                    $data
+                );
 
             Log::info('Staff notification sent', [
                 'staff_id' => $staff->id,

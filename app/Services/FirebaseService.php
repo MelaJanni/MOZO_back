@@ -645,6 +645,104 @@ class FirebaseService
     }
 
     /**
+     * 📣 UNIFIED GENÉRICO: Enviar notificación a múltiples tokens con título/cuerpo custom
+     * - Web: data-only (para activar onBackgroundMessage en service worker)
+     * - Móvil: notification + data
+     */
+    public function sendUnifiedGenericToTokens(array $tokens, string $title, string $body, array $data = []): array
+    {
+        if (empty($tokens)) {
+            Log::info('Unified generic notification skipped: empty token list');
+            return [
+                'sent' => 0,
+                'total' => 0,
+                'results' => []
+            ];
+        }
+
+        // Asegurar campos base en data para el SW/web
+        $baseData = [
+            'type' => $data['type'] ?? 'generic',
+            'source' => $data['source'] ?? 'backend',
+            'title' => $title,
+            'message' => $body,
+            'timestamp' => (string) now()->timestamp,
+            'channel_id' => $data['channel_id'] ?? 'mozo_waiter',
+        ];
+        $mergedData = array_merge($baseData, $data);
+
+        // Separar tokens por plataforma usando DeviceToken
+        $tokensByPlatform = DeviceToken::whereIn('token', $tokens)
+            ->get()
+            ->groupBy('platform');
+
+        $sent = 0;
+        $results = [];
+
+        // Web: data-only
+        if (isset($tokensByPlatform['web'])) {
+            foreach ($tokensByPlatform['web'] as $deviceToken) {
+                try {
+                    $resp = $this->sendDataOnlyToDevice($deviceToken->token, $mergedData);
+                    $results[] = [
+                        'token' => substr($deviceToken->token, 0, 15) . '...',
+                        'platform' => 'web',
+                        'success' => true,
+                        'id' => $resp['name'] ?? null
+                    ];
+                    $sent++;
+                } catch (\Exception $e) {
+                    $results[] = [
+                        'token' => substr($deviceToken->token, 0, 15) . '...',
+                        'platform' => 'web',
+                        'success' => false,
+                        'error' => $e->getMessage()
+                    ];
+                }
+            }
+        }
+
+        // Móvil (android/ios): notification + data
+        $mobileTokens = collect(['android', 'ios'])
+            ->flatMap(fn($platform) => $tokensByPlatform[$platform] ?? [])
+            ->pluck('token')
+            ->toArray();
+
+        foreach ($mobileTokens as $token) {
+            try {
+                $resp = $this->sendToDevice($token, $title, $body, $mergedData, 'high');
+                $results[] = [
+                    'token' => substr($token, 0, 15) . '...',
+                    'platform' => 'mobile',
+                    'success' => true,
+                    'id' => $resp['name'] ?? null
+                ];
+                $sent++;
+            } catch (\Exception $e) {
+                $results[] = [
+                    'token' => substr($token, 0, 15) . '...',
+                    'platform' => 'mobile',
+                    'success' => false,
+                    'error' => $e->getMessage()
+                ];
+            }
+        }
+
+        Log::info('Unified generic notifications dispatched', [
+            'sent' => $sent,
+            'total' => count($tokens),
+            'web_tokens' => count($tokensByPlatform['web'] ?? []),
+            'mobile_tokens' => count($mobileTokens)
+        ]);
+
+        return [
+            'sent' => $sent,
+            'total' => count($tokens),
+            'results' => $results
+        ];
+    }
+
+    /**
      * 🌐 Enviar SOLO data a token web (para service worker background)
      * Sin campo notification, para que Firebase no maneje automáticamente
      */
