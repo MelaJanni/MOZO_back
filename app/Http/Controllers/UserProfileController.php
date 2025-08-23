@@ -48,6 +48,8 @@ class UserProfileController extends Controller
             if (isset($profile->birth_date) && $profile->birth_date) {
                 $profileArray['birth_date'] = $profile->birth_date->format('d-m-Y');
             }
+            // Asegurar URL completa en avatar dentro de profile_data
+            $profileArray['avatar'] = $profile->avatar_url;
         // Detectar tipo según el perfil activo (no solo por rol del usuario)
         $activeType = $profile instanceof WaiterProfile ? 'waiter' : 'admin';
         return response()->json([
