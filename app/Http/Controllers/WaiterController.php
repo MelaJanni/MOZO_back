@@ -1230,4 +1230,375 @@ class WaiterController extends Controller
             ], 500);
         }
     }
+
+    // ===== ADMINISTRATIVE METHODS =====
+
+    /**
+     * Obtener estado de mesas silenciadas
+     */
+    public function getSilencedTables(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+
+        // Verificar si el usuario tiene negocio activo
+        if (!$user->business_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No tienes un negocio activo seleccionado'
+            ], 400);
+        }
+
+        // Por ahora, retornar lista vacía ya que la tabla table_silences no está migrada
+        // TODO: Implementar cuando se migre la tabla table_silences
+        return response()->json([
+            'success' => true,
+            'silenced_tables' => [],
+            'count' => 0,
+            'message' => 'Funcionalidad de silencio de mesas pendiente de implementación'
+        ]);
+    }
+
+    /**
+     * Listar IPs bloqueadas
+     */
+    public function getBlockedIps(Request $request): JsonResponse
+    {
+        $waiter = Auth::user();
+        
+        try {
+            if (!$waiter->business_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No tienes un negocio activo seleccionado'
+                ], 400);
+            }
+
+            $query = IpBlock::with(['blockedBy'])
+                ->where('business_id', $waiter->business_id);
+
+            // Filtros opcionales
+            if ($request->has('active_only') && $request->boolean('active_only')) {
+                $query->active();
+            }
+
+            if ($request->has('ip')) {
+                $query->where('ip_address', $request->ip);
+            }
+
+            $blockedIps = $query->orderBy('blocked_at', 'desc')
+                ->get()
+                ->map(function ($ipBlock) {
+                    return [
+                        'id' => $ipBlock->id,
+                        'ip_address' => $ipBlock->ip_address,
+                        'reason' => $ipBlock->reason,
+                        'blocked_by' => $ipBlock->blockedBy ? $ipBlock->blockedBy->name : 'Sistema',
+                        'blocked_at' => $ipBlock->blocked_at,
+                        'unblocked_at' => $ipBlock->unblocked_at,
+                        'is_active' => !$ipBlock->unblocked_at,
+                        'duration_blocked' => $ipBlock->blocked_at->diffForHumans()
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'blocked_ips' => $blockedIps,
+                'count' => $blockedIps->count(),
+                'active_count' => $blockedIps->where('is_active', true)->count()
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error getting blocked IPs', [
+                'waiter_id' => $waiter->id,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error obteniendo las IPs bloqueadas'
+            ], 500);
+        }
+    }
+
+    /**
+     * Activar múltiples mesas
+     */
+    public function activateMultipleTables(Request $request): JsonResponse
+    {
+        $request->validate([
+            'table_ids' => 'required|array|min:1',
+            'table_ids.*' => 'integer|exists:tables,id'
+        ]);
+
+        $waiter = Auth::user();
+        $tableIds = $request->table_ids;
+        $results = [];
+        $errors = [];
+
+        try {
+            if (!$waiter->business_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No tienes un negocio activo seleccionado'
+                ], 400);
+            }
+
+            // Verificar que todas las mesas pertenezcan al negocio del mozo
+            $tables = Table::whereIn('id', $tableIds)
+                ->where('business_id', $waiter->business_id)
+                ->get();
+
+            if ($tables->count() !== count($tableIds)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Algunas mesas no existen o no tienes acceso a ellas'
+                ], 400);
+            }
+
+            foreach ($tables as $table) {
+                if ($table->active_waiter_id) {
+                    $errors[] = [
+                        'table_id' => $table->id,
+                        'table_number' => $table->number,
+                        'error' => 'Ya está asignada a otro mozo'
+                    ];
+                    continue;
+                }
+
+                $table->update([
+                    'active_waiter_id' => $waiter->id,
+                    'waiter_assigned_at' => now()
+                ]);
+
+                $results[] = [
+                    'table_id' => $table->id,
+                    'table_number' => $table->number,
+                    'status' => 'activated',
+                    'assigned_at' => $table->waiter_assigned_at
+                ];
+            }
+
+            Log::info('Multiple tables activated', [
+                'waiter_id' => $waiter->id,
+                'waiter_name' => $waiter->name,
+                'activated_count' => count($results),
+                'errors_count' => count($errors),
+                'business_id' => $waiter->business_id
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => count($results) . ' mesa(s) activada(s) exitosamente',
+                'activated_tables' => $results,
+                'errors' => $errors,
+                'summary' => [
+                    'total_requested' => count($tableIds),
+                    'activated' => count($results),
+                    'errors' => count($errors)
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error activating multiple tables', [
+                'waiter_id' => $waiter->id,
+                'table_ids' => $tableIds,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error activando las mesas múltiples'
+            ], 500);
+        }
+    }
+
+    /**
+     * Desactivar múltiples mesas
+     */
+    public function deactivateMultipleTables(Request $request): JsonResponse
+    {
+        $request->validate([
+            'table_ids' => 'required|array|min:1',
+            'table_ids.*' => 'integer|exists:tables,id'
+        ]);
+
+        $waiter = Auth::user();
+        $tableIds = $request->table_ids;
+        $results = [];
+        $errors = [];
+
+        try {
+            if (!$waiter->business_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No tienes un negocio activo seleccionado'
+                ], 400);
+            }
+
+            // Verificar que todas las mesas pertenezcan al negocio del mozo y estén asignadas a él
+            $tables = Table::whereIn('id', $tableIds)
+                ->where('business_id', $waiter->business_id)
+                ->where('active_waiter_id', $waiter->id)
+                ->get();
+
+            if ($tables->count() !== count($tableIds)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Algunas mesas no existen, no tienes acceso o no están asignadas a ti'
+                ], 400);
+            }
+
+            foreach ($tables as $table) {
+                $table->update([
+                    'active_waiter_id' => null,
+                    'waiter_assigned_at' => null
+                ]);
+
+                $results[] = [
+                    'table_id' => $table->id,
+                    'table_number' => $table->number,
+                    'status' => 'deactivated'
+                ];
+            }
+
+            Log::info('Multiple tables deactivated', [
+                'waiter_id' => $waiter->id,
+                'waiter_name' => $waiter->name,
+                'deactivated_count' => count($results),
+                'business_id' => $waiter->business_id
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => count($results) . ' mesa(s) desactivada(s) exitosamente',
+                'deactivated_tables' => $results,
+                'summary' => [
+                    'total_requested' => count($tableIds),
+                    'deactivated' => count($results)
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error deactivating multiple tables', [
+                'waiter_id' => $waiter->id,
+                'table_ids' => $tableIds,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error desactivando las mesas múltiples'
+            ], 500);
+        }
+    }
+
+    /**
+     * Obtener dashboard del waiter
+     */
+    public function getDashboard(Request $request): JsonResponse
+    {
+        $waiter = Auth::user();
+        
+        try {
+            if (!$waiter->business_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No tienes un negocio activo seleccionado'
+                ], 400);
+            }
+
+            // Estadísticas básicas del mozo
+            $assignedTables = Table::where('business_id', $waiter->business_id)
+                ->where('active_waiter_id', $waiter->id)
+                ->count();
+
+            $availableTables = Table::where('business_id', $waiter->business_id)
+                ->whereNull('active_waiter_id')
+                ->count();
+
+            $pendingCalls = WaiterCall::where('waiter_id', $waiter->id)
+                ->where('status', 'pending')
+                ->whereHas('table', function ($q) use ($waiter) {
+                    $q->where('business_id', $waiter->business_id);
+                })
+                ->count();
+
+            // Llamadas recientes (últimas 24 horas)
+            $recentCalls = WaiterCall::where('waiter_id', $waiter->id)
+                ->where('called_at', '>=', now()->subDay())
+                ->whereHas('table', function ($q) use ($waiter) {
+                    $q->where('business_id', $waiter->business_id);
+                })
+                ->count();
+
+            return response()->json([
+                'success' => true,
+                'waiter' => [
+                    'id' => $waiter->id,
+                    'name' => $waiter->name,
+                    'active_business_id' => $waiter->business_id,
+                ],
+                'stats' => [
+                    'assigned_tables' => $assignedTables,
+                    'available_tables' => $availableTables,
+                    'pending_calls' => $pendingCalls,
+                    'calls_today' => $recentCalls,
+                ],
+                'available_to_assign' => $availableTables
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error getting waiter dashboard', [
+                'waiter_id' => $waiter->id,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error obteniendo el dashboard'
+            ], 500);
+        }
+    }
+
+    /**
+     * Diagnóstico de usuario - verificar estado de business_id
+     */
+    public function diagnoseUser(Request $request): JsonResponse
+    {
+        $waiter = Auth::user();
+        
+        // Buscar registros de staff para este usuario
+        $staffRecords = Staff::where('user_id', $waiter->id)
+            ->with('business')
+            ->get();
+
+        // Si tiene registros staff pero no business_id, fijar el primero
+        if ($staffRecords->isNotEmpty() && !$waiter->business_id) {
+            $firstBusiness = $staffRecords->first()->business;
+            $waiter->update(['business_id' => $firstBusiness->id]);
+            
+            Log::info('Auto-fixed missing business_id', [
+                'waiter_id' => $waiter->id,
+                'business_id' => $firstBusiness->id,
+                'business_name' => $firstBusiness->name
+            ]);
+        }
+
+        return response()->json([
+            'user_id' => $waiter->id,
+            'user_name' => $waiter->name,
+            'current_business_id' => $waiter->business_id,
+            'staff_records' => $staffRecords->map(function($staff) {
+                return [
+                    'business_id' => $staff->business_id,
+                    'business_name' => $staff->business->name,
+                    'status' => $staff->status,
+                    'position' => $staff->position
+                ];
+            }),
+            'staff_count' => $staffRecords->count(),
+            'needs_business_assignment' => $staffRecords->isNotEmpty() && !$waiter->business_id,
+            'fixed_automatically' => $staffRecords->isNotEmpty() && !$waiter->business_id
+        ]);
+    }
 } 

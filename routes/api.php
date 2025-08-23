@@ -163,14 +163,17 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/calls/history', [WaiterCallController::class, 'getCallHistory']);
         
         // Dashboard y estado
-        Route::get('/dashboard', [WaiterCallController::class, 'getDashboard']);
+        Route::get('/dashboard', [WaiterController::class, 'getDashboard']);
         Route::get('/tables/status', [WaiterCallController::class, 'getTablesStatus']);
 
         // Gestión de negocios múltiples
         Route::get('/businesses', [WaiterController::class, 'getWaiterBusinesses']);
-        Route::get('/businesses/{id}/tables', [WaiterCallController::class, 'getBusinessTables']);
+        Route::get('/businesses/{id}/tables', [WaiterController::class, 'getBusinessTables']);
         Route::post('/join-business', [WaiterController::class, 'joinBusiness']);
         Route::post('/set-active-business', [WaiterController::class, 'setActiveBusiness']);
+        
+        // Diagnóstico de usuario
+        Route::get('/diagnose', [WaiterController::class, 'diagnoseUser']);
         
         // Gestión de mesas - Individual
         Route::get('/tables/assigned', [WaiterController::class, 'getAssignedTables']);
@@ -181,18 +184,18 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/tables/{table}/silence', [WaiterCallController::class, 'unsilenceTable']);
         
         // Gestión de mesas - Múltiples
-        Route::post('/tables/activate/multiple', [WaiterCallController::class, 'activateMultipleTables']);
-        Route::post('/tables/deactivate/multiple', [WaiterCallController::class, 'deactivateMultipleTables']);
+        Route::post('/tables/activate/multiple', [WaiterController::class, 'activateMultipleTables']);
+        Route::post('/tables/deactivate/multiple', [WaiterController::class, 'deactivateMultipleTables']);
         Route::post('/tables/silence/multiple', [WaiterCallController::class, 'silenceMultipleTables']);
         Route::post('/tables/unsilence/multiple', [WaiterCallController::class, 'unsilenceMultipleTables']);
         
         // Estado de mesas
-        Route::get('/tables/silenced', [WaiterCallController::class, 'getSilencedTables']);
+        Route::get('/tables/silenced', [WaiterController::class, 'getSilencedTables']);
         
         // Gestión de IPs bloqueadas (anti-spam)
         Route::post('/ip/block', [WaiterCallController::class, 'blockIp']);
         Route::post('/ip/unblock', [WaiterCallController::class, 'unblockIp']);
-        Route::get('/ip/blocked', [WaiterCallController::class, 'getBlockedIps']);
+        Route::get('/ip/blocked', [WaiterController::class, 'getBlockedIps']);
         Route::get('/ip/debug', [WaiterCallController::class, 'debugIpStatus']);
         Route::post('/ip/force-unblock', [WaiterCallController::class, 'forceUnblockIp']);
 
@@ -233,7 +236,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Admin - Historial de llamadas y gestión
         Route::get('/calls/history', [WaiterCallController::class, 'getCallHistory']);
-        Route::get('/tables/silenced', [WaiterCallController::class, 'getSilencedTables']);
+        Route::get('/tables/silenced', [WaiterController::class, 'getSilencedTables']);
         Route::delete('/tables/{table}/silence', [WaiterCallController::class, 'unsilenceTable']);
 
         Route::get('/staff', [AdminController::class, 'getStaff']);
