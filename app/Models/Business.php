@@ -8,6 +8,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use App\Models\Menu;
 use App\Models\QrCode;
+use App\Models\BusinessSlugAlias;
 
 class Business extends Model
 {
@@ -79,6 +80,12 @@ class Business extends Model
         return $this->hasMany(Menu::class);
     }
 
+    /** Alias históricos de slugs */
+    public function slugAliases()
+    {
+        return $this->hasMany(BusinessSlugAlias::class);
+    }
+
     /** Códigos QR del negocio */
     public function qrCodes()
     {
@@ -106,6 +113,38 @@ class Business extends Model
         static::creating(function ($business) {
             if (!$business->invitation_code) {
                 $business->invitation_code = self::generateInvitationCode();
+            }
+        });
+
+        // Si cambia el nombre, guardamos el slug anterior como alias para no romper URLs de QR existentes
+        static::updating(function ($business) {
+            if ($business->isDirty('name')) {
+                $originalName = $business->getOriginal('name');
+                if ($originalName) {
+                    $oldSlug = Str::slug($originalName);
+                    // Evitar duplicar alias si ya existe
+                    if (!BusinessSlugAlias::where('business_id', $business->id)->where('slug', $oldSlug)->exists()) {
+                        BusinessSlugAlias::create([
+                            'business_id' => $business->id,
+                            'slug' => $oldSlug,
+                        ]);
+                    }
+                }
+            }
+        });
+
+        // Tras actualizar, si cambió el nombre, reescribir URLs de QRs al nuevo slug
+        static::updated(function ($business) {
+            if ($business->wasChanged('name')) {
+                $newSlug = Str::slug($business->name);
+                $baseUrl = config('app.frontend_url', 'https://mozoqr.com');
+                QrCode::where('business_id', $business->id)->get()->each(function ($qr) use ($newSlug, $baseUrl) {
+                    $code = $qr->code;
+                    if ($code) {
+                        $qr->url = rtrim($baseUrl, '/') . "/qr/{$newSlug}/{$code}";
+                        $qr->save();
+                    }
+                });
             }
         });
     }

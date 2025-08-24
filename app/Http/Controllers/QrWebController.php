@@ -9,6 +9,7 @@ use App\Models\Table;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use App\Models\BusinessSlugAlias;
 
 class QrWebController extends Controller
 {
@@ -36,6 +37,14 @@ class QrWebController extends Controller
             if ($nameNoSpaces !== '' && $nameNoSpaces === $slugNoSpaces) return true;
             return false;
         });
+
+        // 5) Resolver por alias histórico si no se encontró directo
+        if (!$business) {
+            $alias = BusinessSlugAlias::where('slug', $needle)->first();
+            if ($alias) {
+                $business = $alias->business;
+            }
+        }
         
         \Log::info('Business Search Result', [
             'found' => $business ? 'yes' : 'no',
