@@ -24,26 +24,25 @@ class QrWebController extends Controller
 
         // Normalizar el slug recibido y buscar por múltiples variantes (slug/name/code)
         $needle = Str::slug($restaurantSlug);
-        $business = Business::all()->first(function($b) use ($restaurantSlug, $needle) {
+        $matchType = null; // 'slug' | 'name' | 'code' | 'no-spaces' | 'alias'
+        $business = Business::all()->first(function($b) use ($restaurantSlug, $needle, &$matchType) {
             // 1) Coincidencia por columna slug (normalizada)
-            if (!empty($b->slug) && Str::slug($b->slug) === $needle) return true;
+            if (!empty($b->slug) && Str::slug($b->slug) === $needle) { $matchType = 'slug'; return true; }
             // 2) Coincidencia por nombre del negocio normalizado
-            if (!empty($b->name) && Str::slug($b->name) === $needle) return true;
+            if (!empty($b->name) && Str::slug($b->name) === $needle) { $matchType = 'name'; return true; }
             // 3) Coincidencia por código del negocio (texto plano)
-            if (!empty($b->code) && strtolower($b->code) === strtolower($restaurantSlug)) return true;
+            if (!empty($b->code) && strtolower($b->code) === strtolower($restaurantSlug)) { $matchType = 'code'; return true; }
             // 4) Coincidencia por nombre sin espacios/guiones (fallback legacy)
             $nameNoSpaces = strtolower(str_replace([' ', '-'], '', (string)$b->name));
             $slugNoSpaces = strtolower(str_replace([' ', '-'], '', (string)$restaurantSlug));
-            if ($nameNoSpaces !== '' && $nameNoSpaces === $slugNoSpaces) return true;
+            if ($nameNoSpaces !== '' && $nameNoSpaces === $slugNoSpaces) { $matchType = 'no-spaces'; return true; }
             return false;
         });
 
         // 5) Resolver por alias histórico si no se encontró directo
         if (!$business) {
             $alias = BusinessSlugAlias::where('slug', $needle)->first();
-            if ($alias) {
-                $business = $alias->business;
-            }
+            if ($alias) { $business = $alias->business; $matchType = 'alias'; }
         }
         
         \Log::info('Business Search Result', [
@@ -60,6 +59,15 @@ class QrWebController extends Controller
                 'available_businesses' => $availableBusinesses->toArray()
             ]);
             abort(404, 'Business not found: ' . $restaurantSlug);
+        }
+
+        // Si encontramos el negocio por alias u otra variante, redirigir a la URL canónica con el slug actual
+        $canonicalSlug = Str::slug($business->name);
+        if ($canonicalSlug !== $needle) {
+            $qs = $request->getQueryString();
+            $target = route('qr.table.page', ['restaurantSlug' => $canonicalSlug, 'tableCode' => $tableCode]);
+            if ($qs) { $target .= '?' . $qs; }
+            return redirect()->to($target, 302);
         }
 
         // Buscar mesa por código
