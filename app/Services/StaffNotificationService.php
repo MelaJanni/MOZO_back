@@ -57,15 +57,18 @@ class StaffNotificationService
                 'notes' => $staff->notes,
             ];
 
-            // Escrituras paralelas
-            $promises = [
-                // Datos principales de la solicitud
-                $this->writeToPath("staff_requests/{$staff->id}", $requestData),
-                
-                // Índices rápidos
-                $this->updateBusinessStaffIndex($staff),
-                $this->updateUserStaffIndex($staff)
-            ];
+            // Escrituras según evento
+            $promises = [];
+            if (in_array($eventType, ['confirmed', 'rejected'])) {
+                // Al confirmar o rechazar, eliminar del listado de solicitudes
+                $promises[] = $this->deleteFromPath("staff_requests/{$staff->id}");
+            } else {
+                // En eventos 'created' o 'invited' mantenemos el nodo activo
+                $promises[] = $this->writeToPath("staff_requests/{$staff->id}", $requestData);
+            }
+            // Actualizar índices
+            $promises[] = $this->updateBusinessStaffIndex($staff);
+            $promises[] = $this->updateUserStaffIndex($staff);
 
             $this->executeParallel($promises);
             
@@ -207,8 +210,51 @@ class StaffNotificationService
                         $tokens = $this->getUserTokens($staff->user_id);
                         $title = '¡Solicitud aprobada!';
                         $body = "Tu solicitud para {$staff->position} ha sido aprobada";
+                        if (!empty($tokens)) {
+                            $data = [
+                                'type' => 'staff_request',
+                                'event_type' => $eventType,
+                                'staff_id' => (string)$staff->id,
+                                'business_id' => (string)$staff->business_id,
+                                'user_id' => (string)$staff->user_id,
+                                'status' => $staff->status,
+                                'position' => $staff->position,
+                                'timestamp' => (string) now()->timestamp,
+                                'source' => 'staff_system'
+                            ];
+                            $firebaseService->sendUnifiedGenericToTokens(
+                                $tokens,
+                                $title,
+                                $body,
+                                $data
+                            );
+                        }
                     }
-                    break;
+                    // Además, notificar a administradores del negocio que la solicitud fue aceptada/confirmada
+                    $adminTokens = $this->getBusinessAdminTokens($staff->business_id);
+                    if (!empty($adminTokens)) {
+                        $adminTitle = 'Solicitud aceptada';
+                        $staffName = $staff->name ?: 'Un mozo';
+                        $adminBody = "$staffName confirmó su ingreso como {$staff->position}";
+                        $adminData = [
+                            'type' => 'staff_request_admin',
+                            'event_type' => $eventType,
+                            'staff_id' => (string)$staff->id,
+                            'business_id' => (string)$staff->business_id,
+                            'user_id' => $staff->user_id ? (string)$staff->user_id : null,
+                            'status' => $staff->status,
+                            'position' => $staff->position,
+                            'timestamp' => (string) now()->timestamp,
+                            'source' => 'staff_system'
+                        ];
+                        $firebaseService->sendUnifiedGenericToTokens(
+                            $adminTokens,
+                            $adminTitle,
+                            $adminBody,
+                            $adminData
+                        );
+                    }
+                    return; // Ya enviamos ambos tipos de notificación
 
                 case 'rejected':
                     // Notificar al mozo si tiene usuario
@@ -273,12 +319,12 @@ class StaffNotificationService
                 'source' => 'staff_system'
             ];
 
-                $firebaseService->sendUnifiedGenericToTokens(
-                    $tokens,
-                    $title,
-                    $body,
-                    $data
-                );
+            $firebaseService->sendUnifiedGenericToTokens(
+                $tokens,
+                $title,
+                $body,
+                $data
+            );
 
             Log::info('Staff notification sent', [
                 'staff_id' => $staff->id,

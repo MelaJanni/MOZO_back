@@ -39,8 +39,8 @@ class QrWebController extends Controller
             return false;
         });
 
-        // 5) Resolver por alias histórico si no se encontró directo
-        if (!$business) {
+        // 5) Resolver por alias histórico si no se encontró directo (solo si existe la tabla)
+        if (!$business && Schema::hasTable('business_slug_aliases')) {
             $alias = BusinessSlugAlias::where('slug', $needle)->first();
             if ($alias) { $business = $alias->business; $matchType = 'alias'; }
         }
@@ -58,7 +58,21 @@ class QrWebController extends Controller
                 'searched_for' => $restaurantSlug,
                 'available_businesses' => $availableBusinesses->toArray()
             ]);
-            abort(404, 'Business not found: ' . $restaurantSlug);
+            // 🔎 Fallback extra: deducir negocio por el código de mesa o por registro QR
+            $tableProbe = Table::where('code', $tableCode)->first();
+            if ($tableProbe) {
+                $business = Business::find($tableProbe->business_id);
+                $matchType = 'tableCode';
+            } else if (\Schema::hasTable('qr_codes')) {
+                $qrProbe = \App\Models\QrCode::where('code', $tableCode)->first();
+                if ($qrProbe) {
+                    $business = Business::find($qrProbe->business_id);
+                    $matchType = 'qr';
+                }
+            }
+            if (!$business) {
+                abort(404, 'Business not found: ' . $restaurantSlug);
+            }
         }
 
         // Si encontramos el negocio por alias u otra variante, redirigir a la URL canónica con el slug actual

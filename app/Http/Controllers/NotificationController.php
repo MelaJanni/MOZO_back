@@ -406,6 +406,31 @@ class NotificationController extends Controller
             
             $notification = $user->notifications()->where('id', $id)->first();
             
+            // Fallback: aceptar IDs "amigables" buscando dentro de JSON data
+            if (!$notification) {
+                // Intento 1: usar operadores JSON cuando estén disponibles
+                try {
+                    $notification = $user->notifications()
+                        ->where('data->data->key', $id)
+                        ->orWhere('data->key', $id)
+                        ->orWhere('data->data->notification_key', $id)
+                        ->orWhere('data->notification_key', $id)
+                        ->latest()
+                        ->first();
+                } catch (\Throwable $e) {
+                    // Intento 2: cargar reciente y filtrar en memoria (compatibilidad SQLite/versions)
+                    $candidates = $user->notifications()->latest()->limit(100)->get();
+                    $notification = $candidates->first(function ($n) use ($id) {
+                        $d = (array)($n->data ?? []);
+                        $inner = (array)($d['data'] ?? []);
+                        return (($inner['key'] ?? null) === $id)
+                            || (($d['key'] ?? null) === $id)
+                            || (($inner['notification_key'] ?? null) === $id)
+                            || (($d['notification_key'] ?? null) === $id);
+                    });
+                }
+            }
+            
             if (!$notification) {
                 return response()->json([
                     'success' => false,
