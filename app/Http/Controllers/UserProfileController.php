@@ -50,19 +50,23 @@ class UserProfileController extends Controller
             }
             // Asegurar URL completa en avatar dentro de profile_data
             $profileArray['avatar'] = $profile->avatar_url;
-        // Detectar tipo según el perfil activo (no solo por rol del usuario)
-        $activeType = $profile instanceof WaiterProfile ? 'waiter' : 'admin';
-        return response()->json([
+            // Unificar fuente del nombre: usar solo user.name (no enviar display_name en profile_data)
+            unset($profileArray['display_name']);
+            // Detectar tipo según el perfil activo (no solo por rol del usuario)
+            $activeType = $profile instanceof WaiterProfile ? 'waiter' : 'admin';
+
+            // Estructura limpia solicitada: data { user, type, profile_data }
+            return response()->json([
                 'success' => true,
                 'data' => [
-                    'id' => $profile->id,
-            'type' => $activeType,
-                    'user_id' => $user->id,
-                    'avatar' => $profile->avatar_url,
-                    'display_name' => $profile->display_name,
-                    'birth_date' => $profile->birth_date ? $profile->birth_date->format('d-m-Y') : null,
-                    'is_complete' => $profile->isComplete(),
-                    'profile_data' => $profileArray
+                    'user' => [
+                        'id' => $user->id,
+                        'name' => $user->name,
+                        'email' => $user->email,
+                        'google_id' => $user->google_id,
+                        'google_avatar' => $user->google_avatar,
+                    ],
+                    'profile_data' => $profileArray,
                 ]
             ]);
 
@@ -181,19 +185,21 @@ class UserProfileController extends Controller
             }
             // Asegurar que avatar dentro de profile_data sea URL y no path
             $profileArray['avatar'] = $profileFresh->avatar_url;
+            // No devolver display_name para evitar duplicar el nombre
+            unset($profileArray['display_name']);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Perfil de mozo actualizado exitosamente',
                 'data' => [
-                    'id' => $profileFresh->id,
-                    'type' => 'waiter',
-                    'user_id' => $user->id,
-                    'avatar' => $profileFresh->avatar_url,
-                    'display_name' => $profileFresh->display_name,
-                    'birth_date' => $profileFresh->birth_date ? $profileFresh->birth_date->format('d-m-Y') : null,
-                    'is_complete' => $profileFresh->isComplete(),
-                    'profile_data' => $profileArray
+                    'user' => [
+                        'id' => $user->id,
+                        'name' => $user->name,
+                        'email' => $user->email,
+                        'google_id' => $user->google_id,
+                        'google_avatar' => $user->google_avatar,
+                    ],
+                    'profile_data' => $profileArray,
                 ]
             ], 200, [], JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
 
@@ -276,15 +282,20 @@ class UserProfileController extends Controller
             }
             // Asegurar que avatar dentro de profile_data sea URL
             $profileArray['avatar'] = $profileFresh->avatar_url;
+            // No devolver display_name para evitar duplicar el nombre
+            unset($profileArray['display_name']);
             return response()->json([
                 'success' => true,
                 'message' => 'Perfil de administrador actualizado exitosamente',
                 'data' => [
-                    'id' => $profile->id,
-                    'avatar_url' => $profile->avatar_url,
-                    'display_name' => $profile->display_name,
-                    'is_complete' => $profile->isComplete(),
-                    'profile_data' => $profileArray
+                    'user' => [
+                        'id' => $user->id,
+                        'name' => $user->name,
+                        'email' => $user->email,
+                        'google_id' => $user->google_id,
+                        'google_avatar' => $user->google_avatar,
+                    ],
+                    'profile_data' => $profileArray,
                 ]
             ]);
 
@@ -432,7 +443,6 @@ class UserProfileController extends Controller
         // Construir profile_data solo con los campos relevantes
         $profileData = [
             'avatar' => $profile->avatar_url,
-            'display_name' => $profile->display_name,
             'bio' => $profile->bio,
             'phone' => $profile->phone,
             'birth_date' => $profile->birth_date ? $profile->birth_date->format('d-m-Y') : null,
@@ -461,12 +471,7 @@ class UserProfileController extends Controller
                     'name' => 'Información básica',
                     'description' => 'Datos personales fundamentales',
                     'fields' => [
-                        'display_name' => [
-                            'label' => 'Nombre a mostrar',
-                            'description' => 'El nombre que aparecerá en tu perfil',
-                            'required' => false,
-                            'priority' => 'medium'
-                        ],
+                        // display_name removido: el nombre canónico vive en user.name
                         'phone' => [
                             'label' => 'Teléfono',
                             'description' => 'Tu número de contacto',
@@ -561,12 +566,7 @@ class UserProfileController extends Controller
                     'name' => 'Información básica',
                     'description' => 'Datos personales fundamentales',
                     'fields' => [
-                        'display_name' => [
-                            'label' => 'Nombre a mostrar',
-                            'description' => 'El nombre que aparecerá en tu perfil administrativo',
-                            'required' => false,
-                            'priority' => 'medium'
-                        ],
+                        // display_name removido: el nombre canónico vive en user.name
                         'position' => [
                             'label' => 'Posición',
                             'description' => 'Tu cargo o posición en la empresa',
@@ -717,16 +717,76 @@ class UserProfileController extends Controller
     return response()->json([
             'success' => true,
             'data' => [
-                'id' => $profile->id,
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'google_id' => $user->google_id,
+                    'google_avatar' => $user->google_avatar,
+                ],
         'type' => $activeType,
-                'user_id' => $user->id,
-                'avatar' => $profile->avatar_url,
-                'display_name' => $profile->display_name,
-                'birth_date' => $profile->birth_date ? $profile->birth_date->format('d-m-Y') : null,
+                'profile_data' => $profileData,
                 'is_complete' => $isComplete,
-                'profile_data' => $profileData
             ]
         ], 200, [], JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
+     * ✏️ ACTUALIZAR DATOS DE LA CUENTA (usuario)
+     * PUT /api/account
+     * body: { name?, email? }
+     */
+    public function updateAccount(Request $request)
+    {
+        $user = Auth::user();
+
+        $validator = Validator::make($request->all(), [
+            'name' => 'sometimes|string|max:255',
+            'email' => 'sometimes|email|max:255|unique:users,email,' . $user->id,
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Datos de validación incorrectos',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $data = $validator->validated();
+
+        // Guardar cambios en el usuario
+        if (!empty($data)) {
+            $user->fill($data);
+            $user->save();
+        }
+
+        // Construir payload consistente
+        $profile = $user->getActiveProfile();
+        $profileArray = $profile ? $profile->toArray() : null;
+        if ($profile && isset($profile->birth_date) && $profile->birth_date) {
+            $profileArray['birth_date'] = $profile->birth_date->format('d-m-Y');
+            $profileArray['avatar'] = $profile->avatar_url;
+        } elseif ($profile) {
+            $profileArray['avatar'] = $profile->avatar_url;
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Cuenta actualizada correctamente',
+            'data' => [
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'google_id' => $user->google_id,
+                    'google_avatar' => $user->google_avatar,
+                ],
+                'type' => $profile ? ($profile instanceof WaiterProfile ? 'waiter' : 'admin') : null,
+                'profile_data' => $profileArray,
+                'is_complete' => $profile ? $profile->isComplete() : false,
+            ]
+        ]);
     }
 
     /**

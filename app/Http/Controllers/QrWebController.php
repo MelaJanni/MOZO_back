@@ -8,6 +8,7 @@ use App\Models\Business;
 use App\Models\Table;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 class QrWebController extends Controller
 {
@@ -20,20 +21,21 @@ class QrWebController extends Controller
             'client_ip' => $request->ip()
         ]);
 
-        // Buscar negocio por slug primero, luego por nombre
-        $business = Business::all()->first(function($business) use ($restaurantSlug) {
-            return strtolower($business->slug) === strtolower($restaurantSlug);
+        // Normalizar el slug recibido y buscar por múltiples variantes (slug/name/code)
+        $needle = Str::slug($restaurantSlug);
+        $business = Business::all()->first(function($b) use ($restaurantSlug, $needle) {
+            // 1) Coincidencia por columna slug (normalizada)
+            if (!empty($b->slug) && Str::slug($b->slug) === $needle) return true;
+            // 2) Coincidencia por nombre del negocio normalizado
+            if (!empty($b->name) && Str::slug($b->name) === $needle) return true;
+            // 3) Coincidencia por código del negocio (texto plano)
+            if (!empty($b->code) && strtolower($b->code) === strtolower($restaurantSlug)) return true;
+            // 4) Coincidencia por nombre sin espacios/guiones (fallback legacy)
+            $nameNoSpaces = strtolower(str_replace([' ', '-'], '', (string)$b->name));
+            $slugNoSpaces = strtolower(str_replace([' ', '-'], '', (string)$restaurantSlug));
+            if ($nameNoSpaces !== '' && $nameNoSpaces === $slugNoSpaces) return true;
+            return false;
         });
-        
-        // Si no se encuentra por slug, buscar por nombre
-        if (!$business) {
-            $business = Business::where(function($query) use ($restaurantSlug) {
-                // Exact name match (case insensitive)
-                $query->whereRaw('LOWER(name) = ?', [strtolower($restaurantSlug)])
-                      // Name without spaces (case insensitive) 
-                      ->orWhereRaw('LOWER(REPLACE(name, " ", "")) = ?', [strtolower(str_replace(' ', '', $restaurantSlug))]);
-            })->first();
-        }
         
         \Log::info('Business Search Result', [
             'found' => $business ? 'yes' : 'no',

@@ -143,6 +143,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Alias limpio solicitado por FE: /api/profile/completeness
     Route::get('/profile/completeness', [UserProfileController::class, 'getProfileCompleteness']);
+    // Actualizar datos de la cuenta (user)
+    Route::put('/account', [UserProfileController::class, 'updateAccount']);
     // Work history (solo waiter): listar/crear/actualizar
     Route::get('/profile/work-history', [UserProfileController::class, 'workHistory']);
     Route::post('/profile/work-history', [UserProfileController::class, 'createWorkHistory']);

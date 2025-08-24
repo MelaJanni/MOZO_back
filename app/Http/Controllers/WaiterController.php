@@ -710,21 +710,65 @@ class WaiterController extends Controller
                 ], 404);
             }
 
-            // Verificar si ya está registrado en este negocio como waiter
+            // Verificar si ya existe un registro en staff
             $existingStaff = Staff::where('user_id', $waiter->id)
                 ->where('business_id', $business->id)
                 ->first();
-            
+
             if ($existingStaff) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Ya estás registrado en este negocio',
-                    'business' => [
-                        'id' => $business->id,
-                        'name' => $business->name,
-                        'code' => $business->invitation_code
-                    ]
-                ], 409);
+                if ($existingStaff->status === 'confirmed') {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Ya estás registrado en este negocio',
+                        'business' => [
+                            'id' => $business->id,
+                            'name' => $business->name,
+                            'code' => $business->invitation_code
+                        ]
+                    ], 409);
+                }
+                if ($existingStaff->status === 'pending') {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Ya tienes una solicitud pendiente en este negocio',
+                        'staff_request' => [
+                            'id' => $existingStaff->id,
+                            'status' => $existingStaff->status,
+                        ],
+                        'business' => [
+                            'id' => $business->id,
+                            'name' => $business->name,
+                            'code' => $business->invitation_code
+                        ]
+                    ], 409);
+                }
+                // Si fue rechazada, permitir reenviar como pendiente
+                if ($existingStaff->status === 'rejected') {
+                    $existingStaff->update([
+                        'status' => 'pending',
+                        'hire_date' => null,
+                    ]);
+                    try {
+                        if (app()->bound(\App\Services\StaffNotificationService::class)) {
+                            app(\App\Services\StaffNotificationService::class)
+                                ->writeStaffRequest($existingStaff, 'created');
+                        }
+                    } catch (\Throwable $e) { /* noop */ }
+
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Solicitud reenviada al administrador',
+                        'staff_request' => [
+                            'id' => $existingStaff->id,
+                            'status' => $existingStaff->status,
+                        ],
+                        'business' => [
+                            'id' => $business->id,
+                            'name' => $business->name,
+                            'code' => $business->invitation_code
+                        ]
+                    ], 201);
+                }
             }
 
             // Verificar si ya existe por email (constraint unique)
@@ -739,21 +783,29 @@ class WaiterController extends Controller
                 ], 409);
             }
 
-            // Registrar al mozo en el negocio a través de la tabla staff
+            // Crear solicitud de staff en estado pendiente (no unir automáticamente)
             $staffRecord = Staff::create([
                 'user_id' => $waiter->id,
                 'business_id' => $business->id,
                 'name' => $waiter->name,
                 'email' => $waiter->email,
-                'position' => 'waiter',
-                'status' => 'confirmed',
-                'hire_date' => now(),
+                'position' => 'Mozo',
+                'status' => 'pending',
+                'hire_date' => null,
                 'phone' => optional($waiter->waiterProfile)->phone,
             ]);
 
-            // Si es su primer negocio, hacerlo activo
-            if (!$waiter->business_id) {
-                $waiter->update(['business_id' => $business->id]);
+            // Notificar a admins del negocio
+            try {
+                if (app()->bound(\App\Services\StaffNotificationService::class)) {
+                    app(\App\Services\StaffNotificationService::class)
+                        ->writeStaffRequest($staffRecord, 'created');
+                }
+            } catch (\Throwable $e) {
+                \Log::warning('Failed to send staff request notification', [
+                    'staff_id' => $staffRecord->id,
+                    'error' => $e->getMessage(),
+                ]);
             }
 
             Log::info('Waiter joined new business', [
@@ -766,7 +818,7 @@ class WaiterController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => "Te has unido exitosamente a {$business->name}",
+                'message' => 'Solicitud enviada al administrador. Te notificaremos cuando sea aprobada.',
                 'business' => [
                     'id' => $business->id,
                     'name' => $business->name,
@@ -774,12 +826,12 @@ class WaiterController extends Controller
                     'address' => $business->address,
                     'phone' => $business->phone,
                     'logo' => $business->logo ? asset('storage/' . $business->logo) : null,
-                    'is_active' => $business->id === $waiter->business_id
+                    'is_active' => false
                 ],
-                'membership' => [
-                    'joined_at' => now(),
-                    'status' => 'active',
-                    'role' => 'waiter'
+                'staff_request' => [
+                    'id' => $staffRecord->id,
+                    'status' => $staffRecord->status,
+                    'created_at' => now()->toIso8601String()
                 ]
             ], 201);
 

@@ -691,30 +691,36 @@ class AdminController extends Controller
             $query->where('status', $request->status);
         }
 
-    $staff = $query->with(['user.adminProfile', 'user.waiterProfile', 'reviews'])
+    $staff = $query->with(['user.waiterProfile'])
             ->orderBy('created_at', 'desc')
             ->get();
 
         return response()->json([
             'staff' => $staff->map(function($staffMember) {
-                $data = $staffMember->toArray();
-                
-                // Agregar datos del perfil del usuario si está conectado
-                if ($staffMember->user && $staffMember->user->profile()) {
-                    $data['user_profile'] = $staffMember->user->profile();
+                $user = $staffMember->user;
+                $userData = $user ? [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'google_id' => $user->google_id,
+                    'google_avatar' => $user->google_avatar,
+                ] : null;
+
+                $profile = $user ? $user->waiterProfile : null; // Para staff list, usamos perfil de mozo
+                $profileData = null;
+                if ($profile) {
+                    $profileData = $profile->toArray();
+                    if (isset($profile->birth_date) && $profile->birth_date) {
+                        $profileData['birth_date'] = $profile->birth_date->format('d-m-Y');
+                    }
+                    $profileData['avatar'] = $profile->avatar_url;
+                    unset($profileData['display_name']); // Nombre canónico está en user.name
                 }
-                
-                // Agregar negocios asociados
-                if ($staffMember->user) {
-                    $data['associated_businesses'] = $staffMember->user->getAllBusinesses()->map(function($business) {
-                        return [
-                            'id' => $business->id,
-                            'name' => $business->name,
-                        ];
-                    });
-                }
-                
-                return $data;
+
+                return [
+                    'user' => $userData,
+                    'profile_data' => $profileData,
+                ];
             }),
             'search' => $request->search,
             'total' => $staff->count(),

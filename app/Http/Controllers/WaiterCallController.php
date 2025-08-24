@@ -2012,21 +2012,29 @@ class WaiterCallController extends Controller
                 ], 409);
             }
 
-            // Registrar al mozo en el negocio a través de la tabla staff
+            // Crear solicitud pendiente, no confirmar automáticamente
             $staffRecord = \App\Models\Staff::create([
                 'user_id' => $waiter->id,
                 'business_id' => $business->id,
                 'name' => $waiter->name,
                 'email' => $waiter->email,
-                'position' => 'waiter',
-                'status' => 'confirmed',
-                'hire_date' => now(),
+                'position' => 'Mozo',
+                'status' => 'pending',
+                'hire_date' => null,
                 'phone' => optional($waiter->waiterProfile)->phone,
             ]);
 
-            // Si es su primer negocio, hacerlo activo
-            if (!$waiter->business_id) {
-                $waiter->update(['business_id' => $business->id]);
+            // Notificar a admins del negocio
+            try {
+                if (app()->bound(\App\Services\StaffNotificationService::class)) {
+                    app(\App\Services\StaffNotificationService::class)
+                        ->writeStaffRequest($staffRecord, 'created');
+                }
+            } catch (\Throwable $e) {
+                \Log::warning('Failed to send staff request notification', [
+                    'staff_id' => $staffRecord->id,
+                    'error' => $e->getMessage(),
+                ]);
             }
 
             Log::info('Waiter joined new business', [
@@ -2039,7 +2047,7 @@ class WaiterCallController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => "Te has unido exitosamente a {$business->name}",
+                'message' => 'Solicitud enviada al administrador. Te notificaremos cuando sea aprobada.',
                 'business' => [
                     'id' => $business->id,
                     'name' => $business->name,
@@ -2047,12 +2055,12 @@ class WaiterCallController extends Controller
                     'address' => $business->address,
                     'phone' => $business->phone,
                     'logo' => $business->logo ? asset('storage/' . $business->logo) : null,
-                    'is_active' => $business->id === $waiter->business_id
+                    'is_active' => false
                 ],
-                'membership' => [
-                    'joined_at' => now(),
-                    'status' => 'active',
-                    'role' => 'waiter'
+                'staff_request' => [
+                    'id' => $staffRecord->id,
+                    'status' => $staffRecord->status,
+                    'created_at' => now()->toIso8601String()
                 ]
             ], 201);
 
