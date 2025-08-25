@@ -551,9 +551,16 @@ class AdminController extends Controller
                 $original = is_array($decoded) ? $decoded : [];
             }
 
+            // Intentar vincular usuario por email si no viene user_id
+            $linkedUserId = null;
+            if (empty($archived->user_id) && !empty($archived->email)) {
+                $linked = User::where('email', $archived->email)->first();
+                if ($linked) { $linkedUserId = $linked->id; }
+            }
+
             $payload = [
                 'business_id' => $archived->business_id,
-                'user_id' => $archived->user_id ?? ($original['user_id'] ?? null),
+                'user_id' => $archived->user_id ?? ($original['user_id'] ?? $linkedUserId),
                 'name' => $archived->name ?? ($original['name'] ?? null),
                 'position' => $archived->position ?? ($original['position'] ?? null),
                 'email' => $archived->email ?? ($original['email'] ?? null),
@@ -777,9 +784,19 @@ class AdminController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
+        // Resolver usuarios faltantes por email en lote
+        $missingUserEmails = $pendingRequests->filter(fn($r) => !$r->user && !empty($r->email))
+            ->pluck('email')->unique()->values();
+        $usersByEmail = collect();
+        if ($missingUserEmails->isNotEmpty()) {
+            $usersByEmail = User::whereIn('email', $missingUserEmails)
+                ->with(['waiterProfile', 'adminProfile'])
+                ->get()->keyBy('email');
+        }
+
         return response()->json([
-            'requests' => $pendingRequests->map(function ($req) {
-                $user = $req->user;
+            'requests' => $pendingRequests->map(function ($req) use ($usersByEmail) {
+                $user = $req->user ?: ($req->email ? $usersByEmail->get($req->email) : null);
 
                 $userData = $user ? [
                     'id' => $user->id,
@@ -789,15 +806,22 @@ class AdminController extends Controller
                     'google_avatar' => $user->google_avatar,
                     'created_at' => $user->created_at,
                     'updated_at' => $user->updated_at,
-                ] : null;
+                ] : [
+                    // Fallback mínimo desde la solicitud de staff
+                    'id' => null,
+                    'name' => $req->name,
+                    'email' => $req->email,
+                    'google_id' => null,
+                    'google_avatar' => null,
+                    'created_at' => null,
+                    'updated_at' => null,
+                ];
 
                 $profile = $user ? ($user->waiterProfile ?: $user->adminProfile) : null;
                 $profileData = $profile ? $profile->toArray() : null;
 
-                // Normalizar avatar a URL pública con HTTPS
                 if ($profileData) {
                     $avatarUrl = null;
-                    // Si el modelo expone avatar_url úsalo como preferido
                     if (!empty($profile->avatar_url)) {
                         $avatarUrl = $profile->avatar_url;
                     } elseif (!empty($profileData['avatar'])) {
@@ -809,7 +833,6 @@ class AdminController extends Controller
                     }
                     if ($avatarUrl) {
                         $avatarUrl = preg_replace('/^http:/i', 'https:', $avatarUrl);
-                        // Expone avatar_url y también sustituye avatar por la URL completa para el front
                         $profileData['avatar_url'] = $avatarUrl;
                         $profileData['avatar'] = $avatarUrl;
                     }
