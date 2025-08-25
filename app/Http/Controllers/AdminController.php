@@ -626,23 +626,37 @@ class AdminController extends Controller
 
         $pendingRequests = Staff::where('business_id', $activeBusinessId)
             ->where('status', 'pending')
-            ->with(['user.waiterProfile', 'user.adminProfile'])
+            ->with([
+                'user:id,name,email,google_id,google_avatar,created_at,updated_at',
+                'user.waiterProfile',
+                'user.adminProfile',
+            ])
             ->orderBy('created_at', 'desc')
             ->get();
-        
+
         return response()->json([
-            'requests' => $pendingRequests->map(function($req) {
-                $data = $req->toArray();
-                // Adjuntar perfil disponible (waiter o admin) sin romper si no existe
-                if ($req->user) {
-                    $profile = $req->user->waiterProfile ?: $req->user->adminProfile;
-                    if ($profile) {
-                        $data['user_profile'] = $profile;
-                    }
-                }
-                return $data;
+            'requests' => $pendingRequests->map(function ($req) {
+                $user = $req->user;
+
+                $userData = $user ? [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'google_id' => $user->google_id,
+                    'google_avatar' => $user->google_avatar,
+                    'created_at' => $user->created_at,
+                    'updated_at' => $user->updated_at,
+                ] : null;
+
+                $profile = $user ? ($user->waiterProfile ?: $user->adminProfile) : null;
+                $profileData = $profile ? $profile->toArray() : null;
+
+                return [
+                    'user' => $userData,
+                    'user_profile' => $profileData,
+                ];
             }),
-            'count' => $pendingRequests->count()
+            'count' => $pendingRequests->count(),
         ]);
     }
     
