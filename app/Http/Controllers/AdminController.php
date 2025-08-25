@@ -698,7 +698,7 @@ class AdminController extends Controller
 
         if (!Schema::hasTable('archived_staff')) {
             return response()->json([
-                'archived_requests' => [],
+                'requests' => [],
                 'count' => 0,
                 'warning' => 'Tabla archived_staff no encontrada. Aplique las migraciones para habilitar esta funcionalidad.'
             ]);
@@ -707,10 +707,85 @@ class AdminController extends Controller
         $archivedRequests = ArchivedStaff::where('business_id', $activeBusinessId)
             ->orderBy('archived_at', 'desc')
             ->get();
-        
+
+        // Pre-cargar usuarios por user_id y, si falta, por email
+        $userIds = $archivedRequests->pluck('user_id')->filter()->unique()->values();
+        $usersById = collect();
+        if ($userIds->isNotEmpty()) {
+            $usersById = User::whereIn('id', $userIds)
+                ->with(['waiterProfile', 'adminProfile'])
+                ->get()
+                ->keyBy('id');
+        }
+
+        $emails = $archivedRequests->whereNull('user_id')->pluck('email')->filter()->unique()->values();
+        $usersByEmail = collect();
+        if ($emails->isNotEmpty()) {
+            $usersByEmail = User::whereIn('email', $emails)
+                ->with(['waiterProfile', 'adminProfile'])
+                ->get()
+                ->keyBy('email');
+        }
+
+        $out = $archivedRequests->map(function ($row) use ($usersById, $usersByEmail) {
+            $user = null;
+            if (!empty($row->user_id) && $usersById->has($row->user_id)) {
+                $user = $usersById->get($row->user_id);
+            } elseif (!empty($row->email) && $usersByEmail->has($row->email)) {
+                $user = $usersByEmail->get($row->email);
+            }
+
+            $userData = $user ? [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'google_id' => $user->google_id,
+                'google_avatar' => $user->google_avatar,
+                'created_at' => $user->created_at,
+                'updated_at' => $user->updated_at,
+            ] : (
+                // Fallback mínimo con datos archivados si no hay User
+                (!empty($row->email) || !empty($row->name)) ? [
+                    'id' => null,
+                    'name' => $row->name,
+                    'email' => $row->email,
+                    'google_id' => null,
+                    'google_avatar' => null,
+                    'created_at' => null,
+                    'updated_at' => null,
+                ] : null
+            );
+
+            $profile = $user ? ($user->waiterProfile ?: $user->adminProfile) : null;
+            $profileData = $profile ? $profile->toArray() : null;
+
+            if ($profileData) {
+                $avatarUrl = null;
+                if (!empty($profile->avatar_url)) {
+                    $avatarUrl = $profile->avatar_url;
+                } elseif (!empty($profileData['avatar'])) {
+                    try {
+                        $avatarUrl = \Storage::disk('public')->url($profileData['avatar']);
+                    } catch (\Throwable $e) {
+                        $avatarUrl = null;
+                    }
+                }
+                if ($avatarUrl) {
+                    $avatarUrl = preg_replace('/^http:/i', 'https:', $avatarUrl);
+                    $profileData['avatar_url'] = $avatarUrl;
+                    $profileData['avatar'] = $avatarUrl;
+                }
+            }
+
+            return [
+                'user' => $userData,
+                'user_profile' => $profileData,
+            ];
+        });
+
         return response()->json([
-            'archived_requests' => $archivedRequests,
-            'count' => $archivedRequests->count()
+            'requests' => $out,
+            'count' => $archivedRequests->count(),
         ]);
     }
 
