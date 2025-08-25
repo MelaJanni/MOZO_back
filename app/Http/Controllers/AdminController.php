@@ -720,7 +720,10 @@ class AdminController extends Controller
     $user = $request->user();
     $activeBusinessId = $this->activeBusinessId($user, 'admin');
     $query = Staff::where('business_id', $activeBusinessId)
-            ->whereNotIn('status', ['rejected']);
+            ->when(!$request->filled('status'), function ($q) {
+                // Por defecto, solo personal confirmado (no incluye requests pending/invited)
+                $q->where('status', 'confirmed');
+            });
 
         // Agregar búsqueda por nombre o email
         if ($request->has('search') && $request->search) {
@@ -776,10 +779,27 @@ class AdminController extends Controller
     {
         $user = $request->user();
         $activeBusinessId = $this->activeBusinessId($user, 'admin');
+
+        if (!is_numeric($id)) {
+            return response()->json([
+                'message' => 'ID de staff inválido',
+                'staff_id' => $id,
+            ], 400);
+        }
+
         $staff = Staff::with('reviews')
-            ->where('id', $id)
+            ->where('id', (int)$id)
             ->where('business_id', $activeBusinessId)
-            ->firstOrFail();
+            ->where('status', 'confirmed')
+            ->first();
+
+        if (!$staff) {
+            return response()->json([
+                'message' => 'Staff no encontrado o no confirmado para el negocio activo',
+                'staff_id' => (int)$id,
+                'active_business_id' => (int)$activeBusinessId,
+            ], 404);
+        }
 
         return response()->json(['staff' => $staff]);
     }
