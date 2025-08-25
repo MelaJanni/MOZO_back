@@ -995,13 +995,22 @@ class AdminController extends Controller
                     if (isset($profile->birth_date) && $profile->birth_date) {
                         $profileData['birth_date'] = $profile->birth_date->format('d-m-Y');
                     }
-                    $profileData['avatar'] = $profile->avatar_url;
+                    $avatarUrl = $profile->avatar_url;
+                    if ($avatarUrl) {
+                        $avatarUrl = preg_replace('/^http:/i', 'https:', $avatarUrl);
+                    }
+                    $profileData['avatar'] = $avatarUrl;
+                    $profileData['avatar_url'] = $avatarUrl;
                     unset($profileData['display_name']); // Nombre canónico está en user.name
+                }
+
+                // Anidar perfil dentro de user para mantener consistencia con otros endpoints
+                if ($userData !== null) {
+                    $userData['user_profile'] = $profileData;
                 }
 
                 return [
                     'user' => $userData,
-                    'profile_data' => $profileData,
                 ];
             }),
             'search' => $request->search,
