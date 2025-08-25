@@ -512,9 +512,27 @@ class AdminController extends Controller
         }
         
         $user = Auth::user();
-        $staff = Staff::where('id', $requestId)
-            ->where('business_id', $user->business_id)
-            ->firstOrFail();
+        $activeBusinessId = $this->activeBusinessId($user, 'admin');
+
+        // Validación temprana de ID
+        if (!is_numeric($requestId)) {
+            return response()->json([
+                'message' => 'ID de solicitud inválido',
+                'request_id' => $requestId,
+            ], 400);
+        }
+
+        $staff = Staff::where('id', (int)$requestId)
+            ->where('business_id', $activeBusinessId)
+            ->first();
+
+        if (!$staff) {
+            return response()->json([
+                'message' => 'Solicitud no encontrada para el negocio activo',
+                'request_id' => (int)$requestId,
+                'active_business_id' => (int)$activeBusinessId,
+            ], 404);
+        }
         
         switch ($request->action) {
             case 'confirm':
@@ -673,6 +691,7 @@ class AdminController extends Controller
                 }
 
                 return [
+                    'id' => (int) $req->id,
                     'user' => $userData,
                     'user_profile' => $profileData,
                 ];
