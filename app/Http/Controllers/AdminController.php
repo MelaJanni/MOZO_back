@@ -651,6 +651,27 @@ class AdminController extends Controller
                 $profile = $user ? ($user->waiterProfile ?: $user->adminProfile) : null;
                 $profileData = $profile ? $profile->toArray() : null;
 
+                // Normalizar avatar a URL pública con HTTPS
+                if ($profileData) {
+                    $avatarUrl = null;
+                    // Si el modelo expone avatar_url úsalo como preferido
+                    if (!empty($profile->avatar_url)) {
+                        $avatarUrl = $profile->avatar_url;
+                    } elseif (!empty($profileData['avatar'])) {
+                        try {
+                            $avatarUrl = \Storage::disk('public')->url($profileData['avatar']);
+                        } catch (\Throwable $e) {
+                            $avatarUrl = null;
+                        }
+                    }
+                    if ($avatarUrl) {
+                        $avatarUrl = preg_replace('/^http:/i', 'https:', $avatarUrl);
+                        // Expone avatar_url y también sustituye avatar por la URL completa para el front
+                        $profileData['avatar_url'] = $avatarUrl;
+                        $profileData['avatar'] = $avatarUrl;
+                    }
+                }
+
                 return [
                     'user' => $userData,
                     'user_profile' => $profileData,
