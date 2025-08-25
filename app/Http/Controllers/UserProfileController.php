@@ -799,6 +799,7 @@ class UserProfileController extends Controller
             $user = Auth::user();
 
             // 1) Ítems creados por el usuario (tabla editable)
+            // Forzamos a Support\Collection para evitar métodos de Eloquent que esperan modelos
             $customItems = WorkHistory::where('user_id', $user->id)
                 ->get()
                 ->map(function ($row) {
@@ -809,7 +810,9 @@ class UserProfileController extends Controller
                         'position' => $row->position ?? 'mozo',
                         'description' => $row->description,
                     ];
-                });
+                })
+                ->values()
+                ->toBase();
 
             // 2) Ítems derivados del vínculo como mozo en negocios (pivot business_waiters)
             $pivotItems = $user->businessesAsWaiter()
@@ -828,10 +831,12 @@ class UserProfileController extends Controller
                         'position' => 'mozo',
                         'description' => $description,
                     ];
-                });
+                })
+                ->values()
+                ->toBase();
 
             // 3) Unir y ordenar
-            $items = $customItems->merge($pivotItems)
+            $items = collect()->merge($customItems)->merge($pivotItems)
                 ->sortByDesc(function ($item) {
                     return $item['end_date'] ?? $item['start_date'] ?? null;
                 })
