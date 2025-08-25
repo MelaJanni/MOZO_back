@@ -566,31 +566,26 @@ class AdminController extends Controller
             case 'archive':
                 ArchivedStaff::create([
                     'business_id' => $staff->business_id,
+                    'staff_id' => $staff->id,
+                    'user_id' => $staff->user_id ?? null,
                     'name' => $staff->name,
                     'position' => $staff->position,
                     'email' => $staff->email,
                     'phone' => $staff->phone,
                     'hire_date' => $staff->hire_date,
-                    'last_salary' => $staff->salary,
-                    'status' => $staff->status,
-                    'notes' => $staff->notes,
                     'termination_date' => now(),
                     'termination_reason' => $request->termination_reason ?? null,
+                    'last_salary' => $staff->salary ?? null,
+                    'status' => $staff->status,
+                    'notes' => $staff->notes,
+                    'original_data' => $staff->toArray(),
+                    'archived_by' => $user->id,
+                    'archive_reason' => $request->archive_reason ?? 'Archived from admin panel',
                     'archived_at' => now(),
-                    'birth_date' => $staff->birth_date,
-                    'height' => $staff->height,
-                    'weight' => $staff->weight,
-                    'gender' => $staff->gender,
-                    'experience_years' => $staff->experience_years,
-                    'seniority_years' => $staff->seniority_years,
-                    'education' => $staff->education,
-                    'employment_type' => $staff->employment_type,
-                    'current_schedule' => $staff->current_schedule,
-                    'avatar_path' => $staff->avatar_path,
                 ]);
-                
+
                 $staff->delete();
-                
+
                 return response()->json([
                     'message' => 'Solicitud de personal archivada',
                 ]);
@@ -598,27 +593,22 @@ class AdminController extends Controller
             case 'archived':
                 ArchivedStaff::create([
                     'business_id' => $staff->business_id,
+                    'staff_id' => $staff->id,
+                    'user_id' => $staff->user_id ?? null,
                     'name' => $staff->name,
                     'position' => $staff->position,
                     'email' => $staff->email,
                     'phone' => $staff->phone,
                     'hire_date' => $staff->hire_date,
-                    'last_salary' => $staff->salary,
-                    'status' => $staff->status,
-                    'notes' => $staff->notes,
                     'termination_date' => now(),
                     'termination_reason' => $request->termination_reason ?? null,
+                    'last_salary' => $staff->salary ?? null,
+                    'status' => $staff->status,
+                    'notes' => $staff->notes,
+                    'original_data' => $staff->toArray(),
+                    'archived_by' => $user->id,
+                    'archive_reason' => $request->archive_reason ?? 'Bulk/archive action',
                     'archived_at' => now(),
-                    'birth_date' => $staff->birth_date,
-                    'height' => $staff->height,
-                    'weight' => $staff->weight,
-                    'gender' => $staff->gender,
-                    'experience_years' => $staff->experience_years,
-                    'seniority_years' => $staff->seniority_years,
-                    'education' => $staff->education,
-                    'employment_type' => $staff->employment_type,
-                    'current_schedule' => $staff->current_schedule,
-                    'avatar_path' => $staff->avatar_path,
                 ]);
 
                 $staff->delete();
