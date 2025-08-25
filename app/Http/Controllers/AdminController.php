@@ -522,6 +522,73 @@ class AdminController extends Controller
             ], 400);
         }
 
+        // Si la acción es desarchivar, no requerimos un registro en staff
+        if ($request->action === 'unarchive') {
+            $archived = ArchivedStaff::where('id', (int)$requestId)
+                ->where('business_id', $activeBusinessId)
+                ->first();
+
+            if (!$archived) {
+                return response()->json([
+                    'message' => 'Registro archivado no encontrado para desarchivar',
+                    'archived_id' => (int)$requestId,
+                    'active_business_id' => (int)$activeBusinessId,
+                ], 404);
+            }
+
+            // Si existe staff con mismo email en el negocio, lo reactivamos
+            $existing = null;
+            if (!empty($archived->email)) {
+                $existing = Staff::where('business_id', $activeBusinessId)
+                    ->where('email', $archived->email)
+                    ->first();
+            }
+
+            // Recuperar datos originales si están presentes
+            $original = $archived->original_data;
+            if (!is_array($original)) {
+                $decoded = json_decode($archived->original_data ?? '', true);
+                $original = is_array($decoded) ? $decoded : [];
+            }
+
+            $payload = [
+                'business_id' => $archived->business_id,
+                'user_id' => $archived->user_id ?? ($original['user_id'] ?? null),
+                'name' => $archived->name ?? ($original['name'] ?? null),
+                'position' => $archived->position ?? ($original['position'] ?? null),
+                'email' => $archived->email ?? ($original['email'] ?? null),
+                'phone' => $archived->phone ?? ($original['phone'] ?? null),
+                'hire_date' => $archived->hire_date ?? ($original['hire_date'] ?? null),
+                'status' => $original['status'] ?? 'pending',
+                'notes' => $archived->notes ?? ($original['notes'] ?? null),
+            ];
+
+            foreach (['birth_date','height','weight','gender','experience_years','seniority_years','education','employment_type','current_schedule','avatar_path'] as $field) {
+                if (array_key_exists($field, $original)) {
+                    $payload[$field] = $original[$field];
+                }
+            }
+
+            if ($existing) {
+                $existing->fill($payload);
+                if ($existing->status === 'rejected') {
+                    $existing->status = 'pending';
+                }
+                $existing->save();
+                $restored = $existing;
+            } else {
+                $restored = Staff::create($payload);
+            }
+
+            $archived->delete();
+
+            return response()->json([
+                'message' => 'Solicitud desarchivada exitosamente',
+                'staff' => $restored,
+            ]);
+        }
+
+        // Para el resto de acciones, se requiere que exista el registro en staff
         $staff = Staff::where('id', (int)$requestId)
             ->where('business_id', $activeBusinessId)
             ->first();
@@ -533,7 +600,7 @@ class AdminController extends Controller
                 'active_business_id' => (int)$activeBusinessId,
             ], 404);
         }
-        
+
         switch ($request->action) {
             case 'confirm':
                 $staff->status = 'confirmed';
