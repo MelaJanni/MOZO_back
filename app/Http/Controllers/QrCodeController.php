@@ -116,9 +116,10 @@ class QrCodeController extends Controller
         $table = Table::where('id', $tableId)
             ->where('business_id', $businessId)
             ->firstOrFail();
-        $qrCode = $this->service->generateForTable($table);
+        $force = request()->boolean('regenerate', false);
+        $qrCode = $this->service->generateForTable($table, $force);
         return response()->json([
-            'message' => 'Código QR generado/actualizado exitosamente',
+            'message' => $force ? 'Código QR regenerado exitosamente' : 'Código QR generado/actualizado exitosamente',
             'qr_code' => $qrCode,
         ]);
     }
