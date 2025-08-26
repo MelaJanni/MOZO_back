@@ -38,6 +38,7 @@ class TableController extends Controller
     public function store(Request $request)
     {
         $request->validate([
+            'name' => 'sometimes|string|max:100',
             'number' => 'required|integer|min:1',
             'business_id' => 'required|exists:businesses,id',
             'notifications_enabled' => 'boolean',
@@ -52,6 +53,7 @@ class TableController extends Controller
         }
 
         $table = Table::create([
+            'name' => $request->name ?? null,
             'number' => $request->number,
             'business_id' => $request->business_id,
             'notifications_enabled' => $request->notifications_enabled ?? false,
@@ -68,9 +70,11 @@ class TableController extends Controller
     public function update(Request $request, Table $table)
     {
         $request->validate([
+            'name' => 'sometimes|string|max:100',
             'number' => 'integer|min:1',
             'business_id' => 'exists:businesses,id',
             'notifications_enabled' => 'boolean',
+            'status' => 'sometimes|string|in:available,occupied,reserved,maintenance,out_of_service',
         ]);
 
         if ($request->has('number') && $request->number != $table->number) {
@@ -83,7 +87,12 @@ class TableController extends Controller
             }
         }
 
-        $table->update($request->only(['number', 'business_id', 'notifications_enabled']));
+        // Handle status synonym mapping
+        $data = $request->only(['name', 'number', 'business_id', 'notifications_enabled', 'status']);
+        if (isset($data['status']) && $data['status'] === 'maintenance') {
+            $data['status'] = 'out_of_service';
+        }
+        $table->update($data);
 
         return response()->json($table);
     }
@@ -118,10 +127,11 @@ class TableController extends Controller
     public function createTable(Request $request)
     {
         $validator = Validator::make($request->all(), [
+            'name' => 'sometimes|string|max:100',
             'number' => 'required|integer|min:1',
             'capacity' => 'sometimes|integer|min:1',
             'location' => 'sometimes|string|max:50',
-            'status' => 'sometimes|string|in:available,occupied,reserved,maintenance',
+            'status' => 'sometimes|string|in:available,occupied,reserved,maintenance,out_of_service',
             'notifications_enabled' => 'sometimes|boolean',
         ]);
 
@@ -143,10 +153,11 @@ class TableController extends Controller
         
         $table = Table::create([
             'business_id' => $activeBusinessId,
+            'name' => $request->name ?? null,
             'number' => $request->number,
             'capacity' => $request->capacity ?? 4,
             'location' => $request->location ?? 'General',
-            'status' => $request->status ?? 'available',
+            'status' => ($request->status ?? 'available') === 'maintenance' ? 'out_of_service' : ($request->status ?? 'available'),
             'notifications_enabled' => $request->notifications_enabled ?? true,
         ]);
 
@@ -172,10 +183,11 @@ class TableController extends Controller
     public function updateTable(Request $request, $tableId)
     {
         $validator = Validator::make($request->all(), [
+            'name' => 'sometimes|string|max:100',
             'number' => 'sometimes|integer|min:1',
             'capacity' => 'sometimes|integer|min:1',
             'location' => 'sometimes|string|max:50',
-            'status' => 'sometimes|string|in:available,occupied,reserved,maintenance',
+            'status' => 'sometimes|string|in:available,occupied,reserved,maintenance,out_of_service',
             'notifications_enabled' => 'sometimes|boolean',
         ]);
 
@@ -208,12 +220,16 @@ class TableController extends Controller
             $table->capacity = $request->capacity;
         }
         
+        if ($request->has('name')) {
+            $table->name = $request->name;
+        }
+
         if ($request->has('location')) {
             $table->location = $request->location;
         }
         
         if ($request->has('status')) {
-            $table->status = $request->status;
+            $table->status = $request->status === 'maintenance' ? 'out_of_service' : $request->status;
         }
         
         if ($request->has('notifications_enabled')) {
