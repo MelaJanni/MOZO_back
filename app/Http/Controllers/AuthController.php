@@ -18,6 +18,35 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
+    /**
+     * Public endpoint to check if an email is already registered.
+     * POST /api/check-user-exists { email }
+     */
+    public function checkUserExists(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email'
+        ]);
+
+        $email = $request->input('email');
+
+        $user = User::where('email', $email)->first();
+
+        if (!$user) {
+            return response()->json([
+                'exists' => false,
+                'message' => 'User not found'
+            ], 404);
+        }
+
+        return response()->json([
+            'exists' => true,
+            'user_id' => $user->id,
+            'has_google_account' => !empty($user->google_id),
+            'name' => $user->name,
+        ]);
+    }
+
     public function login(Request $request)
     {
         $request->validate([

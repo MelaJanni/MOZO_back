@@ -26,6 +26,7 @@ use Illuminate\Support\Facades\Log;
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login'])->name('login');
 Route::post('/login/google', [AuthController::class, 'loginWithGoogle']);
+Route::post('/check-user-exists', [AuthController::class, 'checkUserExists'])->middleware('throttle:10,1');
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
