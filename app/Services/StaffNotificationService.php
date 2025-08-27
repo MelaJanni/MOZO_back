@@ -205,6 +205,7 @@ class StaffNotificationService
                     'status' => $staff->status,
                     'position' => $staff->position,
                     'notification_key' => $notificationKey,
+                    'key' => $notificationKey,
                     'title' => $data['title'] ?? null,
                     'body' => $data['body'] ?? null,
                     'source' => 'staff_system',

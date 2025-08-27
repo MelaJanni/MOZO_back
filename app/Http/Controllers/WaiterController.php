@@ -354,6 +354,30 @@ class WaiterController extends Controller
                 });
             }
         }
+
+        // Compat: staff_req_{id}_{ts} -> user_staff_{id}
+        if (!$notification && preg_match('/^staff_req_(\d+)_\d+$/', (string)$notificationId, $m)) {
+            $derived = 'user_staff_' . $m[1];
+            try {
+                $notification = $user->notifications()
+                    ->where('data->data->key', $derived)
+                    ->orWhere('data->key', $derived)
+                    ->orWhere('data->data->notification_key', $derived)
+                    ->orWhere('data->notification_key', $derived)
+                    ->latest()
+                    ->first();
+            } catch (\Throwable $e) {
+                $candidates = $user->notifications()->latest()->limit(100)->get();
+                $notification = $candidates->first(function ($n) use ($derived) {
+                    $d = (array)($n->data ?? []);
+                    $inner = (array)($d['data'] ?? []);
+                    return (($inner['key'] ?? null) === $derived)
+                        || (($d['key'] ?? null) === $derived)
+                        || (($inner['notification_key'] ?? null) === $derived)
+                        || (($d['notification_key'] ?? null) === $derived);
+                });
+            }
+        }
         
         if (!$notification) {
             return response()->json([
