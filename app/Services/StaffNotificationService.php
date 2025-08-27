@@ -190,6 +190,44 @@ class StaffNotificationService
     {
         try {
             $firebaseService = app(\App\Services\FirebaseService::class);
+            $dbNotify = function(array $data) use ($staff) {
+                // Persist a database notification for involved users with a stable key
+                $notificationKey = $data['notification_key'] ?? ($data['key'] ?? null);
+                if (!$notificationKey) {
+                    $notificationKey = 'user_staff_' . $staff->id;
+                }
+                $payload = [
+                    'type' => $data['type'] ?? 'staff_request',
+                    'event_type' => $data['event_type'] ?? 'info',
+                    'staff_id' => (string)$staff->id,
+                    'business_id' => (string)$staff->business_id,
+                    'user_id' => $staff->user_id ? (string)$staff->user_id : null,
+                    'status' => $staff->status,
+                    'position' => $staff->position,
+                    'notification_key' => $notificationKey,
+                    'title' => $data['title'] ?? null,
+                    'body' => $data['body'] ?? null,
+                    'source' => 'staff_system',
+                ];
+                try {
+                    // Notify the staff user if present
+                    if ($staff->user_id && ($user = \App\Models\User::find($staff->user_id))) {
+                        $user->notify(new \App\Notifications\GenericDataNotification($payload));
+                    }
+                    // Notify business admins
+                    $admins = \App\Models\Business::find($staff->business_id)?->admins()->where('business_admins.is_active', true)->get();
+                    if ($admins) {
+                        foreach ($admins as $admin) {
+                            $admin->notify(new \App\Notifications\GenericDataNotification($payload));
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    \Log::warning('Failed to persist DB notification for staff event', [
+                        'staff_id' => $staff->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            };
 
             // Determinar a quién enviar la notificación
             $tokens = [];
@@ -202,6 +240,13 @@ class StaffNotificationService
                     $tokens = $this->getBusinessAdminTokens($staff->business_id);
                     $title = 'Nueva solicitud de mozo';
                     $body = "{$staff->name} ha solicitado unirse como {$staff->position}";
+                    $dbNotify([
+                        'type' => 'staff_request_admin',
+                        'event_type' => $eventType,
+                        'title' => $title,
+                        'body' => $body,
+                        'notification_key' => 'user_staff_' . $staff->id,
+                    ]);
                     break;
 
                 case 'confirmed':
@@ -210,6 +255,13 @@ class StaffNotificationService
                         $tokens = $this->getUserTokens($staff->user_id);
                         $title = '¡Solicitud aprobada!';
                         $body = "Tu solicitud para {$staff->position} ha sido aprobada";
+                        $dbNotify([
+                            'type' => 'staff_request',
+                            'event_type' => $eventType,
+                            'title' => $title,
+                            'body' => $body,
+                            'notification_key' => 'user_staff_' . $staff->id,
+                        ]);
                         if (!empty($tokens)) {
                             $data = [
                                 'type' => 'staff_request',
@@ -236,6 +288,13 @@ class StaffNotificationService
                         $adminTitle = 'Solicitud aceptada';
                         $staffName = $staff->name ?: 'Un mozo';
                         $adminBody = "$staffName confirmó su ingreso como {$staff->position}";
+                        $dbNotify([
+                            'type' => 'staff_request_admin',
+                            'event_type' => $eventType,
+                            'title' => $adminTitle,
+                            'body' => $adminBody,
+                            'notification_key' => 'user_staff_' . $staff->id,
+                        ]);
                         $adminData = [
                             'type' => 'staff_request_admin',
                             'event_type' => $eventType,
@@ -262,6 +321,13 @@ class StaffNotificationService
                         $tokens = $this->getUserTokens($staff->user_id);
                         $title = 'Solicitud rechazada';
                         $body = "Tu solicitud para {$staff->position} ha sido rechazada";
+                        $dbNotify([
+                            'type' => 'staff_request',
+                            'event_type' => $eventType,
+                            'title' => $title,
+                            'body' => $body,
+                            'notification_key' => 'user_staff_' . $staff->id,
+                        ]);
                     }
                     break;
 
@@ -274,6 +340,13 @@ class StaffNotificationService
                         $tokens = $this->getUserTokens($staff->user_id);
                         $title = '¡Invitación recibida!';
                         $body = "Has sido invitado a trabajar en un negocio. Revisa tu email para más detalles.";
+                        $dbNotify([
+                            'type' => 'staff_invitation',
+                            'event_type' => $eventType,
+                            'title' => $title,
+                            'body' => $body,
+                            'notification_key' => 'user_staff_' . $staff->id,
+                        ]);
                         
                         if (!empty($tokens)) {
                             $data = [
