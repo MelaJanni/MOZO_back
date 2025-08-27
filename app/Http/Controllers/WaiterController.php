@@ -1140,6 +1140,18 @@ class WaiterController extends Controller
                 ], 403);
             }
 
+            // Verificar que el usuario sea staff confirmado del negocio
+            $isConfirmedStaff = Staff::where('user_id', $waiter->id)
+                ->where('business_id', $businessId)
+                ->where('status', 'confirmed')
+                ->exists();
+            if (!$isConfirmedStaff) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No estás habilitado para administrar mesas en este negocio'
+                ], 403);
+            }
+
             if ($table->active_waiter_id) {
                 return response()->json([
                     'success' => false,
@@ -1799,6 +1811,18 @@ class WaiterController extends Controller
                 ], 400);
             }
 
+            // Verificar que el usuario sea staff confirmado del negocio
+            $isConfirmedStaff = Staff::where('user_id', $waiter->id)
+                ->where('business_id', $businessId)
+                ->where('status', 'confirmed')
+                ->exists();
+            if (!$isConfirmedStaff) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No estás habilitado para administrar mesas en este negocio'
+                ], 403);
+            }
+
             // Verificar que todas las mesas pertenezcan al negocio del mozo
             $tables = Table::whereIn('id', $tableIds)
                 ->where('business_id', $businessId)
@@ -1998,6 +2022,13 @@ class WaiterController extends Controller
                 })
                 ->count();
 
+            // Bandera de desvinculación: si no es staff confirmado en este negocio pero estaba antes
+            $isConfirmedStaff = Staff::where('user_id', $waiter->id)
+                ->where('business_id', $businessId)
+                ->where('status', 'confirmed')
+                ->exists();
+            $showUnlinkedBanner = !$isConfirmedStaff;
+
             return response()->json([
                 'success' => true,
                 'waiter' => [
@@ -2011,7 +2042,11 @@ class WaiterController extends Controller
                     'pending_calls' => $pendingCalls,
                     'calls_today' => $recentCalls,
                 ],
-                'available_to_assign' => $availableTables
+                'available_to_assign' => $availableTables,
+                'ui_flags' => [
+                    'unlinked_banner' => $showUnlinkedBanner,
+                    'unlinked_message' => $showUnlinkedBanner ? 'Fuiste desvinculado de este negocio. Contactá a un administrador si creés que es un error.' : null,
+                ]
             ]);
 
         } catch (\Exception $e) {

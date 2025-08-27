@@ -10,6 +10,9 @@ use App\Models\Staff;
 use App\Models\Table;
 use App\Models\User;
 use App\Models\Review;
+use App\Models\WaiterCall;
+use App\Notifications\GenericDataNotification;
+use App\Services\FirebaseService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -493,6 +496,17 @@ class AdminController extends Controller
             ], 404);
         }
 
+        // Ejecutar desvinculación completa (desasignar mesas, cancelar llamadas, revocar pivot, notificar)
+        try {
+            $this->performWaiterUnlink($staff, (int)$businessId);
+        } catch (\Throwable $e) {
+            \Log::warning('Fallo en efectos colaterales al desvincular staff', [
+                'staff_id' => $staff->id,
+                'business_id' => (int)$businessId,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
         $staff->delete();
 
         return response()->json([
@@ -638,6 +652,9 @@ class AdminController extends Controller
                 ]);
                 
             case 'archive':
+                // Efectos de desvinculación antes de archivar
+                try { $this->performWaiterUnlink($staff, (int)$activeBusinessId); } catch (\Throwable $e) { /* noop */ }
+
                 ArchivedStaff::create([
                     'business_id' => $staff->business_id,
                     'staff_id' => $staff->id,
@@ -665,6 +682,9 @@ class AdminController extends Controller
                 ]);
 
             case 'archived':
+                // Efectos de desvinculación antes de archivar (bulk)
+                try { $this->performWaiterUnlink($staff, (int)$activeBusinessId); } catch (\Throwable $e) { /* noop */ }
+
                 ArchivedStaff::create([
                     'business_id' => $staff->business_id,
                     'staff_id' => $staff->id,
@@ -1326,6 +1346,86 @@ class AdminController extends Controller
         $path = 'avatars/' . $businessId . '/' . $filename;
         Storage::disk('public')->put($path, $imageData);
         return $path;
+    }
+
+    /**
+     * Desvinculación completa de un mozo del negocio: desasignar mesas, cancelar llamados,
+     * limpiar pivote waiter y notificar al usuario afectado.
+     */
+    private function performWaiterUnlink(Staff $staff, int $businessId): void
+    {
+        // Desasignar mesas y cancelar llamadas pendientes
+        try {
+            $tables = Table::where('business_id', $businessId)
+                ->where('active_waiter_id', $staff->user_id)
+                ->get();
+            foreach ($tables as $table) {
+                try { $table->pendingCalls()->update(['status' => 'cancelled']); } catch (\Throwable $e) { /* noop */ }
+                try { $table->unassignWaiter(); } catch (\Throwable $e) {
+                    $table->active_waiter_id = null; $table->waiter_assigned_at = null; $table->save();
+                }
+            }
+
+            // Cancelar llamadas pendientes del mozo en ese negocio
+            WaiterCall::where('waiter_id', $staff->user_id)
+                ->where('status', 'pending')
+                ->whereHas('table', function ($q) use ($businessId) {
+                    $q->where('business_id', $businessId);
+                })
+                ->update(['status' => 'cancelled']);
+        } catch (\Throwable $e) {
+            \Log::warning('No se pudieron limpiar mesas/llamados al desvincular mozo', [
+                'staff_id' => $staff->id,
+                'business_id' => $businessId,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        // Revocar relación en pivot business_waiters si existe
+        try {
+            if (\Schema::hasTable('business_waiters') && $staff->user_id) {
+                \DB::table('business_waiters')
+                    ->where('business_id', $businessId)
+                    ->where('user_id', $staff->user_id)
+                    ->update(['employment_status' => 'inactive', 'updated_at' => now()]);
+            }
+        } catch (\Throwable $e) { /* noop */ }
+
+        // Notificar al mozo afectado (DB + FCM si hay tokens)
+        try {
+            if ($staff->user_id && ($waiter = User::find($staff->user_id))) {
+                $payload = [
+                    'type' => 'waiter_unlinked',
+                    'event_type' => 'unlinked',
+                    'staff_id' => (string)$staff->id,
+                    'business_id' => (string)$businessId,
+                    'user_id' => (string)$waiter->id,
+                    'title' => 'Has sido desvinculado del negocio',
+                    'body' => 'Ya no puedes administrar mesas en este negocio.',
+                    'notification_key' => 'waiter_unlinked_' . $businessId,
+                    'key' => 'waiter_unlinked_' . $businessId,
+                ];
+                // DB
+                $waiter->notify(new GenericDataNotification($payload));
+                // FCM opcional
+                try {
+                    app(FirebaseService::class)->sendToUser(
+                        $waiter->id,
+                        $payload['title'],
+                        $payload['body'],
+                        [
+                            'type' => 'unified',
+                            'event_type' => 'waiter_unlinked',
+                            'notification_key' => $payload['notification_key'],
+                            'key' => $payload['key'],
+                            'business_id' => (string)$businessId,
+                            'staff_id' => (string)$staff->id,
+                        ],
+                        'normal'
+                    );
+                } catch (\Throwable $e) { /* noop */ }
+            }
+        } catch (\Throwable $e) { /* noop */ }
     }
 
     public function getStatistics(Request $request)
