@@ -794,10 +794,9 @@ class WaiterController extends Controller
                         'hire_date' => null,
                     ]);
                     try {
-                        if (app()->bound(\App\Services\StaffNotificationService::class)) {
-                            app(\App\Services\StaffNotificationService::class)
-                                ->writeStaffRequest($existingStaff, 'created');
-                        }
+                        // Escribir en Firebase RTDB para notificar a admins (sin gate bound)
+                        app(\App\Services\StaffNotificationService::class)
+                            ->writeStaffRequest($existingStaff, 'created');
                     } catch (\Throwable $e) { /* noop */ }
 
                     return response()->json([
@@ -842,10 +841,9 @@ class WaiterController extends Controller
 
             // Notificar a admins del negocio
             try {
-                if (app()->bound(\App\Services\StaffNotificationService::class)) {
-                    app(\App\Services\StaffNotificationService::class)
-                        ->writeStaffRequest($staffRecord, 'created');
-                }
+                // Escribir en Firebase RTDB para notificar a admins (sin gate bound)
+                app(\App\Services\StaffNotificationService::class)
+                    ->writeStaffRequest($staffRecord, 'created');
             } catch (\Throwable $e) {
                 \Log::warning('Failed to send staff request notification', [
                     'staff_id' => $staffRecord->id,
