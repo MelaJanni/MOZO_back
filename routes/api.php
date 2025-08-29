@@ -20,6 +20,7 @@ use App\Http\Controllers\StaffController;
 use App\Http\Controllers\UserProfileController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\TableProfileController;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Log;
 
@@ -196,7 +197,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/tables/{table}/silence', [WaiterCallController::class, 'silenceTable']);
         Route::delete('/tables/{table}/silence', [WaiterCallController::class, 'unsilenceTable']);
         
-        // Gestión de mesas - Múltiples
+    // Gestión de mesas - Múltiples
         Route::post('/tables/activate/multiple', [WaiterController::class, 'activateMultipleTables']);
         Route::post('/tables/deactivate/multiple', [WaiterController::class, 'deactivateMultipleTables']);
         Route::post('/tables/silence/multiple', [WaiterCallController::class, 'silenceMultipleTables']);
@@ -212,7 +213,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/ip/debug', [WaiterCallController::class, 'debugIpStatus']);
         Route::post('/ip/force-unblock', [WaiterCallController::class, 'forceUnblockIp']);
 
-    // Perfiles de mesa - legacy eliminados
+    // Perfiles de mesa - CRUD y acciones
+    Route::get('/table-profiles', [TableProfileController::class, 'index']);
+    Route::post('/table-profiles', [TableProfileController::class, 'store']);
+    Route::get('/table-profiles/{profile}', [TableProfileController::class, 'show']);
+    Route::put('/table-profiles/{profile}', [TableProfileController::class, 'update']);
+    Route::delete('/table-profiles/{profile}', [TableProfileController::class, 'destroy']);
+    Route::post('/table-profiles/{profile}/activate', [TableProfileController::class, 'activate']);
+    Route::post('/table-profiles/{profile}/deactivate', [TableProfileController::class, 'deactivate']);
     });
 
     Route::prefix('admin')->group(function () {
