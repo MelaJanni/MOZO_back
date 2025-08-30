@@ -30,7 +30,7 @@ class TableProfileController extends Controller
         return $user->business_id;
     }
 
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
         $user = Auth::user();
         $businessId = $this->ensureBusinessId($user);
@@ -38,10 +38,22 @@ class TableProfileController extends Controller
             return response()->json(['success' => false, 'message' => 'No hay negocio activo'], 400);
         }
 
-        $profiles = TableProfile::withCount('tables')
+        // Parámetro opcional: include=tables o with_tables=1
+        $include = $request->query('include');
+        $withTables = $request->boolean('with_tables');
+        if ($include) {
+            $withTables = $withTables || collect(explode(',', $include))
+                ->map(fn ($s) => trim($s))
+                ->contains('tables');
+        }
+
+        $query = TableProfile::withCount('tables')
             ->where('business_id', $businessId)
-            ->orderBy('name')
-            ->get();
+            ->orderBy('name');
+        if ($withTables) {
+            $query->with('tables:id,number,name');
+        }
+        $profiles = $query->get();
         return response()->json(['success' => true, 'profiles' => $profiles]);
     }
 
