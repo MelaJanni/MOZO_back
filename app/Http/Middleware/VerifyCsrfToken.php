@@ -12,6 +12,7 @@ class VerifyCsrfToken extends Middleware
      * @var array<int, string>
      */
     protected $except = [
-        'api/*',  // Excluir todas las rutas API del CSRF
+    'api/*',              // Excluir todas las rutas API del CSRF
+    'qr/call-waiter',     // Llamado de mozo desde página pública QR (se maneja con validaciones propias)
     ];
 }
