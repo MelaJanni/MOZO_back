@@ -29,6 +29,8 @@ class UserFactory extends Factory
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
+            'membership_plan' => 'monthly',
+            'membership_expires_at' => now()->addMonth(),
         ];
     }
 
@@ -39,6 +41,17 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'email_verified_at' => null,
+        ]);
+    }
+
+    /**
+     * Indicate that the user has no active membership.
+     */
+    public function unpaid(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'membership_plan' => null,
+            'membership_expires_at' => null,
         ]);
     }
 }

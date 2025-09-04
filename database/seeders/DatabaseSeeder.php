@@ -76,6 +76,12 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
+        // Membresía activa por defecto
+        $maria->update([
+            'membership_plan' => 'monthly',
+            'membership_expires_at' => now()->addMonth(),
+        ]);
+
         // Crear perfil de admin
         AdminProfile::updateOrCreate(
             ['user_id' => $maria->id],
@@ -124,6 +130,11 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
+        $carlos->update([
+            'membership_plan' => 'monthly',
+            'membership_expires_at' => now()->addMonth(),
+        ]);
+
         AdminProfile::updateOrCreate(
             ['user_id' => $carlos->id],
             [
@@ -166,6 +177,11 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
+        $ana->update([
+            'membership_plan' => 'monthly',
+            'membership_expires_at' => now()->addMonth(),
+        ]);
+
         WaiterProfile::updateOrCreate(
             ['user_id' => $ana->id],
             [
@@ -198,6 +214,11 @@ class DatabaseSeeder extends Seeder
                 'password' => Hash::make('password'),
             ]
         );
+
+        $luis->update([
+            'membership_plan' => 'monthly',
+            'membership_expires_at' => now()->addMonth(),
+        ]);
 
         WaiterProfile::updateOrCreate(
             ['user_id' => $luis->id],
@@ -301,6 +322,16 @@ class DatabaseSeeder extends Seeder
         }
 
         echo "✅ Creadas mesas con QRs para todos los negocios\n";
+
+        // ========================================
+        // 4. FORZAR MEMBRESÍA ACTIVA PARA TODOS LOS USUARIOS (si o si)
+        // ========================================
+        echo "\n🔒 Forzando membresía activa para todos los usuarios...\n";
+        \App\Models\User::query()->update([
+            'membership_plan' => 'monthly',
+            'membership_expires_at' => now()->addMonth(),
+        ]);
+        echo "✅ Todos los usuarios tienen membresía activa (monthly)\n\n";
 
         // ========================================
         // RESUMEN
