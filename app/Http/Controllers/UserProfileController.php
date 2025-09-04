@@ -93,8 +93,8 @@ class UserProfileController extends Controller
             'weight' => 'nullable|integer|between:30,200',
             'gender' => 'nullable|in:masculino,femenino,otro',
             'experience_years' => 'nullable|integer|between:0,50',
-            'employment_type' => 'nullable|string|max:50',
-            'current_schedule' => 'nullable',
+            'employment_type' => 'nullable|string|max:50', // se normaliza luego
+            'current_schedule' => 'nullable|string|max:50', // evitar números puros
             'current_location' => 'nullable|string|max:255',
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
@@ -139,27 +139,49 @@ class UserProfileController extends Controller
                 $data['avatar'] = $avatarPath;
             }
 
-            // Normalizar employment_type a valores canónicos esperados por la BD
+            // Normalizar employment_type a enum real del esquema waiter_profiles:
+            // ['employee', 'freelancer', 'contractor']
             if (array_key_exists('employment_type', $data)) {
                 $raw = $data['employment_type'];
                 if ($raw !== null && $raw !== '') {
-                    $normalized = strtolower(trim((string)$raw));
-                    // Unificar espacios y guiones a underscore
-                    $normalized = str_replace([' ', '-'], '_', $normalized);
-                    // Sinónimos comunes
-                    if ($normalized === 'freelance') {
-                        $normalized = 'freelancer';
-                    }
-                    // Valores permitidos en la BD
-                    $allowedEnums = ['full_time', 'part_time', 'hourly', 'weekends_only', 'freelancer'];
-                    if (in_array($normalized, $allowedEnums, true)) {
-                        $data['employment_type'] = $normalized;
+                    $norm = strtolower(trim((string)$raw));
+                    // quitar acentos simples y normalizar separadores
+                    $norm = str_replace(['á','é','í','ó','ú'], ['a','e','i','o','u'], $norm);
+                    $norm = str_replace(['-', ' '], '_', $norm);
+                    // mapear alias comunes
+                    $map = [
+                        'freelance' => 'freelancer',
+                        'freelancer' => 'freelancer',
+                        'independiente' => 'freelancer',
+                        'contratista' => 'contractor',
+                        'contractor' => 'contractor',
+                        'contrato' => 'contractor',
+                        'empleado' => 'employee',
+                        'employee' => 'employee',
+                        // valores tipo jornada (mal enviados) -> asumir empleado
+                        'full_time' => 'employee',
+                        'part_time' => 'employee',
+                        'hourly' => 'employee',
+                        'weekends_only' => 'employee',
+                    ];
+                    $data['employment_type'] = $map[$norm] ?? 'employee';
+                } else {
+                    unset($data['employment_type']);
+                }
+            }
+
+            // Aceptar current_schedule como string libre (recortado). Si llega vacío, no actualizar.
+            if (array_key_exists('current_schedule', $data)) {
+                $raw = $data['current_schedule'];
+                if ($raw !== null) {
+                    $trim = trim((string)$raw);
+                    if ($trim === '') {
+                        unset($data['current_schedule']);
                     } else {
-                        // Si no es válido, lo ponemos en null para evitar error de truncado
-                        $data['employment_type'] = null;
+                        $data['current_schedule'] = $trim;
                     }
                 } else {
-                    $data['employment_type'] = null;
+                    unset($data['current_schedule']);
                 }
             }
 

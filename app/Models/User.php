@@ -19,6 +19,8 @@ class User extends Authenticatable
         'password',
         'google_id',
         'google_avatar',
+    'membership_plan',
+    'membership_expires_at',
     ];
 
     protected $hidden = [
@@ -29,6 +31,7 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
+    'membership_expires_at' => 'datetime',
     ];
 
     // ========================================
@@ -223,5 +226,29 @@ class User extends Authenticatable
     public function sendPasswordResetNotification($token)
     {
         $this->notify(new ResetPasswordNotification($token));
+    }
+
+    // ========================================
+    // MEMBRESÍA
+    // ========================================
+    public function hasActiveMembership(): bool
+    {
+        if (!$this->membership_expires_at) {
+            return false;
+        }
+        // Grace period opcional desde config('billing.grace_days', 0)
+        $grace = (int) (config('billing.grace_days', 0));
+        $limit = $this->membership_expires_at->copy()->addDays($grace);
+        return now()->lessThanOrEqualTo($limit);
+    }
+
+    public function membershipDaysRemaining(): ?int
+    {
+        if (!$this->membership_expires_at) {
+            return null;
+        }
+        $grace = (int) (config('billing.grace_days', 0));
+        $limit = $this->membership_expires_at->copy()->addDays($grace);
+        return now()->diffInDays($limit, false);
     }
 }

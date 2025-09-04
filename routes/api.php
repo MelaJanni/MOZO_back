@@ -128,7 +128,7 @@ Route::middleware('public_api')->group(function () {
     });
 });
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'membership'])->group(function () {
     Route::get('/user', fn (Request $request) => $request->user());
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/role/select', [RoleController::class, 'selectRole']);
