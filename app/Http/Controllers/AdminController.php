@@ -1127,6 +1127,7 @@ class AdminController extends Controller
         $request->validate([
             'name' => 'sometimes|string|max:255',
             'email' => 'required|email|max:255|unique:staff,email',
+            'role' => 'sometimes|string|max:50',
             'position' => 'sometimes|string|max:255',
             'phone' => 'sometimes|string|max:20',
             'birth_date' => 'sometimes|date',
@@ -1144,6 +1145,40 @@ class AdminController extends Controller
     $user = $request->user();
     $activeBusinessId = $this->activeBusinessId($user, 'admin');
 
+        // Derivar nombre en caso de no ser provisto (obligatorio en DB)
+        $name = trim((string) $request->input('name', ''));
+        if ($name === '') {
+            $email = (string) $request->input('email', '');
+            if ($email !== '' && str_contains($email, '@')) {
+                $local = explode('@', $email)[0];
+                $local = preg_replace('/[._-]+/', ' ', $local);
+                $name = ucwords(trim($local));
+            }
+        }
+        if ($name === '') {
+            $name = 'Invitado';
+        }
+
+        // Mapear role -> position si no llega position explícito
+        $position = $request->input('position');
+        if (!$position) {
+            $role = strtolower((string) $request->input('role', ''));
+            if ($role !== '') {
+                $roleMap = [
+                    'waiter' => 'Mozo',
+                    'camarero' => 'Mozo',
+                    'mozo' => 'Mozo',
+                    'cook' => 'Cocinero',
+                    'cocinero' => 'Cocinero',
+                    'bartender' => 'Barman',
+                    'barman' => 'Barman',
+                    'host' => 'Host',
+                    'manager' => 'Manager',
+                ];
+                $position = $roleMap[$role] ?? ucfirst($role);
+            }
+        }
+
         $avatarPath = null;
         if ($request->has('avatar')) {
             if ($request->file('avatar')) {
@@ -1157,8 +1192,8 @@ class AdminController extends Controller
 
         $staff = Staff::create([
         'business_id' => $activeBusinessId,
-            'name' => $request->name,
-            'position' => $request->position,
+            'name' => $name,
+            'position' => $position,
             'email' => $request->email,
             'phone' => $request->phone,
             'status' => 'invited',
@@ -1173,6 +1208,9 @@ class AdminController extends Controller
             'employment_type' => $request->employment_type,
             'current_schedule' => $request->current_schedule,
             'avatar_path' => $avatarPath,
+            // Generar token y timestamp de invitación (si luego se usa para email/web)
+            'invitation_token' => Str::random(40),
+            'invitation_sent_at' => now(),
         ]);
 
 

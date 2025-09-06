@@ -226,8 +226,10 @@ Route::middleware(['auth:sanctum', 'membership'])->group(function () {
     Route::prefix('admin')->group(function () {
         Route::delete('/staff/{staffId}', [AdminController::class, 'removeStaff']);
         Route::post('/staff/request/{requestId}', [AdminController::class, 'handleStaffRequest']);
-        Route::get('/staff/requests', [AdminController::class, 'fetchStaffRequests']);
-        Route::get('/staff/requests/archived', [AdminController::class, 'fetchArchivedRequests']);
+    Route::get('/staff/requests', [AdminController::class, 'fetchStaffRequests']);
+    Route::get('/staff/requests/archived', [AdminController::class, 'fetchArchivedRequests']);
+    // Alias para compatibilidad: /staff/archived-requests
+    Route::get('/staff/archived-requests', [AdminController::class, 'fetchArchivedRequests']);
         Route::post('/staff/onboard', [WaiterController::class, 'onboardBusiness']);
 
         Route::get('/business', [AdminController::class, 'getBusinessInfo']);
