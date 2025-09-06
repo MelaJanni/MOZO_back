@@ -236,8 +236,13 @@ Route::middleware(['auth:sanctum', 'membership'])->group(function () {
     Route::delete('/business/{businessId}', [AdminController::class, 'deleteBusiness']);
     Route::get('/businesses', [AdminController::class, 'getBusinesses']);
         Route::post('/switch-view', [AdminController::class, 'switchView']);
-        Route::get('/settings', [AdminController::class, 'getSettings']);
-        Route::post('/settings', [AdminController::class, 'updateSettings']);
+    Route::get('/settings', [AdminController::class, 'getSettings']);
+    Route::post('/settings', [AdminController::class, 'updateSettings']);
+    // Aceptar también PUT/PATCH para compatibilidad con clientes RESTful
+    Route::put('/settings', [AdminController::class, 'updateSettings']);
+    Route::patch('/settings', [AdminController::class, 'updateSettings']);
+    // Alias legacy solicitado por FE: /admin/business/settings
+    Route::put('/business/settings', [AdminController::class, 'updateSettings']);
 
         Route::post('/qr/generate/{tableId}', [QrCodeController::class, 'generateQRCode']);
         Route::get('/qr/preview/{tableId}', [QrCodeController::class, 'preview']);
