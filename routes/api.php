@@ -23,6 +23,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\TableProfileController;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Log;
+use App\Http\Controllers\UserBusinessController;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login'])->name('login');
@@ -132,6 +133,9 @@ Route::middleware(['auth:sanctum', 'membership'])->group(function () {
     Route::get('/user', fn (Request $request) => $request->user());
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/role/select', [RoleController::class, 'selectRole']);
+
+    // Cambiar negocio activo (aplica para admin o waiter)
+    Route::post('/business/set-active', [UserBusinessController::class, 'setActive']);
 
     // 🔄 PERFILES SEPARADOS POR ROL
     Route::prefix('user-profile')->group(function () {
