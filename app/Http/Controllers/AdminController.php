@@ -1683,13 +1683,13 @@ class AdminController extends Controller
         $adminProfile = $user->adminProfile ?: $user->adminProfile()->first();
 
         $avatarUrl = null;
-        $phone = null;
+        $corporatePhone = null;
         $position = null;
         if ($adminProfile) {
             $avatarUrl = $adminProfile->avatar
                 ? asset('storage/' . $adminProfile->avatar)
                 : 'https://ui-avatars.com/api/?name=' . urlencode($adminProfile->display_name ?? $user->name) . '&color=DC2626&background=FEE2E2';
-            $phone = $adminProfile->corporate_phone;
+            $corporatePhone = $adminProfile->corporate_phone;
             $position = $adminProfile->position;
         }
 
@@ -1699,7 +1699,10 @@ class AdminController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'avatar_url' => $avatarUrl,
-                'phone' => $phone,
+                // Clave principal estandarizada
+                'corporate_phone' => $corporatePhone,
+                // Alias legacy para compatibilidad temporal (deprecado)
+                'phone' => $corporatePhone,
                 'position' => $position,
                 'business' => $user->activeBusiness ? [
                     'id' => $user->activeBusiness->id,
