@@ -7,6 +7,7 @@ use App\Models\Staff;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class UserBusinessController extends Controller
 {
@@ -44,9 +45,24 @@ class UserBusinessController extends Controller
                 ], 403);
             }
 
-            // Guardar negocio activo a nivel de usuario
-            $user->business_id = $businessId;
-            $user->save();
+            // Guardar negocio activo a nivel de usuario, detectando columna disponible
+            $updatedColumn = null;
+            if (Schema::hasColumn('users', 'active_business_id')) {
+                $user->active_business_id = $businessId;
+                $updatedColumn = 'active_business_id';
+            } elseif (Schema::hasColumn('users', 'business_id')) {
+                $user->business_id = $businessId;
+                $updatedColumn = 'business_id';
+            }
+
+            if ($updatedColumn) {
+                $user->save();
+            } else {
+                Log::warning('No se encontró columna para negocio activo en users', [
+                    'user_id' => $user->id,
+                    'business_id' => $businessId,
+                ]);
+            }
 
             $business = Business::find($businessId);
 
@@ -59,6 +75,8 @@ class UserBusinessController extends Controller
                     'slug' => $business->slug ?? null,
                     'invitation_code' => $business->invitation_code ?? null,
                 ],
+                // Campo auxiliar para FE si necesita saber qué quedó grabado
+                'active_business_id' => $businessId,
             ]);
         } catch (\Throwable $e) {
             Log::error('Error cambiando negocio activo', [

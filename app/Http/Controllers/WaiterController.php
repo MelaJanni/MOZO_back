@@ -45,7 +45,14 @@ class WaiterController extends Controller
                 ->first();
             
             if ($staffRecord) {
-                $waiter->update(['business_id' => $staffRecord->business_id]);
+                // Persistir negocio activo usando la columna disponible
+                if (Schema::hasColumn('users', 'active_business_id')) {
+                    $waiter->update(['active_business_id' => $staffRecord->business_id]);
+                } elseif (Schema::hasColumn('users', 'business_id')) {
+                    $waiter->update(['business_id' => $staffRecord->business_id]);
+                } else {
+                    Log::warning('No columns to store active business on users table');
+                }
                 $waiter->refresh();
                 
                 Log::info('Auto-fixed missing business_id', [

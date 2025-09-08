@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\QrCodeController;
 use App\Http\Controllers\Concerns\ResolvesActiveBusiness;
 use App\Services\QrCodeService;
+use Illuminate\Validation\Rule;
 
 class TableController extends Controller
 {
@@ -126,31 +127,32 @@ class TableController extends Controller
     
     public function createTable(Request $request)
     {
+        // Necesitamos el negocio activo para validar unicity por negocio
+        $user = Auth::user();
+        $activeBusinessId = $this->activeBusinessId($user, 'admin');
+
         $validator = Validator::make($request->all(), [
             'name' => 'sometimes|string|max:100',
-            'number' => 'required|integer|min:1',
+            'number' => [
+                'required',
+                'integer',
+                'min:1',
+                Rule::unique('tables', 'number')->where(function ($q) use ($activeBusinessId) {
+                    return $q->where('business_id', $activeBusinessId);
+                }),
+            ],
             'capacity' => 'sometimes|integer|min:1',
             'location' => 'sometimes|string|max:50',
             'status' => 'sometimes|string|in:available,occupied,reserved,maintenance,out_of_service',
             'notifications_enabled' => 'sometimes|boolean',
+        ], [
+            'number.unique' => 'Ya existe una mesa con ese número en tu negocio',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
-        
-    $user = Auth::user();
-    $activeBusinessId = $this->activeBusinessId($user, 'admin');
-    $existingTable = Table::where('business_id', $activeBusinessId)
-            ->where('number', $request->number)
-            ->first();
-            
-        if ($existingTable) {
-            return response()->json([
-                'message' => 'Ya existe una mesa con ese número en tu negocio'
-            ], 422);
-        }
-        
+
         $table = Table::create([
             'business_id' => $activeBusinessId,
             'name' => $request->name ?? null,
@@ -182,37 +184,36 @@ class TableController extends Controller
     
     public function updateTable(Request $request, $tableId)
     {
-        $validator = Validator::make($request->all(), [
-            'name' => 'sometimes|string|max:100',
-            'number' => 'sometimes|integer|min:1',
-            'capacity' => 'sometimes|integer|min:1',
-            'location' => 'sometimes|string|max:50',
-            'status' => 'sometimes|string|in:available,occupied,reserved,maintenance,out_of_service',
-            'notifications_enabled' => 'sometimes|boolean',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-        
+        // Identificar negocio y mesa antes de validar para construir la regla de unicity
         $user = Auth::user();
         $activeBusinessId = $this->activeBusinessId($user, 'admin');
         $table = Table::where('id', $tableId)
             ->where('business_id', $activeBusinessId)
             ->firstOrFail();
-        
-        if ($request->has('number') && $request->number != $table->number) {
-            $existingTable = Table::where('business_id', $activeBusinessId)
-                ->where('number', $request->number)
-                ->where('id', '!=', $tableId)
-                ->first();
-                
-            if ($existingTable) {
-                return response()->json([
-                    'message' => 'Ya existe otra mesa con ese número en tu negocio'
-                ], 422);
-            }
-            
+
+        $validator = Validator::make($request->all(), [
+            'name' => 'sometimes|string|max:100',
+            'number' => [
+                'sometimes',
+                'integer',
+                'min:1',
+                Rule::unique('tables', 'number')
+                    ->where(fn($q) => $q->where('business_id', $activeBusinessId))
+                    ->ignore($tableId),
+            ],
+            'capacity' => 'sometimes|integer|min:1',
+            'location' => 'sometimes|string|max:50',
+            'status' => 'sometimes|string|in:available,occupied,reserved,maintenance,out_of_service',
+            'notifications_enabled' => 'sometimes|boolean',
+        ], [
+            'number.unique' => 'Ya existe otra mesa con ese número en tu negocio',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        if ($request->has('number')) {
             $table->number = $request->number;
         }
         
