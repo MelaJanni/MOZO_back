@@ -31,36 +31,12 @@ class AdminController extends Controller
     {
         $user = $request->user();
 
-        // Determinar negocio activo para el rol admin
-        $activeBusinessId = null;
-        try {
-            if (method_exists($user, 'activeRoles')) {
-                $active = $user->activeRoles()
-                    ->where('active_role', 'admin')
-                    ->latest('switched_at')
-                    ->first();
-                if ($active) { $activeBusinessId = $active->business_id; }
-            }
-        } catch (\Throwable $e) { /* noop */ }
-
-        // Fallbacks
-        if (!$activeBusinessId && !empty($user->business_id)) {
-            $activeBusinessId = $user->business_id;
-        }
-        if (!$activeBusinessId && method_exists($user, 'businessesAsAdmin')) {
-            $adminBizIds = $user->businessesAsAdmin()->pluck('business_id');
-            if ($adminBizIds->count() === 1) {
-                $activeBusinessId = (int)$adminBizIds->first();
-            }
-        }
-
-        // Último fallback: si aún no hay, seleccionar el primero de la lista del usuario
-        if (!$activeBusinessId && method_exists($user, 'businessesAsAdmin')) {
-            $activeBusinessId = optional($user->businessesAsAdmin()->first())->business_id;
-        }
+    // Determinar negocio activo para el rol admin usando el resolver unificado
+    // Prioriza: user_active_roles (admin) -> users.active_business_id -> users.business_id -> único negocio admin
+    $activeBusinessId = $this->activeBusinessId($user, 'admin');
 
         // Si aún no hay negocio activo, significa que es un admin nuevo
-        if (!$activeBusinessId) {
+    if (!$activeBusinessId) {
             return response()->json([
                 'message' => 'No businesses found. Admin needs to create or join a business.',
                 'requires_business_setup' => true,

@@ -64,6 +64,25 @@ class UserBusinessController extends Controller
                 ]);
             }
 
+            // Sincronizar también user_active_roles para admins (fuente usada por /api/admin/business)
+            try {
+                if ($isAdmin && method_exists($user, 'activeRoles')) {
+                    $user->activeRoles()->updateOrCreate(
+                        ['business_id' => $businessId],
+                        [
+                            'active_role' => 'admin',
+                            'switched_at' => now(),
+                        ]
+                    );
+                }
+            } catch (\Throwable $e) {
+                Log::warning('No se pudo sincronizar user_active_roles en set-active', [
+                    'user_id' => $user->id,
+                    'business_id' => $businessId,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
             $business = Business::find($businessId);
 
             return response()->json([

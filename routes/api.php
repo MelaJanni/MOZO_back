@@ -251,8 +251,9 @@ Route::middleware(['auth:sanctum', 'membership'])->group(function () {
     Route::put('/business/settings', [AdminController::class, 'updateSettings']);
 
         Route::post('/qr/generate/{tableId}', [QrCodeController::class, 'generateQRCode']);
-        Route::get('/qr/preview/{tableId}', [QrCodeController::class, 'preview']);
-        Route::post('/qr/export', [QrCodeController::class, 'exportQR']);
+    Route::get('/qr/preview/{tableId}', [QrCodeController::class, 'preview']);
+    Route::post('/qr/export', [QrCodeController::class, 'exportQR']);
+    Route::post('/qr/regenerate-batch', [QrCodeController::class, 'regenerateMultiple']);
         Route::post('/qr/email', [QrCodeController::class, 'emailQR']);
         Route::get('/qr/capabilities', [QrCodeController::class, 'getCapabilities']);
         

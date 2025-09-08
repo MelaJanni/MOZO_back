@@ -151,6 +151,66 @@ class QrCodeController extends Controller
         }
     }
     
+    public function regenerateMultiple(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'table_ids' => 'required|array',
+            'table_ids.*' => 'integer',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $user = Auth::user();
+        $businessId = $this->activeBusinessId($user, 'admin');
+
+        $tableIds = array_unique($request->table_ids);
+        // Restringir a un tamaño razonable
+        if (count($tableIds) > 200) {
+            return response()->json([
+                'message' => 'Demasiadas mesas solicitadas. Máximo 200 por solicitud.'
+            ], 422);
+        }
+
+        $tables = Table::whereIn('id', $tableIds)
+            ->where('business_id', $businessId)
+            ->get();
+
+        if ($tables->isEmpty()) {
+            return response()->json(['message' => 'No se encontraron mesas válidas para tu negocio.'], 404);
+        }
+
+        $regenerated = [];
+        $failed = [];
+
+        foreach ($tables as $table) {
+            try {
+                $qr = $this->service->generateForTable($table, true);
+                $regenerated[] = [
+                    'table_id' => $table->id,
+                    'number' => $table->number,
+                    'qr_id' => $qr->id,
+                    'code' => $qr->code,
+                    'url' => $qr->url,
+                ];
+            } catch (\Throwable $e) {
+                $failed[] = [
+                    'table_id' => $table->id,
+                    'error' => $e->getMessage(),
+                ];
+            }
+        }
+
+        return response()->json([
+            'message' => 'Proceso de regeneración en lote finalizado',
+            'regenerated_count' => count($regenerated),
+            'failed_count' => count($failed),
+            'regenerated' => $regenerated,
+            'failed' => $failed,
+        ]);
+    }
+    
     public function exportQR(Request $request)
     {
         // Check PNG capability and adjust allowed formats
