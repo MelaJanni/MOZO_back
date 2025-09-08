@@ -1683,13 +1683,13 @@ class AdminController extends Controller
         $adminProfile = $user->adminProfile ?: $user->adminProfile()->first();
 
         $avatarUrl = null;
-        $corporatePhone = null;
+        $phoneValue = null;
         $position = null;
         if ($adminProfile) {
             $avatarUrl = $adminProfile->avatar
                 ? asset('storage/' . $adminProfile->avatar)
                 : 'https://ui-avatars.com/api/?name=' . urlencode($adminProfile->display_name ?? $user->name) . '&color=DC2626&background=FEE2E2';
-            $corporatePhone = $adminProfile->corporate_phone;
+            $phoneValue = $adminProfile->corporate_phone; // almacenado internamente como corporate_phone
             $position = $adminProfile->position;
         }
 
@@ -1699,10 +1699,7 @@ class AdminController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'avatar_url' => $avatarUrl,
-                // Clave principal estandarizada
-                'corporate_phone' => $corporatePhone,
-                // Alias legacy para compatibilidad temporal (deprecado)
-                'phone' => $corporatePhone,
+                'phone' => $phoneValue,
                 'position' => $position,
                 'business' => $user->activeBusiness ? [
                     'id' => $user->activeBusiness->id,
@@ -1723,7 +1720,8 @@ class AdminController extends Controller
         $request->validate([
             'name' => 'sometimes|string|max:255',
             'email' => ['sometimes', 'email', Rule::unique('users')->ignore($user->id)],
-            'corporate_phone' => 'sometimes|string|max:20',
+            'phone' => 'sometimes|string|max:20',
+            'corporate_phone' => 'sometimes|string|max:20', // alias aceptado
             'position' => 'sometimes|string|max:255',
             'avatar' => 'sometimes|image|mimes:jpeg,png,jpg|max:2048',
         ]);
@@ -1742,8 +1740,9 @@ class AdminController extends Controller
         // Actualizar o crear adminProfile
         $adminProfile = $user->adminProfile ?: $user->adminProfile()->create([]);
 
-        if ($request->has('corporate_phone')) {
-            $adminProfile->corporate_phone = $request->corporate_phone;
+        // Aceptar 'phone' como campo principal (se guarda en corporate_phone)
+        if ($request->has('phone') || $request->has('corporate_phone')) {
+            $adminProfile->corporate_phone = $request->get('phone', $request->get('corporate_phone'));
         }
         if ($request->has('position')) {
             $adminProfile->position = $request->position;
@@ -1766,7 +1765,7 @@ class AdminController extends Controller
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
-                'corporate_phone' => $adminProfile->corporate_phone,
+                'phone' => $adminProfile->corporate_phone,
                 'position' => $adminProfile->position,
                 'avatar_url' => $adminProfile->avatar
                     ? asset('storage/' . $adminProfile->avatar)
