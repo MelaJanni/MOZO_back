@@ -175,10 +175,18 @@ class User extends Authenticatable
 
 
     /**
-     * Get user profile (admin or waiter)
+     * Accessor unificado: $user->profile devuelve AdminProfile o WaiterProfile (el que exista)
+     * Nota: Se implementa como accessor para evitar conflicto con expectativa de relación Eloquent.
      */
-    public function profile()
+    public function getProfileAttribute()
     {
+        if ($this->relationLoaded('adminProfile') && $this->adminProfile) {
+            return $this->adminProfile;
+        }
+        if ($this->relationLoaded('waiterProfile') && $this->waiterProfile) {
+            return $this->waiterProfile;
+        }
+        // Lazy load en orden de prioridad
         if ($this->adminProfile) {
             return $this->adminProfile;
         }

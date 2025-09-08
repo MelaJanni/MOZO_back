@@ -1679,16 +1679,28 @@ class AdminController extends Controller
     public function getAdminProfile(Request $request)
     {
         $user = $request->user();
-        
+        // Asegurar existencia de adminProfile (global) sin forzar campos
+        $adminProfile = $user->adminProfile ?: $user->adminProfile()->first();
+
+        $avatarUrl = null;
+        $phone = null;
+        $position = null;
+        if ($adminProfile) {
+            $avatarUrl = $adminProfile->avatar
+                ? asset('storage/' . $adminProfile->avatar)
+                : 'https://ui-avatars.com/api/?name=' . urlencode($adminProfile->display_name ?? $user->name) . '&color=DC2626&background=FEE2E2';
+            $phone = $adminProfile->corporate_phone;
+            $position = $adminProfile->position;
+        }
+
         return response()->json([
             'profile' => [
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
-                'avatar_url' => $user->profile && $user->profile->profile_picture 
-                    ? asset('storage/' . $user->profile->profile_picture) 
-                    : null,
-                'phone' => $user->profile->phone ?? null,
+                'avatar_url' => $avatarUrl,
+                'phone' => $phone,
+                'position' => $position,
                 'business' => $user->activeBusiness ? [
                     'id' => $user->activeBusiness->id,
                     'name' => $user->activeBusiness->name,
@@ -1708,7 +1720,8 @@ class AdminController extends Controller
         $request->validate([
             'name' => 'sometimes|string|max:255',
             'email' => ['sometimes', 'email', Rule::unique('users')->ignore($user->id)],
-            'phone' => 'sometimes|string|max:20',
+            'corporate_phone' => 'sometimes|string|max:20',
+            'position' => 'sometimes|string|max:255',
             'avatar' => 'sometimes|image|mimes:jpeg,png,jpg|max:2048',
         ]);
 
@@ -1723,25 +1736,26 @@ class AdminController extends Controller
         
         $user->save();
 
-        // Actualizar o crear perfil
-        $profile = $user->profile()->firstOrCreate([]);
-        
-        if ($request->has('phone')) {
-            $profile->phone = $request->phone;
+        // Actualizar o crear adminProfile
+        $adminProfile = $user->adminProfile ?: $user->adminProfile()->create([]);
+
+        if ($request->has('corporate_phone')) {
+            $adminProfile->corporate_phone = $request->corporate_phone;
+        }
+        if ($request->has('position')) {
+            $adminProfile->position = $request->position;
         }
 
         // Manejar subida de avatar
         if ($request->hasFile('avatar')) {
-            // Eliminar avatar anterior si existe
-            if ($profile->profile_picture) {
-                Storage::disk('public')->delete($profile->profile_picture);
+            if ($adminProfile->avatar) {
+                Storage::disk('public')->delete($adminProfile->avatar);
             }
-            
             $avatarPath = $request->file('avatar')->store('avatars', 'public');
-            $profile->profile_picture = $avatarPath;
+            $adminProfile->avatar = $avatarPath;
         }
-        
-        $profile->save();
+
+        $adminProfile->save();
 
         return response()->json([
             'message' => 'Perfil actualizado exitosamente',
@@ -1749,10 +1763,11 @@ class AdminController extends Controller
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
-                'phone' => $profile->phone,
-                'avatar_url' => $profile->profile_picture 
-                    ? asset('storage/' . $profile->profile_picture) 
-                    : null,
+                'corporate_phone' => $adminProfile->corporate_phone,
+                'position' => $adminProfile->position,
+                'avatar_url' => $adminProfile->avatar
+                    ? asset('storage/' . $adminProfile->avatar)
+                    : 'https://ui-avatars.com/api/?name=' . urlencode($adminProfile->display_name ?? $user->name) . '&color=DC2626&background=FEE2E2',
             ]
         ]);
     }
