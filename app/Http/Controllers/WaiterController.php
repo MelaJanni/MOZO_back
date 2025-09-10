@@ -281,7 +281,31 @@ class WaiterController extends Controller
         $user = Auth::user();
         
         $notification = $user->notifications()->where('id', $notificationId)->first();
-        
+
+        // Fallback: buscar por claves conocidas dentro de data (key / notification_key)
+        if (!$notification) {
+            try {
+                $notification = $user->notifications()
+                    ->where('data->data->key', $notificationId)
+                    ->orWhere('data->key', $notificationId)
+                    ->orWhere('data->data->notification_key', $notificationId)
+                    ->orWhere('data->notification_key', $notificationId)
+                    ->latest()
+                    ->first();
+            } catch (\Throwable $e) {
+                // Fallback manual si el driver no soporta JSON queries
+                $candidates = $user->notifications()->latest()->limit(100)->get();
+                $notification = $candidates->first(function ($n) use ($notificationId) {
+                    $d = (array)($n->data ?? []);
+                    $inner = (array)($d['data'] ?? []);
+                    return (($inner['key'] ?? null) === $notificationId)
+                        || (($d['key'] ?? null) === $notificationId)
+                        || (($inner['notification_key'] ?? null) === $notificationId)
+                        || (($d['notification_key'] ?? null) === $notificationId);
+                });
+            }
+        }
+
         if (!$notification) {
             return response()->json([
                 'message' => 'Notificación no encontrada'
