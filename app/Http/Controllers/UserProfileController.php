@@ -34,7 +34,16 @@ class UserProfileController extends Controller
     {
         try {
             $user = Auth::user();
-            $profile = $user->getActiveProfile();
+            // Determinar el negocio a usar: query ?business_id o el activo del usuario
+            $businessId = null;
+            if ($request->has('business_id') && is_numeric($request->query('business_id'))) {
+                $businessId = (int) $request->query('business_id');
+            } elseif (!empty($user->active_business_id)) {
+                $businessId = (int) $user->active_business_id;
+            }
+
+            // Resolver el perfil activo usando el negocio (si está disponible)
+            $profile = $user->getActiveProfile($businessId);
 
             if (!$profile) {
                 return response()->json([
@@ -50,6 +59,7 @@ class UserProfileController extends Controller
             }
             // Asegurar URL completa en avatar dentro de profile_data
             $profileArray['avatar'] = $profile->avatar_url;
+            $profileArray['avatar_url'] = $profile->avatar_url;
             // Unificar fuente del nombre: usar solo user.name (no enviar display_name en profile_data)
             unset($profileArray['display_name']);
             // Detectar tipo según el perfil activo (no solo por rol del usuario)
@@ -59,6 +69,7 @@ class UserProfileController extends Controller
             return response()->json([
                 'success' => true,
                 'data' => [
+                    'type' => $activeType,
                     'user' => [
                         'id' => $user->id,
                         'name' => $user->name,
