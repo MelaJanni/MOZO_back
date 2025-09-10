@@ -104,8 +104,8 @@ class UserProfileController extends Controller
             'weight' => 'nullable|integer|between:30,200',
             'gender' => 'nullable|in:masculino,femenino,otro',
             'experience_years' => 'nullable|integer|between:0,50',
-            'employment_type' => 'nullable|string|max:50', // se normaliza luego
-            'current_schedule' => 'nullable|string|max:50', // evitar números puros
+            'employment_type' => 'nullable|string|max:50', 
+            'current_schedule' => 'nullable|string|max:50',
             'current_location' => 'nullable|string|max:255',
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
@@ -149,55 +149,23 @@ class UserProfileController extends Controller
                 $avatarPath = $request->file('avatar')->store('avatars/waiters', 'public');
                 $data['avatar'] = $avatarPath;
             }
-
-            // Normalizar employment_type a enum real del esquema waiter_profiles:
-            // ['employee', 'freelancer', 'contractor']
             if (array_key_exists('employment_type', $data)) {
                 $raw = $data['employment_type'];
                 if ($raw !== null && $raw !== '') {
-                    $norm = strtolower(trim((string)$raw));
-                    // quitar acentos simples y normalizar separadores
-                    $norm = str_replace(['á','é','í','ó','ú'], ['a','e','i','o','u'], $norm);
-                    $norm = str_replace(['-', ' '], '_', $norm);
-                    // mapear alias comunes
-                    $map = [
-                        'freelance' => 'freelancer',
-                        'freelancer' => 'freelancer',
-                        'independiente' => 'freelancer',
-                        'contratista' => 'contractor',
-                        'contractor' => 'contractor',
-                        'contrato' => 'contractor',
-                        'empleado' => 'employee',
-                        'employee' => 'employee',
-                        // valores tipo jornada (mal enviados) -> asumir empleado
-                        'full_time' => 'employee',
-                        'part_time' => 'employee',
-                        'hourly' => 'employee',
-                        'weekends_only' => 'employee',
-                    ];
-                    $data['employment_type'] = $map[$norm] ?? 'employee';
+                    // Aceptar tal cual el string provisto, sin mapeos ni enumeraciones
+                    $data['employment_type'] = (string) $raw;
                 } else {
                     unset($data['employment_type']);
                 }
             }
-
-            // Aceptar current_schedule como string libre (recortado). Si llega vacío, no actualizar.
             if (array_key_exists('current_schedule', $data)) {
                 $raw = $data['current_schedule'];
-                if ($raw !== null) {
-                    $trim = trim((string)$raw);
-                    if ($trim === '') {
-                        unset($data['current_schedule']);
-                    } else {
-                        $data['current_schedule'] = $trim;
-                    }
+                if ($raw !== null && $raw !== '') {
+                    $data['current_schedule'] = (string) $raw;
                 } else {
                     unset($data['current_schedule']);
                 }
-            }
-
-            // Filtrar solo los campos permitidos en WaiterProfile para evitar errores de business_id
-            $allowedFields = [
+            } $allowedFields = [
                 'avatar', 'display_name', 'bio', 'phone', 'birth_date', 'height', 'weight', 
                 'gender', 'experience_years', 'employment_type', 'current_schedule', 
                 'current_location', 'latitude', 'longitude', 'availability_hours', 
@@ -215,10 +183,7 @@ class UserProfileController extends Controller
             $profileArray = $profileFresh->toArray();
             if (isset($profileFresh->birth_date) && $profileFresh->birth_date) {
                 $profileArray['birth_date'] = $profileFresh->birth_date->format('d-m-Y');
-            }
-            // Asegurar que avatar dentro de profile_data sea URL y no path
-            $profileArray['avatar'] = $profileFresh->avatar_url;
-            // No devolver display_name para evitar duplicar el nombre
+            }$profileArray['avatar'] = $profileFresh->avatar_url;
             unset($profileArray['display_name']);
 
             return response()->json([
