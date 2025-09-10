@@ -173,6 +173,75 @@ class StaffController extends Controller
     }
 
     /**
+     * 👤 LISTAR SOLICITUDES DEL USUARIO AUTENTICADO (MOZO)
+     * Permite a los mozos ver sus solicitudes con estado: pending, confirmed, rejected
+     * Filtros opcionales: status, business_id
+     */
+    public function myRequests(Request $request)
+    {
+        $user = $request->user();
+
+        $request->validate([
+            'status' => 'sometimes|in:pending,confirmed,rejected',
+            'business_id' => 'sometimes|integer',
+        ]);
+
+        // Construir consulta: propias por user_id, y fallback por email si no hay user_id asociado
+        $query = Staff::with(['business'])
+            ->where(function ($q) use ($user) {
+                $q->where('user_id', $user->id);
+                if (!empty($user->email)) {
+                    $q->orWhere(function ($qq) use ($user) {
+                        $qq->whereNull('user_id')->where('email', $user->email);
+                    });
+                }
+            });
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+        if ($request->filled('business_id')) {
+            $query->where('business_id', (int)$request->business_id);
+        }
+
+        $requests = $query->orderByDesc('created_at')->get();
+
+        // Resumen por estado para facilitar UI
+        $counts = [
+            'pending' => 0,
+            'confirmed' => 0,
+            'rejected' => 0,
+        ];
+        foreach ($requests as $r) {
+            $status = $r->status;
+            if (isset($counts[$status])) { $counts[$status]++; }
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $requests->map(function ($s) {
+                return [
+                    'id' => $s->id,
+                    'business' => $s->business ? [
+                        'id' => $s->business->id,
+                        'name' => $s->business->name,
+                    ] : null,
+                    'status' => $s->status,
+                    'notes' => $s->notes,
+                    'created_at' => $s->created_at,
+                    'updated_at' => $s->updated_at,
+                ];
+            }),
+            'filters' => [
+                'status' => $request->status ?? null,
+                'business_id' => $request->business_id ?? null,
+            ],
+            'counts' => $counts,
+            'total' => $requests->count(),
+        ]);
+    }
+
+    /**
      * ✅ APROBAR SOLICITUD DE STAFF
      */
     public function approve(Request $request, $id)

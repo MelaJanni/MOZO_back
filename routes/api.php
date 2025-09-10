@@ -302,6 +302,8 @@ Route::middleware(['auth:sanctum', 'membership'])->group(function () {
         Route::get('/{id}/whatsapp', [StaffController::class, 'getWhatsAppInvitation']); // Obtener WhatsApp
         Route::delete('/{id}', [StaffController::class, 'destroy']); // Eliminar
         Route::post('/test-notifications', [StaffController::class, 'testNotifications']); // Test
+    // 👤 Solicitudes del mozo autenticado
+    Route::get('/my-requests', [StaffController::class, 'myRequests']);
     });
 
     Route::get('/tables', [TableController::class, 'fetchTables']);
@@ -321,6 +323,8 @@ Route::middleware(['auth:sanctum', 'membership'])->group(function () {
     
     Route::get('/notifications', [WaiterController::class, 'fetchWaiterNotifications']);
     Route::post('/notifications/handle/{notificationId}', [WaiterController::class, 'handleNotification']);
+    // Alias de compatibilidad: aceptar también /notifications/{id}/handle
+    Route::post('/notifications/{notificationId}/handle', [WaiterController::class, 'handleNotification']);
     Route::post('/notifications/{notificationId}/read', [WaiterController::class, 'markNotificationAsRead']);
     Route::post('/notifications/mark-multiple-read', [WaiterController::class, 'markMultipleNotificationsAsRead']);
     Route::post('/notifications/global', [WaiterController::class, 'globalNotifications']);
@@ -337,7 +341,9 @@ Route::middleware(['auth:sanctum', 'membership'])->group(function () {
         Route::post('/tables/clone/{tableId}', [TableController::class, 'cloneTable']);
 
         Route::get('/notifications', [WaiterController::class, 'fetchWaiterNotifications']);
-        Route::post('/notifications/handle/{notificationId}', [WaiterController::class, 'handleNotification']);
+    Route::post('/notifications/handle/{notificationId}', [WaiterController::class, 'handleNotification']);
+    // Alias de compatibilidad: aceptar también /waiter/notifications/{id}/handle
+    Route::post('/notifications/{notificationId}/handle', [WaiterController::class, 'handleNotification']);
         Route::post('/notifications/{notificationId}/read', [WaiterController::class, 'markNotificationAsRead']);
         Route::post('/notifications/mark-multiple-read', [WaiterController::class, 'markMultipleNotificationsAsRead']);
         Route::post('/notifications/global', [WaiterController::class, 'globalNotifications']);
