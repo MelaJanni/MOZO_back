@@ -152,7 +152,7 @@ class UserProfileController extends Controller
             if (array_key_exists('employment_type', $data)) {
                 $raw = $data['employment_type'];
                 if ($raw !== null && $raw !== '') {
-                    // Aceptar tal cual el string provisto, sin mapeos ni enumeraciones
+                    // Aceptar string libre (DB ahora es VARCHAR)
                     $data['employment_type'] = (string) $raw;
                 } else {
                     unset($data['employment_type']);
@@ -161,11 +161,13 @@ class UserProfileController extends Controller
             if (array_key_exists('current_schedule', $data)) {
                 $raw = $data['current_schedule'];
                 if ($raw !== null && $raw !== '') {
+                    // Aceptar string libre (DB ahora es VARCHAR)
                     $data['current_schedule'] = (string) $raw;
                 } else {
                     unset($data['current_schedule']);
                 }
-            } $allowedFields = [
+            }
+            $allowedFields = [
                 'avatar', 'display_name', 'bio', 'phone', 'birth_date', 'height', 'weight', 
                 'gender', 'experience_years', 'employment_type', 'current_schedule', 
                 'current_location', 'latitude', 'longitude', 'availability_hours', 
