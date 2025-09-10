@@ -1787,7 +1787,7 @@ class WaiterCallController extends Controller
                         'address' => $business->address,
                         'phone' => $business->phone,
                         'logo' => $business->logo ? asset('storage/' . $business->logo) : null,
-                        'is_active' => $business->id === $waiter->business_id,
+                        'is_active' => (int)$business->id === (int)($waiter->active_business_id ?? $waiter->business_id),
                         'membership' => [
                             'joined_at' => null,
                             'status' => 'active',
@@ -2115,8 +2115,20 @@ class WaiterCallController extends Controller
 
             $business = $staffRecord->business;
 
-            // Actualizar negocio activo
-            $waiter->update(['business_id' => $businessId]);
+            // Actualizar negocio activo en ambas columnas si existen
+            $update = [];
+            try {
+                if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'active_business_id')) {
+                    $update['active_business_id'] = $businessId;
+                }
+            } catch (\Throwable $e) { /* noop */ }
+            try {
+                if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'business_id')) {
+                    $update['business_id'] = $businessId;
+                }
+            } catch (\Throwable $e) { /* noop */ }
+            if (empty($update)) { $update = ['business_id' => $businessId]; }
+            $waiter->update($update);
 
             return response()->json([
                 'success' => true,
