@@ -1017,7 +1017,31 @@ class AdminController extends Controller
     public function getStaffMember(Request $request, $id)
     {
         $user = $request->user();
-        $activeBusinessId = $this->activeBusinessId($user, 'admin');
+        // Permitir fijar explícitamente el negocio vía query param para evitar 404 por scope
+        $requestedBusinessId = $request->query('business_id');
+        $activeBusinessId = null;
+
+        if ($requestedBusinessId && is_numeric($requestedBusinessId)) {
+            $requestedBusinessId = (int) $requestedBusinessId;
+            // Verificar que el admin tenga acceso a ese negocio (si existe la relación)
+            $hasAccess = true;
+            try {
+                if (method_exists($user, 'businessesAsAdmin')) {
+                    $hasAccess = $user->businessesAsAdmin()->where('business_id', $requestedBusinessId)->exists();
+                }
+            } catch (\Throwable $e) { /* noop */ }
+
+            if (!$hasAccess) {
+                return response()->json([
+                    'message' => 'No tienes acceso a este negocio',
+                    'requested_business_id' => $requestedBusinessId,
+                ], 403);
+            }
+            $activeBusinessId = $requestedBusinessId;
+        } else {
+            // Resolver negocio activo con el trait (prioriza rol admin)
+            $activeBusinessId = $this->activeBusinessId($user, 'admin');
+        }
 
         if (!is_numeric($id)) {
             return response()->json([
@@ -1026,21 +1050,32 @@ class AdminController extends Controller
             ], 400);
         }
 
-        $staff = Staff::with('reviews')
+        // Permitir consultar no confirmados sólo si include_unconfirmed=true
+        $includeUnconfirmed = filter_var($request->query('include_unconfirmed', false), FILTER_VALIDATE_BOOLEAN);
+
+        $query = Staff::with('reviews')
             ->where('id', (int)$id)
-            ->where('business_id', $activeBusinessId)
-            ->where('status', 'confirmed')
-            ->first();
+            ->where('business_id', $activeBusinessId);
+
+        if (!$includeUnconfirmed) {
+            $query->where('status', 'confirmed');
+        }
+
+        $staff = $query->first();
 
         if (!$staff) {
             return response()->json([
                 'message' => 'Staff no encontrado o no confirmado para el negocio activo',
                 'staff_id' => (int)$id,
                 'active_business_id' => (int)$activeBusinessId,
+                'include_unconfirmed' => $includeUnconfirmed,
             ], 404);
         }
 
-        return response()->json(['staff' => $staff]);
+        return response()->json([
+            'staff' => $staff,
+            'effective_business_id' => (int)$activeBusinessId,
+        ]);
     }
 
     public function updateStaffMember(Request $request, $id)
