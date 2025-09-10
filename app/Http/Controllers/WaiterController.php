@@ -499,6 +499,8 @@ class WaiterController extends Controller
                         })
                         ->count();
 
+                    $activeId = (int)($waiter->active_business_id ?? $waiter->business_id);
+                    $isActive = $activeId ? ((int)$business->id === $activeId) : ($assignedToMe > 0);
                     return [
                         'id' => $business->id,
                         'name' => $business->name,
@@ -506,7 +508,7 @@ class WaiterController extends Controller
                         'address' => $business->address,
                         'phone' => $business->phone,
                         'logo' => $business->logo ? asset('storage/' . $business->logo) : null,
-                        'is_active' => (int)$business->id === (int)($waiter->active_business_id ?? $waiter->business_id),
+                        'is_active' => $isActive,
                         'membership' => [
                             'joined_at' => null,
                             'status' => 'active',
@@ -567,11 +569,13 @@ class WaiterController extends Controller
                     ->count();
 
                 if ($assignedToMe > 0 || $callsToday > 0) {
+                    $activeId = (int)($waiter->active_business_id ?? $waiter->business_id);
+                    $isActive = $activeId ? ((int)$business->id === $activeId) : ($assignedToMe > 0);
                     return [
                         'id' => $business->id,
                         'name' => $business->name,
                         'code' => $business->invitation_code,
-                        'is_active' => (int)$business->id === (int)($waiter->active_business_id ?? $waiter->business_id),
+                        'is_active' => $isActive,
                         'assigned_tables' => $assignedToMe,
                         'calls_today' => $callsToday,
                     ];
