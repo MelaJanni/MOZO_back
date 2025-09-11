@@ -129,7 +129,7 @@ Route::middleware('public_api')->group(function () {
     });
 });
 
-Route::middleware(['auth:sanctum', 'membership'])->group(function () {
+Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/user', fn (Request $request) => $request->user());
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/role/select', [RoleController::class, 'selectRole']);
@@ -227,7 +227,8 @@ Route::middleware(['auth:sanctum', 'membership'])->group(function () {
     Route::post('/table-profiles/{profile}/deactivate', [TableProfileController::class, 'deactivate']);
     });
 
-    Route::prefix('admin')->group(function () {
+    // Rutas de ADMIN: requieren membresía activa
+    Route::prefix('admin')->middleware('membership')->group(function () {
         Route::delete('/staff/{staffId}', [AdminController::class, 'removeStaff']);
         Route::post('/staff/request/{requestId}', [AdminController::class, 'handleStaffRequest']);
     Route::get('/staff/requests', [AdminController::class, 'fetchStaffRequests']);
@@ -361,7 +362,8 @@ Route::middleware(['auth:sanctum', 'membership'])->group(function () {
     Route::post('/change-password', [AuthController::class, 'changePassword']);
     Route::delete('/delete-account', [AuthController::class, 'deleteAccount']);
 
-    Route::get('/admin/statistics', [AdminController::class, 'getStatistics']);
+    // Estadísticas de admin también requieren membresía
+    Route::get('/admin/statistics', [AdminController::class, 'getStatistics'])->middleware('membership');
 });
 
 // Rutas públicas para QR codes y llamadas de mozo (sin autenticación)
