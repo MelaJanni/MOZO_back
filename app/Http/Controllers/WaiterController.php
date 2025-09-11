@@ -355,6 +355,74 @@ class WaiterController extends Controller
         }
 
         if (!$notification) {
+            // Compatibilidad: si el ID parece ser de una llamada activa, procesarla aquí mismo
+            if (ctype_digit((string)$notificationId)) {
+                $waiter = Auth::user();
+                $call = \App\Models\WaiterCall::with('table')->find((int)$notificationId);
+                if ($call) {
+                    $isAssignedWaiter = ((int)$call->waiter_id === (int)$waiter->id);
+                    $isCurrentTableWaiter = ((int)($call->table->active_waiter_id ?? 0) === (int)$waiter->id);
+                    if (!($isAssignedWaiter || $isCurrentTableWaiter)) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'No autorizado para administrar esta llamada'
+                        ], 403);
+                    }
+
+                    $action = $request->get('action', 'mark_as_read');
+                    if ($action === 'read') { $action = 'mark_as_read'; }
+
+                    if ($action === 'mark_as_read') {
+                        // Reconocer la llamada si está pendiente
+                        if ($call->status === 'pending') {
+                            $call->update(['status' => 'acknowledged', 'acknowledged_at' => now()]);
+                            try {
+                                $call->loadMissing(['table','waiter']);
+                                $this->unifiedFirebaseService->writeCall($call, 'acknowledged');
+                            } catch (\Throwable $t) { /* noop */ }
+                        }
+                        return response()->json([
+                            'success' => true,
+                            'message' => 'Llamada marcada como reconocida',
+                            'call' => [
+                                'id' => $call->id,
+                                'status' => $call->status,
+                                'acknowledged_at' => $call->acknowledged_at,
+                                'completed_at' => $call->completed_at,
+                            ]
+                        ]);
+                    } elseif ($action === 'delete') {
+                        // Completar la llamada
+                        if (!in_array($call->status, ['completed'])) {
+                            $call->update([
+                                'status' => 'completed',
+                                'completed_at' => now(),
+                                'acknowledged_at' => $call->acknowledged_at ?: now(),
+                            ]);
+                            try {
+                                $call->loadMissing(['table','waiter']);
+                                $this->unifiedFirebaseService->writeCall($call, 'completed');
+                            } catch (\Throwable $t) { /* noop */ }
+                        }
+                        return response()->json([
+                            'success' => true,
+                            'message' => 'Llamada completada',
+                            'call' => [
+                                'id' => $call->id,
+                                'status' => $call->status,
+                                'acknowledged_at' => $call->acknowledged_at,
+                                'completed_at' => $call->completed_at,
+                            ]
+                        ]);
+                    }
+
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Acción no válida para llamada'
+                    ], 400);
+                }
+            }
+
             return response()->json([
                 'message' => 'Notificación no encontrada'
             ], 404);
