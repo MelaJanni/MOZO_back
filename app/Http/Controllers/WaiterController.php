@@ -282,19 +282,42 @@ class WaiterController extends Controller
         
         $notification = $user->notifications()->where('id', $notificationId)->first();
 
+        // Derivar claves candidatas y posible staff_id desde el identificador recibido
+        $candidateKeys = [$notificationId];
+        $staffId = null;
+        if (ctype_digit((string)$notificationId)) {
+            $staffId = (string)$notificationId;
+            $candidateKeys[] = 'user_staff_' . $staffId;
+            $candidateKeys[] = 'staff_req_' . $staffId;
+        } elseif (preg_match('/^staff_req_(\d+)$/', (string)$notificationId, $m)) {
+            $staffId = (string)$m[1];
+            $candidateKeys[] = 'user_staff_' . $staffId;
+        } elseif (preg_match('/^user_staff_(\d+)$/', (string)$notificationId, $m)) {
+            $staffId = (string)$m[1];
+        }
+
         // Fallback: buscar por claves conocidas dentro de data (key / notification_key)
         if (!$notification) {
             try {
-                $notification = $user->notifications()
-                    ->where('data->data->key', $notificationId)
-                    ->orWhere('data->key', $notificationId)
-                    ->orWhere('data->data->notification_key', $notificationId)
-                    ->orWhere('data->notification_key', $notificationId)
-                    ->latest()
-                    ->first();
+                $builder = $user->notifications();
+                // Buscar por cualquiera de las candidateKeys
+                foreach (array_unique($candidateKeys) as $key) {
+                    $builder = $builder
+                        ->orWhere('data->data->key', $key)
+                        ->orWhere('data->key', $key)
+                        ->orWhere('data->data->notification_key', $key)
+                        ->orWhere('data->notification_key', $key);
+                }
+                // Buscar por staff_id (string) si lo pudimos derivar
+                if ($staffId !== null) {
+                    $builder = $builder
+                        ->orWhere('data->data->staff_id', $staffId)
+                        ->orWhere('data->staff_id', $staffId);
+                }
+                $notification = $builder->latest()->first();
             } catch (\Throwable $e) {
                 // Fallback manual si el driver no soporta JSON queries
-                $candidates = $user->notifications()->latest()->limit(100)->get();
+                $candidates = $user->notifications()->latest()->limit(200)->get();
                 $notification = $candidates->first(function ($n) use ($notificationId) {
                     $d = (array)($n->data ?? []);
                     $inner = (array)($d['data'] ?? []);
@@ -303,6 +326,31 @@ class WaiterController extends Controller
                         || (($inner['notification_key'] ?? null) === $notificationId)
                         || (($d['notification_key'] ?? null) === $notificationId);
                 });
+                // Si aún no, comparar por staff_id o claves derivadas
+                if (!$notification) {
+                    $staffIdLocal = null;
+                    if (ctype_digit((string)$notificationId)) { $staffIdLocal = (string)$notificationId; }
+                    if (preg_match('/^staff_req_(\d+)$/', (string)$notificationId, $m)) { $staffIdLocal = (string)$m[1]; }
+                    if (preg_match('/^user_staff_(\d+)$/', (string)$notificationId, $m)) { $staffIdLocal = (string)$m[1]; }
+                    $derivedKeys = $staffIdLocal ? ['user_staff_' . $staffIdLocal, 'staff_req_' . $staffIdLocal] : [];
+                    $notification = $candidates->first(function ($n) use ($staffIdLocal, $notificationId, $derivedKeys) {
+                        $d = (array)($n->data ?? []);
+                        $inner = (array)($d['data'] ?? []);
+                        $keys = [
+                            ($inner['key'] ?? null),
+                            ($d['key'] ?? null),
+                            ($inner['notification_key'] ?? null),
+                            ($d['notification_key'] ?? null),
+                        ];
+                        if (in_array($notificationId, $keys, true)) { return true; }
+                        if ($staffIdLocal !== null) {
+                            if ((string)($inner['staff_id'] ?? '') === $staffIdLocal) { return true; }
+                            if ((string)($d['staff_id'] ?? '') === $staffIdLocal) { return true; }
+                            foreach ($derivedKeys as $k) { if (in_array($k, $keys, true)) { return true; } }
+                        }
+                        return false;
+                    });
+                }
             }
         }
 
