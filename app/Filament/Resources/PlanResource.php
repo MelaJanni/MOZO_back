@@ -4,8 +4,8 @@ namespace App\Filament\Resources;
 
 use App\Models\Plan;
 use Filament\Forms;
-use Filament\Resources\Form;
-use Filament\Resources\Table;
+use Filament\Forms\Form;
+use Filament\Tables\Table;
 use Filament\Tables;
 use Filament\Resources\Resource;
 
@@ -13,7 +13,7 @@ class PlanResource extends Resource
 {
     protected static ?string $model = Plan::class;
     protected static ?string $navigationIcon = 'heroicon-o-currency-dollar';
-    protected static ?string $navigationGroup = 'Billing';
+    protected static ?string $navigationGroup = 'Facturación';
 
     public static function form(Form $form): Form
     {
@@ -40,5 +40,14 @@ class PlanResource extends Resource
             Tables\Actions\EditAction::make(),
             Tables\Actions\DeleteAction::make(),
         ]);
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => PlanResource\Pages\ListPlans::route('/'),
+            'create' => PlanResource\Pages\CreatePlan::route('/create'),
+            'edit' => PlanResource\Pages\EditPlan::route('/{record}/edit'),
+        ];
     }
 }

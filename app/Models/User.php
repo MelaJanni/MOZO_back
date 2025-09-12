@@ -244,6 +244,9 @@ class User extends Authenticatable implements FilamentUser
     // ========================================
     public function hasActiveMembership(): bool
     {
+        if ($this->is_lifetime_paid ?? false) {
+            return true;
+        }
         // Fuente de verdad: Subscription activa o en trial
         $sub = $this->subscriptions()
             ->whereIn('status', ['active', 'in_trial'])
@@ -265,6 +268,9 @@ class User extends Authenticatable implements FilamentUser
 
     public function membershipDaysRemaining(): ?int
     {
+        if ($this->is_lifetime_paid ?? false) {
+            return PHP_INT_MAX; // Representa ilimitado
+        }
         $sub = $this->subscriptions()
             ->whereIn('status', ['active', 'in_trial'])
             ->orderByDesc('id')

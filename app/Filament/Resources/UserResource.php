@@ -4,8 +4,8 @@ namespace App\Filament\Resources;
 
 use App\Models\User;
 use Filament\Forms;
-use Filament\Resources\Form;
-use Filament\Resources\Table;
+use Filament\Forms\Form;
+use Filament\Tables\Table;
 use Filament\Tables;
 use Filament\Resources\Resource;
 
@@ -38,5 +38,14 @@ class UserResource extends Resource
         ])->bulkActions([
             Tables\Actions\DeleteBulkAction::make(),
         ]);
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => UserResource\Pages\ListUsers::route('/'),
+            'create' => UserResource\Pages\CreateUser::route('/create'),
+            'edit' => UserResource\Pages\EditUser::route('/{record}/edit'),
+        ];
     }
 }
