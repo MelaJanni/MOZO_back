@@ -21,11 +21,8 @@ class DatabaseSeeder extends Seeder
     {
     echo "🏗️  Creando sistema multi-rol y multi-negocio...\n\n";
 
-    // Seed de planes de membresía
-    $this->call([\Database\Seeders\PlanSeeder::class]);
-
-    // Seed de roles y planes
-    $this->call([\Database\Seeders\RoleSeeder::class, \Database\Seeders\PlanSeeder::class]);
+    // Seed de roles y planes (idempotente)
+    $this->call([\Database\Seeders\RoleSeeder::class, \Database\Seeders\PlanSeeder::class, \Database\Seeders\SuperAdminSeeder::class]);
 
     // ========================================
         // 1. CREAR NEGOCIOS
