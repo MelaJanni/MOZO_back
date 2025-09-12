@@ -99,6 +99,23 @@ Route::get('/password/reset/{token}', function ($token) {
     </html>';
 })->name('password.reset');
 
+// Verificación: redirige a la app móvil (simple deep link, no lógica de auth)
+Route::get('/email/verify/{id}/{hash}', function ($id, $hash) {
+        $appScheme = env('MOBILE_APP_SCHEME', 'mozo');
+        $deepLink = $appScheme . '://email-verified?id=' . urlencode($id) . '&hash=' . urlencode($hash);
+        return '<!DOCTYPE html>
+        <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Email verificado</title>
+        <style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.6;color:#333;max-width:500px;margin:0 auto;padding:20px;text-align:center} .card{background:#fff;border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,0.1);padding:30px;margin-top:30px} .btn{display:inline-block;background:#4A6FFF;color:#fff;text-decoration:none;padding:12px 30px;border-radius:50px;font-weight:bold;margin-bottom:15px}</style>
+        </head><body>
+            <div class="card">
+                <h1>Email verificado</h1>
+                <p>Tu correo fue verificado correctamente. Si tenés la app instalada, tocá el botón para continuar.</p>
+                <a class="btn" href="' . $deepLink . '">Abrir aplicación</a>
+            </div>
+            <script>window.location.href = "' . $deepLink . '";</script>
+        </body></html>';
+})->name('verification.verify');
+
 // Ruta de prueba simple
 Route::get('/test-simple', function() {
     return response()->json(['status' => 'working', 'message' => 'Routes are working!']);

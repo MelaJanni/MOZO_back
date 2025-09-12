@@ -19,9 +19,15 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        echo "🏗️  Creando sistema multi-rol y multi-negocio...\n\n";
+    echo "🏗️  Creando sistema multi-rol y multi-negocio...\n\n";
 
-        // ========================================
+    // Seed de planes de membresía
+    $this->call([\Database\Seeders\PlanSeeder::class]);
+
+    // Seed de roles y planes
+    $this->call([\Database\Seeders\RoleSeeder::class, \Database\Seeders\PlanSeeder::class]);
+
+    // ========================================
         // 1. CREAR NEGOCIOS
         // ========================================
         
@@ -75,6 +81,9 @@ class DatabaseSeeder extends Seeder
                 'password' => Hash::make('password'),
             ]
         );
+
+    // Asegurar super_admin para ingresar al panel
+    try { $maria->assignRole('super_admin'); } catch (\Throwable $e) {}
 
         // Membresía activa por defecto
         $maria->update([

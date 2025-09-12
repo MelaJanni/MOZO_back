@@ -134,6 +134,13 @@ FIREBASE_WEB_API_KEY=...
 ---
 Documentación genérica de Laravel omitida para mantener claridad en la arquitectura específica de MOZO.
 
+### Notas rápidas de API (Admin)
+- GET /api/admin/staff/{id}
+	- Acepta query params opcionales:
+		- business_id: fuerza el negocio a usar para el scope (debe pertenecer al admin)
+		- include_unconfirmed: true|false para incluir registros no confirmados
+	- Respuestas incluyen effective_business_id para depurar el scope.
+
 ## Learning Laravel
 
 Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.

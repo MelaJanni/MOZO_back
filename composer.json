@@ -9,6 +9,7 @@
         "barryvdh/laravel-dompdf": "^2.0",
         "doctrine/dbal": "^3.9",
         "fakerphp/faker": "^1.24",
+        "filament/filament": "^3.3",
         "guzzlehttp/guzzle": "^7.2",
         "hashids/hashids": "^4.1",
         "laravel/framework": "^10.10",
@@ -16,7 +17,8 @@
         "laravel/tinker": "^2.8",
         "psr/http-message": "^1.1 | ^2.0",
         "scssphp/scssphp": "1.11",
-        "simplesoftwareio/simple-qrcode": "^4.2"
+        "simplesoftwareio/simple-qrcode": "^4.2",
+        "spatie/laravel-permission": "^6.21"
     },
     "require-dev": {
         "laravel/breeze": "^1.29",

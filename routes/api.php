@@ -65,6 +65,11 @@ Route::post('/test/register-fcm-token', [NotificationController::class, 'registe
 
 // Firebase configuration endpoints (public for mozoqr.com)
 Route::middleware('public_api')->group(function () {
+    // Webhooks de pago (público, con verificación interna por firma en implementación real)
+    Route::post('/webhooks/mercadopago', [\App\Http\Controllers\WebhookController::class, 'mercadopago']);
+    Route::post('/webhooks/paypal', [\App\Http\Controllers\WebhookController::class, 'paypal']);
+    // Membresía: planes públicos
+    Route::get('/membership/plans', [\App\Http\Controllers\MembershipController::class, 'plans']);
     Route::get('/firebase/config', [FirebaseConfigController::class, 'getConfig']);
     Route::get('/firebase/table/{table}/config', [FirebaseConfigController::class, 'getQrTableConfig']);
     
@@ -130,6 +135,8 @@ Route::middleware('public_api')->group(function () {
 });
 
 Route::middleware(['auth:sanctum'])->group(function () {
+    // Membresía: checkout autenticado
+    Route::post('/membership/checkout', [\App\Http\Controllers\MembershipController::class, 'checkout']);
     Route::get('/user', fn (Request $request) => $request->user());
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/role/select', [RoleController::class, 'selectRole']);

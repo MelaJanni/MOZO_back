@@ -431,6 +431,8 @@ class AuthController extends Controller
             'email' => $request->email,
             'password' => Hash::make($request->password),
         ]);
+        // Marcar email como verificado desde el inicio (solo persistencia, no se usa para autorizar)
+        try { $user->email_verified_at = now(); $user->save(); } catch (\Throwable $e) { /* noop */ }
         // Establecer rol por fuera del fillable
         try { $user->role = 'waiter'; $user->save(); } catch (\Throwable $e) { /* noop */ }
 

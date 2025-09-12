@@ -7,11 +7,14 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Permission\Traits\HasRoles;
+use Filament\Contracts\FilamentUser;
+use Filament\Panel;
 use App\Notifications\ResetPasswordNotification;
 
-class User extends Authenticatable
+class User extends Authenticatable implements FilamentUser
 {
-    use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
+    use HasApiTokens, HasFactory, Notifiable, SoftDeletes, HasRoles;
 
     protected $fillable = [
         'name',
@@ -241,22 +244,60 @@ class User extends Authenticatable
     // ========================================
     public function hasActiveMembership(): bool
     {
-        if (!$this->membership_expires_at) {
+        // Fuente de verdad: Subscription activa o en trial
+        $sub = $this->subscriptions()
+            ->whereIn('status', ['active', 'in_trial'])
+            ->orderByDesc('id')
+            ->first();
+        if (!$sub) {
             return false;
         }
-        // Grace period opcional desde config('billing.grace_days', 0)
+        // Si está en trial, está activo
+        if ($sub->status === 'in_trial') {
+            return optional($sub->trial_ends_at)?->isFuture() ?? true;
+        }
+        // Activo: respetar current_period_end + grace_days
+        $end = $sub->current_period_end;
+        if (!$end) return false;
         $grace = (int) (config('billing.grace_days', 0));
-        $limit = $this->membership_expires_at->copy()->addDays($grace);
-        return now()->lessThanOrEqualTo($limit);
+        return now()->lessThanOrEqualTo(optional($end)->copy()->addDays($grace));
     }
 
     public function membershipDaysRemaining(): ?int
     {
-        if (!$this->membership_expires_at) {
-            return null;
-        }
+        $sub = $this->subscriptions()
+            ->whereIn('status', ['active', 'in_trial'])
+            ->orderByDesc('id')
+            ->first();
+        if (!$sub) return null;
+        $target = $sub->status === 'in_trial' ? $sub->trial_ends_at : $sub->current_period_end;
+        if (!$target) return null;
         $grace = (int) (config('billing.grace_days', 0));
-        $limit = $this->membership_expires_at->copy()->addDays($grace);
+        $limit = optional($target)->copy()->addDays($grace);
         return now()->diffInDays($limit, false);
+    }
+
+    // ========================================
+    // BILLING
+    // ========================================
+    public function subscriptions()
+    {
+        return $this->hasMany(Subscription::class);
+    }
+
+    public function activeSubscription()
+    {
+        return $this->subscriptions()
+            ->whereIn('status', ['active', 'in_trial'])
+            ->orderByDesc('id')
+            ->first();
+    }
+
+    // ========================================
+    // FILAMENT ACCESS
+    // ========================================
+    public function canAccessPanel(Panel $panel): bool
+    {
+        return $this->hasRole('super_admin');
     }
 }

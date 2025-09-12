@@ -1,16 +1,23 @@
-# 🚀 TODAS LAS APIs DEL SISTEMA MOZO - DOCUMENTACIÓN COMPLETA
+# 🚀 TODAS LAS APIs DEL SISTEMA MOZO — DOCUMENTACIÓN ACTUALIZADA
+
+Última actualización: 2025-09-08
 
 ## ⚠️ IMPORTANTE: USO CORRECTO DE APIs
 
-**PARA ACTUALIZAR PERFILES, USA ÚNICAMENTE:**
-- `/api/user-profile/waiter/update` - Para perfiles de mozo
-- `/api/user-profile/admin/update` - Para perfiles de admin  
-- `/api/user-profile/completeness` - Para verificar completitud
+Perfiles separados por rol (sistema actual):
+- Usa: `/api/user-profile/waiter/update` (mozo)
+- Usa: `/api/user-profile/admin/update` (admin)
+- Compleción: `/api/user-profile/completeness` (preferido) y alias `/api/profile/completeness`
 
-**❌ ELIMINADAS (YA NO FUNCIONAN):**
-- `/api/profile/update` 
+Eliminadas (legacy):
+- `/api/profile/update`
 - `/api/profile/waiter/update`
-- `/api/profile/completeness` (usar `/api/user-profile/completeness`)
+
+Novedades recientes:
+- Alias activo para completitud de perfil: `/api/profile/completeness` (compatibilidad FE)
+- Nuevos diagnósticos y utilitarios: `/api/health`, `/api/check-user-exists`, `/api/debug/*`
+- Nuevas rutas waiter: `calls/{call}/resync`, `businesses/active-today`, `leave-business`, `diagnose`
+- Nuevas rutas admin: `business/create`, `businesses` (listar), `business/{id}` (DELETE), `qr/capabilities`, alias de `menus` y `tables`
 
 ## 📚 ÍNDICE
 1. [Autenticación](#autenticación)
@@ -21,6 +28,7 @@
 6. [APIs del Admin - Panel de Control](#apis-del-admin---panel-de-control)
 7. [APIs Generales](#apis-generales)
 8. [APIs Públicas (QR)](#apis-públicas-qr)
+9. [Diagnóstico y Utilitarios](#diagnóstico-y-utilitarios)
 
 ---
 
@@ -51,6 +59,11 @@ Body: {
 }
 Response: { success, user, access_token, token_type, staff_request_created, business_name, message }
 
+POST /api/check-user-exists
+Body: { "email": "string" }
+Response: { exists: boolean }
+Notas: Limitado por throttle (10/min)
+
 POST /api/logout
 Headers: Authorization: Bearer {token}
 Body: { "token": "string" (opcional - FCM token específico) }
@@ -76,6 +89,9 @@ DELETE /api/delete-account
 Headers: Authorization: Bearer {token}
 Body: { "password": "string" }
 Response: { message }
+
+GET /api/health
+Response: { ok, app, env, time, db, db_error? }
 ```
 
 ### Gestión de Roles
@@ -88,6 +104,23 @@ POST /api/role/select
 Headers: Authorization: Bearer {token}
 Body: { "role": "admin|waiter" }
 Response: { message, view, token }
+
+Notas de comportamiento:
+- Ya no requiere business_id. Solo fija la vista (view) y emite un token con habilidad role:{rol}.
+- El FE luego decide qué negocio mostrar/seleccionar mediante GETs (p. ej., /api/admin/businesses, /api/waiter/businesses) según el rol elegido.
+```
+
+### Negocio Activo (genérico)
+```
+POST /api/business/set-active
+Headers: Authorization: Bearer {token}
+Body: { "business_id": "integer" }
+Response: { success, message, active_business: { id, name, slug?, invitation_code? }, active_business_id }
+Notas:
+- Valida que el usuario pertenezca al negocio como admin activo o waiter confirmado.
+- Aplica para ambos roles.
+- Persiste el negocio activo en users.active_business_id (si existe) o en users.business_id (fallback).
+- Si sos admin, también sincroniza user_active_roles (rol=admin) para que /api/admin/business respete el último negocio seleccionado.
 ```
 
 ---
@@ -167,8 +200,8 @@ Body: {
   "weight": "integer" (opcional, en kg 30-200),
   "gender": "masculino|femenino|otro" (opcional),
   "experience_years": "integer" (opcional, 0-50),
-  "employment_type": "por horas|tiempo completo|tiempo parcial|solo fines de semana" (opcional),
-  "current_schedule": "mañana|tarde|noche|mixto" (opcional),
+  "employment_type": "employee|freelancer|contractor" (opcional, EN),
+  "current_schedule": "morning|afternoon|night|mixed" (opcional, EN),
   "current_location": "string" (opcional),
   "latitude": "numeric" (opcional, -90 a 90),
   "longitude": "numeric" (opcional, -180 a 180),
@@ -188,6 +221,13 @@ Response: {
     "profile_data": {object}
   }
 }
+
+Notas:
+- Los campos employment_type y current_schedule deben enviarse en INGLÉS.
+- Valores permitidos:
+  - employment_type: employee, freelancer, contractor
+  - current_schedule: morning, afternoon, night, mixed
+- Si se envían valores en español, el backend intentará mapearlos; si no coinciden con los permitidos, devuelve 422.
 ```
 
 ### Actualizar Perfil de Administrador
@@ -239,17 +279,26 @@ Response: {
 }
 ```
 
+### Alias de Completitud (Compatibilidad)
+```
+GET /api/profile/completeness
+Headers: Authorization: Bearer {token}
+Response: igual que /api/user-profile/completeness
+```
+
+### Actualizar cuenta (datos básicos de usuario)
+```
+PUT /api/account
+Headers: Authorization: Bearer {token}
+Body: { name?, email?, phone? }
+Response: { message, user }
+```
+
 ---
 
 ## 📋 FUNCIONES ADICIONALES DE PERFIL
 
-### WhatsApp
-```
-POST /api/profile/whatsapp/send
-Headers: Authorization: Bearer {token}
-Body: { "phone": "string", "message": "string" }
-Response: { message, to, status }
-```
+Notas: Rutas legacy de WhatsApp ya no existen.
 
 ### Historial Laboral
 ```
@@ -272,10 +321,7 @@ PUT /api/profile/work-history/{id}
 Headers: Authorization: Bearer {token}
 Body: { campos a actualizar }
 Response: { work_experience }
-
-DELETE /api/profile/work-history/{id}
-Headers: Authorization: Bearer {token}
-Response: { message }
+// DELETE no disponible actualmente
 ```
 
 ### Gestión de Dispositivos
@@ -316,6 +362,10 @@ GET /api/waiter/businesses
 Headers: Authorization: Bearer {token}
 Response: { businesses }
 
+GET /api/waiter/businesses/active-today
+Headers: Authorization: Bearer {token}
+Response: { businesses }
+
 GET /api/waiter/businesses/{id}/tables
 Headers: Authorization: Bearer {token}
 Response: { tables }
@@ -334,10 +384,22 @@ POST /api/waiter/onboard
 Headers: Authorization: Bearer {token}
 Body: { business_data }
 Response: { message, business }
+
+POST /api/waiter/leave-business
+Headers: Authorization: Bearer {token}
+Response: { message }
+
+GET /api/waiter/diagnose
+Headers: Authorization: Bearer {token}
+Response: { diagnosis }
 ```
 
 ### Gestión de Mesas - Individual
 ```
+GET /api/waiter/tables
+Headers: Authorization: Bearer {token}
+Response: { tables }
+
 GET /api/waiter/tables/assigned
 Headers: Authorization: Bearer {token}
 Response: { assigned_tables }
@@ -408,6 +470,10 @@ POST /api/waiter/calls/{call}/complete
 Headers: Authorization: Bearer {token}
 Response: { message }
 
+POST /api/waiter/calls/{call}/resync
+Headers: Authorization: Bearer {token}
+Response: { message }
+
 GET /api/waiter/calls/history
 Headers: Authorization: Bearer {token}
 Response: { call_history }
@@ -452,11 +518,29 @@ Response: { message }
 
 ### Notificaciones y FCM
 ```
-GET /api/waiter/table-profiles/notifications
+GET /api/waiter/notifications
 Headers: Authorization: Bearer {token}
-Response: { notifications, unread_count }
+Response: { notifications }
 
-POST /api/waiter/table-profiles/notifications/{notificationId}/read
+POST /api/waiter/notifications/handle/{notificationId}
+Headers: Authorization: Bearer {token}
+Response: { message }
+
+POST /api/waiter/notifications/{notificationId}/read
+Headers: Authorization: Bearer {token}
+Response: { message }
+
+POST /api/waiter/notifications/mark-multiple-read
+Headers: Authorization: Bearer {token}
+Body: { "notification_ids": [1,2,3] }
+Response: { message }
+
+POST /api/waiter/notifications/global
+Headers: Authorization: Bearer {token}
+Body: { notification_data }
+Response: { message }
+
+POST /api/waiter/tables/toggle-notifications/{tableId}
 Headers: Authorization: Bearer {token}
 Response: { message }
 
@@ -745,7 +829,7 @@ GET /api/admin/profile
 Headers: Authorization: Bearer {token}
 Response: { 
   profile: {
-    id, name, email, avatar_url, phone,
+  id, name, email, avatar_url, phone, position,
     business: { id, name },
     created_at
   }
@@ -772,6 +856,19 @@ GET /api/admin/business
 Headers: Authorization: Bearer {token}
 Response: { business, tables_count, menus_count, qr_codes_count, invitation_code, invitation_url }
 
+POST /api/admin/business/create
+Headers: Authorization: Bearer {token}
+Body: { business_data }
+Response: { message, business }
+
+GET /api/admin/businesses
+Headers: Authorization: Bearer {token}
+Response: { businesses }
+
+DELETE /api/admin/business/{businessId}
+Headers: Authorization: Bearer {token}
+Response: { message }
+
 POST /api/admin/business/regenerate-invitation-code
 Headers: Authorization: Bearer {token}
 Response: { message, invitation_code, invitation_url }
@@ -789,6 +886,17 @@ Headers: Authorization: Bearer {token}
 Response: { business, settings }
 
 POST /api/admin/settings
+Headers: Authorization: Bearer {token}
+Body: { business_settings }
+Response: { message, business }
+
+PUT /api/admin/settings
+PATCH /api/admin/settings
+Headers: Authorization: Bearer {token}
+Body: { business_settings }
+Response: { message, business }
+
+PUT /api/admin/business/settings (alias)
 Headers: Authorization: Bearer {token}
 Body: { business_settings }
 Response: { message, business }
@@ -813,6 +921,10 @@ POST /api/admin/qr/email
 Headers: Authorization: Bearer {token}
 Body: { email_data }
 Response: { message }
+
+GET /api/admin/qr/capabilities
+Headers: Authorization: Bearer {token}
+Response: { capabilities }
 ```
 
 ### Notificaciones
@@ -877,6 +989,14 @@ Response: { silenced_tables }
 DELETE /api/admin/tables/{table}/silence
 Headers: Authorization: Bearer {token}
 Response: { message }
+
+GET /api/admin/tables (alias)
+Headers: Authorization: Bearer {token}
+Response: { tables }
+
+GET /api/admin/menus (alias)
+Headers: Authorization: Bearer {token}
+Response: { menus }
 ```
 
 ---
@@ -1072,6 +1192,9 @@ Response: { test_write, url, data_sent, firebase_response_status, firebase_respo
 GET /api/firebase/test
 Response: { realtime_database_test, type, timestamp }
 
+GET /api/firebase/test-createnotification-method
+Response: { test_firebase_write, test_call_id, firebase_url, timestamp }
+
 GET /api/debug/recent-calls
 Response: { recent_calls }
 ```
@@ -1266,4 +1389,21 @@ Algunas rutas soportan paginación con query params:
 
 ---
 
-*Documentación generada automáticamente - Última actualización: 2025-08-21*
+## 🔧 DIAGNÓSTICO Y UTILITARIOS
+
+Endpoints útiles para diagnóstico (dev/ops):
+```
+POST /api/debug/upload-test
+Headers: Authorization: Bearer {token}
+Body: { file: multipart-file }
+Response: { success, debug_info }
+
+POST /api/debug/fix-php-limits
+Headers: Authorization: Bearer {token}
+Response: { success, results, current_limits, recommendations }
+```
+
+---
+
+Documentación generada automáticamente
+*Última actualización: 2025-09-08*
