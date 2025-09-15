@@ -8,7 +8,7 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Permission\Traits\HasRoles;
-use Filament\Contracts\FilamentUser;
+use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use App\Notifications\ResetPasswordNotification;
 

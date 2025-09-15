@@ -19,6 +19,8 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
     'firebase' => [
+    // Deshabilitado por defecto para evitar caídas si falta el JSON en prod
+    'enabled' => env('FIREBASE_ENABLED', false),
         'project_id' => env('FIREBASE_PROJECT_ID', 'mozoqr-7d32c'),
         'server_key' => env('FIREBASE_SERVER_KEY'),
         'service_account_path' => env('FIREBASE_SERVICE_ACCOUNT_PATH', storage_path('app/firebase/firebase.json')),

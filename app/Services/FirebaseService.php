@@ -21,6 +21,13 @@ class FirebaseService
         $this->client = new Client();
         $this->projectId = config('services.firebase.project_id');
         
+        // Si Firebase está deshabilitado por config, no inicializar token
+    if (!config('services.firebase.enabled', true)) {
+            Log::warning('Firebase disabled via config');
+            $this->accessToken = null;
+            return;
+        }
+        
         try {
             $this->accessToken = $this->getAccessToken();
             Log::info('Firebase service initialized successfully', [
@@ -40,16 +47,34 @@ class FirebaseService
     {
         $serviceAccountPath = config('services.firebase.service_account_path');
 
-        if (!file_exists($serviceAccountPath)) {
-            Log::error('Firebase service account file not found', [
-                'path' => $serviceAccountPath,
+        // Normalizar separadores de directorio (por si viene ruta de Windows en Linux)
+        if (is_string($serviceAccountPath)) {
+            $normalized = str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $serviceAccountPath);
+            // Heurística: si la ruta contiene ':' (C:\) y estamos en Linux, ignorarla
+            if (stripos($normalized, ':'.DIRECTORY_SEPARATOR) !== false && DIRECTORY_SEPARATOR === '/') {
+                $normalized = '';
+            }
+        } else {
+            $normalized = '';
+        }
+
+        // Fallback seguro al archivo en storage si la ruta es inválida o no existe
+        $fallbackPath = storage_path('app'.DIRECTORY_SEPARATOR.'firebase'.DIRECTORY_SEPARATOR.'firebase.json');
+        $candidatePath = $normalized && file_exists($normalized) ? $normalized : $fallbackPath;
+
+        if (!file_exists($candidatePath)) {
+            Log::warning('Firebase service account file not found - Firebase temporarily disabled', [
+                'path_env' => $serviceAccountPath,
+                'normalized' => $normalized,
+                'fallback' => $fallbackPath,
                 'storage_path' => storage_path(),
                 'app_path' => app_path(),
             ]);
-            throw new \Exception("Firebase service account file not found at: {$serviceAccountPath}");
+            // No romper la app: si falta, deshabilitar Firebase dinámicamente
+            return null;
         }
 
-        $serviceAccount = json_decode(file_get_contents($serviceAccountPath), true);
+        $serviceAccount = json_decode(file_get_contents($candidatePath), true);
         
         // Create JWT
         $header = json_encode(['typ' => 'JWT', 'alg' => 'RS256']);
