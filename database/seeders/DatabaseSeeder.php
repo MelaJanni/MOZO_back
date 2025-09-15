@@ -16,7 +16,7 @@ class DatabaseSeeder extends Seeder
             RoleSeeder::class,
             BillingSeeder::class, // planes definitivos
             CouponSeeder::class,  // cupones base
-            SuperAdminSeeder::class, // asigna super_admin desde .env si corresponde
+            SystemSuperAdminSeeder::class, // crea usuario dedicado del panel
             DemoDataSeeder::class,   // datos demo: negocios, usuarios, mesas, suscripciones y pagos
         ]);
         echo "\n🎉 SEEDER COMPLETADO\n";

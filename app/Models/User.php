@@ -304,6 +304,7 @@ class User extends Authenticatable implements FilamentUser
     // ========================================
     public function canAccessPanel(Panel $panel): bool
     {
-        return $this->hasRole('super_admin');
+        // Solo usuarios dedicados del sistema pueden entrar al panel (no mozos ni admins de negocios)
+        return (bool)($this->is_system_super_admin ?? false);
     }
 }
