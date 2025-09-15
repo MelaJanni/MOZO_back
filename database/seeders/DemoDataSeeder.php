@@ -61,15 +61,15 @@ class DemoDataSeeder extends Seeder
 
         $business['PLAZA1']->addAdmin($maria, 'owner');
         $business['CAFE01']->addAdmin($maria, 'manager');
-        $business['PLAZA1']->addWaiter($maria, 'part-time', 25);
+    $business['PLAZA1']->addWaiter($maria, 'tiempo parcial', 25);
 
         $business['PIZZA3']->addAdmin($carlos, 'owner');
-        $business['CAFE01']->addWaiter($carlos, 'hourly', 22);
+    $business['CAFE01']->addWaiter($carlos, 'por horas', 22);
 
-        $business['PLAZA1']->addWaiter($ana, 'full-time', 20);
-        $business['PIZZA3']->addWaiter($ana, 'part-time', 18);
+    $business['PLAZA1']->addWaiter($ana, 'tiempo completo', 20);
+    $business['PIZZA3']->addWaiter($ana, 'tiempo parcial', 18);
 
-        $business['CAFE01']->addWaiter($luis, 'full-time', 19);
+    $business['CAFE01']->addWaiter($luis, 'tiempo completo', 19);
 
         UserActiveRole::updateOrCreate(['user_id'=>$maria->id,'business_id'=>$business['PLAZA1']->id],['active_role'=>'admin']);
         UserActiveRole::updateOrCreate(['user_id'=>$maria->id,'business_id'=>$business['CAFE01']->id],['active_role'=>'admin']);
