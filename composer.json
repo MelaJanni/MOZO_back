@@ -9,7 +9,7 @@
         "barryvdh/laravel-dompdf": "^2.0",
         "doctrine/dbal": "^3.9",
         "fakerphp/faker": "^1.24",
-        "filament/filament": "^3.3",
+        "filament/filament": "^3.2",
         "guzzlehttp/guzzle": "^7.2",
         "hashids/hashids": "^4.1",
         "laravel/framework": "^10.10",

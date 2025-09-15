@@ -4,6 +4,8 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\QrWebController;
 use App\Http\Controllers\ApiDocumentationController;
+use App\Http\Controllers\CheckoutController;
+use App\Http\Controllers\WebhookController;
 use ScssPhp\ScssPhp\Compiler;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
@@ -301,6 +303,26 @@ Route::get('/admin/clear-caches', function(){
         $results['opcache_reset'] = 'NO DISPONIBLE';
     }
     return response()->json(['status'=>'ok','cleared'=>$results,'timestamp'=>now()->toDateTimeString()]);
+});
+
+// Rutas de checkout público
+Route::prefix('checkout')->name('checkout.')->middleware(['auth'])->group(function () {
+    Route::get('/', [CheckoutController::class, 'index'])->name('index');
+    Route::get('/plan/{plan}', [CheckoutController::class, 'plan'])->name('plan');
+    Route::post('/apply-coupon', [CheckoutController::class, 'applyCoupon'])->name('apply-coupon');
+    Route::post('/process', [CheckoutController::class, 'processPayment'])->name('process');
+    Route::get('/bank-transfer/{subscription}', [CheckoutController::class, 'bankTransfer'])->name('bank-transfer');
+    Route::get('/success', [CheckoutController::class, 'success'])->name('success');
+    Route::get('/cancel', [CheckoutController::class, 'cancel'])->name('cancel');
+});
+
+// Rutas de webhooks (sin middleware de auth)
+Route::prefix('webhooks')->name('webhooks.')->group(function () {
+    Route::post('/mercadopago', [WebhookController::class, 'mercadopago'])->name('mercadopago');
+    Route::post('/paypal', [WebhookController::class, 'paypal'])->name('paypal');
+    Route::post('/bank-transfer', [WebhookController::class, 'bankTransfer'])->name('bank-transfer');
+    Route::get('/test', [WebhookController::class, 'test'])->name('test');
+    Route::post('/test', [WebhookController::class, 'test'])->name('test-post');
 });
 
 // Debug hashes para verificar qué archivo se está leyendo

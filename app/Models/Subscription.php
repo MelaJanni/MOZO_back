@@ -48,4 +48,54 @@ class Subscription extends Model
     {
         return $this->hasMany(Payment::class);
     }
+
+    public function isActive(): bool
+    {
+        return $this->status === 'active';
+    }
+
+    public function isInTrial(): bool
+    {
+        return $this->status === 'in_trial' && $this->trial_ends_at && $this->trial_ends_at->isFuture();
+    }
+
+    public function isPending(): bool
+    {
+        return $this->status === 'pending';
+    }
+
+    public function isCanceled(): bool
+    {
+        return $this->status === 'canceled';
+    }
+
+    public function isExpired(): bool
+    {
+        if ($this->isInTrial()) {
+            return $this->trial_ends_at->isPast();
+        }
+
+        if ($this->isActive()) {
+            $graceEndDate = $this->current_period_end
+                ? $this->current_period_end->addDays(config('billing.grace_days', 0))
+                : null;
+            return $graceEndDate && $graceEndDate->isPast();
+        }
+
+        return true;
+    }
+
+    public function getDaysRemaining(): ?int
+    {
+        if ($this->isInTrial()) {
+            return $this->trial_ends_at ? now()->diffInDays($this->trial_ends_at, false) : null;
+        }
+
+        if ($this->isActive() && $this->current_period_end) {
+            $graceEndDate = $this->current_period_end->addDays(config('billing.grace_days', 0));
+            return now()->diffInDays($graceEndDate, false);
+        }
+
+        return null;
+    }
 }

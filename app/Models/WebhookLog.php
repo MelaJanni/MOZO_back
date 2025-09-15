@@ -16,6 +16,7 @@ class WebhookLog extends Model
         'status',
         'processed_at',
         'external_id',
+        'error_message',
     ];
 
     protected $casts = [

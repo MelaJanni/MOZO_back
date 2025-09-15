@@ -37,4 +37,28 @@ return [
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),
     ],
 
+    'mercado_pago' => [
+        'access_token' => env('MERCADO_PAGO_ACCESS_TOKEN'),
+        'public_key' => env('MERCADO_PAGO_PUBLIC_KEY'),
+        'environment' => env('MERCADO_PAGO_ENVIRONMENT', 'sandbox'), // sandbox o production
+        'webhook_secret' => env('MERCADO_PAGO_WEBHOOK_SECRET'),
+    ],
+
+    'paypal' => [
+        'client_id' => env('PAYPAL_CLIENT_ID'),
+        'client_secret' => env('PAYPAL_CLIENT_SECRET'),
+        'environment' => env('PAYPAL_ENVIRONMENT', 'sandbox'), // sandbox o live
+        'webhook_id' => env('PAYPAL_WEBHOOK_ID'),
+    ],
+
+    'bank_transfer' => [
+        'bank_name' => env('BANK_TRANSFER_BANK_NAME', 'Banco de la Nación Argentina'),
+        'account_number' => env('BANK_TRANSFER_ACCOUNT_NUMBER', '1234-5678-9012-3456'),
+        'cbu' => env('BANK_TRANSFER_CBU', '0110123456789012345678'),
+        'cuit' => env('BANK_TRANSFER_CUIT', '20-12345678-9'),
+        'account_holder' => env('BANK_TRANSFER_ACCOUNT_HOLDER', 'MOZO QR S.A.S.'),
+        'whatsapp_number' => env('BANK_TRANSFER_WHATSAPP', '+5491112345678'),
+        'email' => env('BANK_TRANSFER_EMAIL', 'pagos@mozoqr.com'),
+    ],
+
 ];

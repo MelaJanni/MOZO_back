@@ -13,6 +13,8 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\AuthenticateSession;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use App\Http\Middleware\BusinessSetupGate;
+use App\Http\Middleware\MockAuth;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -27,6 +29,9 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->brandName('MOZO Admin')
             ->favicon(asset('favicon.ico'))
+            ->darkMode(false)
+            ->sidebarCollapsibleOnDesktop()
+            ->globalSearchKeyBindings(['command+k', 'ctrl+k'])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
@@ -41,6 +46,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 FilamentAuthenticate::class,
+                BusinessSetupGate::class,
             ]);
     }
 }
