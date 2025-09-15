@@ -13,6 +13,22 @@ Route::get('/', function () {
     return view('welcome');
 });
 
+// Forzar logout de la sesión web para permitir acceder al login de Filament si el usuario actual no tiene permisos
+Route::get('/admin/force-logout', function (Request $request) {
+    try {
+        auth()->logout();
+    } catch (\Throwable $e) {
+        // ignore if not logged in
+    }
+    try {
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+    } catch (\Throwable $e) {
+        // ignore session issues
+    }
+    return redirect('/admin/login');
+})->name('admin.force-logout');
+
 // Índice público de QR (informativo y para health/smoke)
 Route::get('/qr', function() {
     return response()->json([
