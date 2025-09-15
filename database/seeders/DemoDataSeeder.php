@@ -4,7 +4,7 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
-use App\Models\{User,Business,AdminProfile,WaiterProfile,UserActiveRole,Table,Plan,Subscription,Payment};
+use App\Models\{User,Business,AdminProfile,WaiterProfile,UserActiveRole,Table,Plan,Subscription,Payment,Menu};
 use App\Services\QrCodeService;
 
 class DemoDataSeeder extends Seeder
@@ -13,20 +13,20 @@ class DemoDataSeeder extends Seeder
     {
         // Negocios demo
         $biz = [
-            ['code' => 'PLAZA1','name' => 'Restaurante La Plaza','email' => 'info@laplaza.com'],
-            ['code' => 'CAFE01','name' => 'Café Central','email' => 'contacto@cafecentral.com'],
-            ['code' => 'PIZZA3','name' => 'Pizza Express','email' => 'pedidos@pizzaexpress.com'],
+            ['code' => 'PLAZA1','name' => 'Restaurante La Plaza','email' => 'info@laplaza.com','address' => 'Av. Corrientes 1234, Buenos Aires','phone' => '+54 11 4567-8901','description' => 'Restaurante gourmet en el corazón de Buenos Aires'],
+            ['code' => 'CAFE01','name' => 'Café Central','email' => 'contacto@cafecentral.com','address' => 'San Martín 567, Córdoba','phone' => '+54 351 123-4567','description' => 'Café boutique con ambiente acogedor'],
+            ['code' => 'PIZZA3','name' => 'Pizza Express','email' => 'pedidos@pizzaexpress.com','address' => 'Rivadavia 890, Rosario','phone' => '+54 341 999-8888','description' => 'Pizzería de entrega rápida'],
         ];
         $business = [];
         foreach ($biz as $b) {
-            $business[$b['code']] = Business::updateOrCreate(
+        $business[$b['code']] = Business::updateOrCreate(
                 ['invitation_code' => $b['code']],
                 [
-                    'name' => $b['name'],
-                    'address' => null,
-                    'phone' => null,
-                    'email' => $b['email'],
-                    'description' => null,
+            'name' => $b['name'],
+            'address' => $b['address'],
+            'phone' => $b['phone'],
+            'email' => $b['email'],
+            'description' => $b['description'],
                     'is_active' => true,
                 ]
             );
@@ -49,7 +49,14 @@ class DemoDataSeeder extends Seeder
                 try { $user->assignRole($role); } catch (\Throwable $e) {}
             }
 
-            AdminProfile::updateOrCreate(['user_id' => $user->id], ['display_name' => $user->name]);
+            AdminProfile::updateOrCreate(
+                ['user_id' => $user->id],
+                [
+                    'display_name' => $user->name,
+                    'position' => 'Administrador',
+                    'corporate_phone' => '+54 11 0000-0000',
+                ]
+            );
             WaiterProfile::updateOrCreate(['user_id' => $user->id], ['display_name' => explode(' ', $user->name)[0]]);
         }
 
@@ -79,12 +86,30 @@ class DemoDataSeeder extends Seeder
         UserActiveRole::updateOrCreate(['user_id'=>$ana->id,'business_id'=>$business['PIZZA3']->id],['active_role'=>'waiter']);
         UserActiveRole::updateOrCreate(['user_id'=>$luis->id,'business_id'=>$business['CAFE01']->id],['active_role'=>'waiter']);
 
-        // Mesas y QR demo
+        // Menú por defecto y luego Mesas y QR demo (regla: no crear mesas sin menú)
         $qrService = app(QrCodeService::class);
-        foreach ([['code'=>'PLAZA1','n'=>5],['code'=>'CAFE01','n'=>3],['code'=>'PIZZA3','n'=>4]] as $spec) {
+        $tablesSpec = [
+            ['code'=>'PLAZA1','n'=>5],
+            ['code'=>'CAFE01','n'=>3],
+            ['code'=>'PIZZA3','n'=>4],
+        ];
+
+        foreach ($tablesSpec as $spec) {
+            $bizModel = $business[$spec['code']];
+            // Asegurar al menos un menú por negocio
+            Menu::updateOrCreate(
+                ['business_id' => $bizModel->id, 'is_default' => true],
+                [
+                    'name' => 'Menú Principal',
+                    'file_path' => 'menus/demo-'.$spec['code'].'.pdf', // placeholder
+                    'is_default' => true,
+                    'display_order' => 1,
+                ]
+            );
+            // Ahora sí, crear mesas
             for ($i=1; $i<=$spec['n']; $i++) {
                 $table = Table::firstOrCreate(
-                    ['business_id'=>$business[$spec['code']]->id,'number'=>$i],
+                    ['business_id'=>$bizModel->id,'number'=>$i],
                     ['name'=>"Mesa $i",'capacity'=>4,'location'=>null,'status'=>'available','notifications_enabled'=>true]
                 );
                 try { $qrService->generateForTable($table); } catch (\Exception $e) {}
@@ -120,5 +145,12 @@ class DemoDataSeeder extends Seeder
                 ]);
             }
         }
+
+    // Mostrar credenciales de usuarios demo
+    echo "\nUsuarios de prueba creados:\n";
+    echo " - María González: maria@example.com / password (super_admin)\n";
+    echo " - Carlos Rodríguez: carlos@example.com / password\n";
+    echo " - Ana Martínez: ana@example.com / password\n";
+    echo " - Luis García: luis@example.com / password\n\n";
     }
 }
