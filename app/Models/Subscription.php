@@ -22,6 +22,12 @@ class Subscription extends Model
         'metadata',
     ];
 
+    protected $attributes = [
+        'provider' => 'manual',
+        'status' => 'active',
+        'auto_renew' => false,
+    ];
+
     protected $casts = [
         'auto_renew' => 'boolean',
         'current_period_end' => 'datetime',

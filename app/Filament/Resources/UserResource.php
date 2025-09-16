@@ -13,6 +13,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Tabs;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\Filter;
 use Spatie\Permission\Models\Role;
@@ -31,82 +32,227 @@ class UserResource extends Resource
     {
         return $form
             ->schema([
-                Section::make('Información Personal')
-                    ->schema([
-                        Forms\Components\TextInput::make('name')
-                            ->label('Nombre completo')
-                            ->required()
-                            ->maxLength(255),
-                        Forms\Components\TextInput::make('email')
-                            ->label('Correo electrónico')
-                            ->email()
-                            ->required()
-                            ->unique(ignoreRecord: true)
-                            ->maxLength(255),
-                        Forms\Components\TextInput::make('password')
-                            ->label('Contraseña')
-                            ->password()
-                            ->required(fn (string $context): bool => $context === 'create')
-                            ->dehydrated(fn ($state) => filled($state))
-                            ->minLength(8),
-                    ])->columns(2),
+                Tabs::make('Usuario')
+                    ->tabs([
+                        Tabs\Tab::make('Información de la Cuenta')
+                            ->schema([
+                                Section::make('Datos Básicos')
+                                    ->schema([
+                                        Forms\Components\TextInput::make('name')
+                                            ->label('Nombre completo')
+                                            ->required()
+                                            ->maxLength(255),
+                                        Forms\Components\TextInput::make('email')
+                                            ->label('Correo electrónico')
+                                            ->email()
+                                            ->required()
+                                            ->unique(ignoreRecord: true)
+                                            ->maxLength(255),
+                                        Forms\Components\TextInput::make('password')
+                                            ->label('Contraseña')
+                                            ->password()
+                                            ->required(fn (string $context): bool => $context === 'create')
+                                            ->dehydrated(fn ($state) => filled($state))
+                                            ->minLength(8),
+                                    ])->columns(2),
 
-                Section::make('Roles y Permisos')
-                    ->schema([
-                        Forms\Components\Select::make('roles')
-                            ->label('Rol del usuario')
-                            ->relationship('roles', 'name')
-                            ->options(Role::all()->pluck('name', 'id'))
-                            ->searchable()
-                            ->preload(),
-                        Forms\Components\Toggle::make('is_system_super_admin')
-                            ->label('Super Administrador del Sistema')
-                            ->helperText('Acceso completo al panel administrativo')
-                            ->columnSpanFull(),
-                    ])->columns(2),
+                                Section::make('Autenticación OAuth')
+                                    ->schema([
+                                        Forms\Components\TextInput::make('google_id')
+                                            ->label('ID de Google')
+                                            ->disabled(),
+                                        Forms\Components\FileUpload::make('google_avatar')
+                                            ->label('Avatar de Google')
+                                            ->image()
+                                            ->disabled(),
+                                        Forms\Components\DateTimePicker::make('email_verified_at')
+                                            ->label('Email verificado el')
+                                            ->disabled(),
+                                    ])->columns(2),
 
-                Section::make('Membresía y Pagos')
-                    ->schema([
-                        Forms\Components\Select::make('current_plan_id')
-                            ->label('Plan asignado')
-                            ->relationship('subscriptions.plan', 'name')
-                            ->searchable()
-                            ->preload()
-                            ->createOptionForm([
-                                Forms\Components\TextInput::make('name')->required(),
-                                Forms\Components\Textarea::make('description'),
-                                Forms\Components\TextInput::make('price')->numeric()->required(),
+                                Section::make('Roles y Permisos')
+                                    ->schema([
+                                        Forms\Components\Select::make('roles')
+                                            ->label('Rol del usuario')
+                                            ->relationship('roles', 'name')
+                                            ->options(Role::all()->pluck('name', 'id'))
+                                            ->searchable()
+                                            ->preload(),
+                                        Forms\Components\Toggle::make('is_system_super_admin')
+                                            ->label('Super Administrador del Sistema')
+                                            ->helperText('Acceso completo al panel administrativo')
+                                            ->columnSpanFull(),
+                                    ])->columns(2),
+
+                                Section::make('Membresía y Pagos')
+                                    ->schema([
+                                        Forms\Components\Select::make('current_plan_id')
+                                            ->label('Plan asignado')
+                                            ->relationship('subscriptions.plan', 'name')
+                                            ->searchable()
+                                            ->preload()
+                                            ->createOptionForm([
+                                                Forms\Components\TextInput::make('name')->required(),
+                                                Forms\Components\Textarea::make('description'),
+                                                Forms\Components\TextInput::make('price')->numeric()->required(),
+                                            ]),
+                                        Forms\Components\Toggle::make('auto_renew')
+                                            ->label('Renovación automática')
+                                            ->default(true)
+                                            ->helperText('La suscripción se renueva automáticamente'),
+                                        Forms\Components\Toggle::make('is_lifetime_paid')
+                                            ->label('Cliente pago permanente')
+                                            ->helperText('Usuario con acceso de por vida sin renovaciones'),
+                                        Forms\Components\Select::make('active_coupon')
+                                            ->label('Cupón aplicado')
+                                            ->options(Coupon::where('is_active', true)->pluck('code', 'id'))
+                                            ->searchable()
+                                            ->nullable(),
+                                        Forms\Components\DateTimePicker::make('membership_expires_at')
+                                            ->label('Vencimiento de membresía')
+                                            ->nullable(),
+                                    ])->columns(2),
                             ]),
-                        Forms\Components\Toggle::make('auto_renew')
-                            ->label('Renovación automática')
-                            ->default(true)
-                            ->helperText('La suscripción se renueva automáticamente'),
-                        Forms\Components\Toggle::make('is_lifetime_paid')
-                            ->label('Cliente pago permanente')
-                            ->helperText('Usuario con acceso de por vida sin renovaciones'),
-                        Forms\Components\Select::make('active_coupon')
-                            ->label('Cupón aplicado')
-                            ->options(Coupon::where('is_active', true)->pluck('code', 'id'))
-                            ->searchable()
-                            ->nullable(),
-                        Forms\Components\DateTimePicker::make('membership_expires_at')
-                            ->label('Vencimiento de membresía')
-                            ->nullable(),
-                    ])->columns(2),
 
-                Section::make('Información Adicional')
-                    ->schema([
-                        Forms\Components\TextInput::make('google_id')
-                            ->label('ID de Google')
-                            ->disabled(),
-                        Forms\Components\FileUpload::make('google_avatar')
-                            ->label('Avatar de Google')
-                            ->image()
-                            ->disabled(),
-                        Forms\Components\DateTimePicker::make('email_verified_at')
-                            ->label('Email verificado el')
-                            ->disabled(),
-                    ])->columns(2),
+                        Tabs\Tab::make('Perfil de Administrador')
+                            ->schema([
+                                Section::make('Información Personal')
+                                    ->schema([
+                                        Forms\Components\FileUpload::make('adminProfile.avatar')
+                                            ->label('Avatar personalizado')
+                                            ->image()
+                                            ->directory('admin-avatars')
+                                            ->visibility('public'),
+                                        Forms\Components\TextInput::make('adminProfile.display_name')
+                                            ->label('Nombre a mostrar')
+                                            ->maxLength(255),
+                                        Forms\Components\TextInput::make('adminProfile.position')
+                                            ->label('Cargo/Posición')
+                                            ->maxLength(255),
+                                        Forms\Components\Textarea::make('adminProfile.bio')
+                                            ->label('Biografía')
+                                            ->rows(3),
+                                    ])->columns(2),
+
+                                Section::make('Información de Contacto')
+                                    ->schema([
+                                        Forms\Components\TextInput::make('adminProfile.corporate_email')
+                                            ->label('Email corporativo')
+                                            ->email()
+                                            ->maxLength(255),
+                                        Forms\Components\TextInput::make('adminProfile.corporate_phone')
+                                            ->label('Teléfono corporativo')
+                                            ->tel()
+                                            ->maxLength(20),
+                                        Forms\Components\TextInput::make('adminProfile.office_extension')
+                                            ->label('Extensión de oficina')
+                                            ->maxLength(10),
+                                    ])->columns(2),
+
+                                Section::make('Configuraciones de Notificaciones')
+                                    ->schema([
+                                        Forms\Components\Toggle::make('adminProfile.notify_new_orders')
+                                            ->label('Notificar nuevos pedidos')
+                                            ->default(true),
+                                        Forms\Components\Toggle::make('adminProfile.notify_staff_requests')
+                                            ->label('Notificar solicitudes de personal')
+                                            ->default(true),
+                                        Forms\Components\Toggle::make('adminProfile.notify_reviews')
+                                            ->label('Notificar nuevas reseñas')
+                                            ->default(true),
+                                        Forms\Components\Toggle::make('adminProfile.notify_payments')
+                                            ->label('Notificar pagos')
+                                            ->default(true),
+                                    ])->columns(2),
+                            ])
+                            ->visible(fn ($record) => $record?->isAdmin() || !$record),
+
+                        Tabs\Tab::make('Perfil de Mozo')
+                            ->schema([
+                                Section::make('Información Personal')
+                                    ->schema([
+                                        Forms\Components\FileUpload::make('waiterProfile.avatar')
+                                            ->label('Avatar personalizado')
+                                            ->image()
+                                            ->directory('waiter-avatars')
+                                            ->visibility('public'),
+                                        Forms\Components\TextInput::make('waiterProfile.display_name')
+                                            ->label('Nombre a mostrar')
+                                            ->maxLength(255),
+                                        Forms\Components\Textarea::make('waiterProfile.bio')
+                                            ->label('Biografía')
+                                            ->rows(3),
+                                        Forms\Components\TextInput::make('waiterProfile.phone')
+                                            ->label('Teléfono personal')
+                                            ->tel()
+                                            ->maxLength(20),
+                                    ])->columns(2),
+
+                                Section::make('Datos Físicos')
+                                    ->schema([
+                                        Forms\Components\DatePicker::make('waiterProfile.birth_date')
+                                            ->label('Fecha de nacimiento'),
+                                        Forms\Components\Select::make('waiterProfile.gender')
+                                            ->label('Género')
+                                            ->options([
+                                                'male' => 'Masculino',
+                                                'female' => 'Femenino',
+                                                'other' => 'Otro',
+                                                'prefer_not_to_say' => 'Prefiero no decir',
+                                            ]),
+                                        Forms\Components\TextInput::make('waiterProfile.height')
+                                            ->label('Altura (cm)')
+                                            ->numeric()
+                                            ->suffix('cm'),
+                                        Forms\Components\TextInput::make('waiterProfile.weight')
+                                            ->label('Peso (kg)')
+                                            ->numeric()
+                                            ->suffix('kg'),
+                                    ])->columns(2),
+
+                                Section::make('Experiencia Laboral')
+                                    ->schema([
+                                        Forms\Components\TextInput::make('waiterProfile.experience_years')
+                                            ->label('Años de experiencia')
+                                            ->numeric()
+                                            ->suffix('años'),
+                                        Forms\Components\Select::make('waiterProfile.employment_type')
+                                            ->label('Tipo de empleo')
+                                            ->options([
+                                                'full_time' => 'Tiempo completo',
+                                                'part_time' => 'Medio tiempo',
+                                                'freelance' => 'Freelance',
+                                                'contract' => 'Por contrato',
+                                            ]),
+                                        Forms\Components\Select::make('waiterProfile.current_schedule')
+                                            ->label('Horario actual')
+                                            ->options([
+                                                'morning' => 'Mañana',
+                                                'afternoon' => 'Tarde',
+                                                'night' => 'Noche',
+                                                'flexible' => 'Flexible',
+                                            ]),
+                                        Forms\Components\TagsInput::make('waiterProfile.skills')
+                                            ->label('Habilidades')
+                                            ->placeholder('Agregar habilidad...'),
+                                    ])->columns(2),
+
+                                Section::make('Estado y Disponibilidad')
+                                    ->schema([
+                                        Forms\Components\Toggle::make('waiterProfile.is_active')
+                                            ->label('Perfil activo')
+                                            ->default(true),
+                                        Forms\Components\Toggle::make('waiterProfile.is_available')
+                                            ->label('Disponible para trabajar')
+                                            ->default(true),
+                                        Forms\Components\TextInput::make('waiterProfile.current_location')
+                                            ->label('Ubicación actual')
+                                            ->maxLength(255),
+                                    ])->columns(2),
+                            ])
+                            ->visible(fn ($record) => $record?->isWaiter() || !$record),
+                    ])
+                    ->columnSpanFull(),
             ]);
     }
 
@@ -135,11 +281,6 @@ class UserResource extends Resource
                         'secondary' => 'user',
                     ])
                     ->separator(','),
-                Tables\Columns\IconColumn::make('is_system_super_admin')
-                    ->label('Super Admin')
-                    ->boolean()
-                    ->trueIcon('heroicon-o-shield-check')
-                    ->falseIcon('heroicon-o-x-mark'),
                 Tables\Columns\BadgeColumn::make('membership_status')
                     ->label('Membresía')
                     ->getStateUsing(function ($record) {
@@ -152,25 +293,12 @@ class UserResource extends Resource
                         'primary' => 'Activa',
                         'danger' => 'Inactiva',
                     ]),
-                Tables\Columns\TextColumn::make('businessesAsAdmin_count')
-                    ->label('Negocios')
-                    ->counts('businessesAsAdmin')
-                    ->badge(),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->label('Registrado')
-                    ->dateTime('d/m/Y H:i')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 SelectFilter::make('roles')
                     ->label('Rol')
                     ->relationship('roles', 'name')
                     ->multiple(),
-                Tables\Filters\TernaryFilter::make('is_system_super_admin')
-                    ->label('Super Administrador'),
-                Tables\Filters\TernaryFilter::make('is_lifetime_paid')
-                    ->label('Cliente permanente'),
                 Filter::make('membership_status')
                     ->label('Estado de membresía')
                     ->form([
@@ -195,25 +323,6 @@ class UserResource extends Resource
                                               }),
                             default => $query,
                         };
-                    }),
-                Filter::make('created_at')
-                    ->label('Fecha de registro')
-                    ->form([
-                        Forms\Components\DatePicker::make('created_from')
-                            ->label('Desde'),
-                        Forms\Components\DatePicker::make('created_until')
-                            ->label('Hasta'),
-                    ])
-                    ->query(function (Builder $query, array $data): Builder {
-                        return $query
-                            ->when(
-                                $data['created_from'],
-                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
-                            )
-                            ->when(
-                                $data['created_until'],
-                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
-                            );
                     }),
             ])
             ->actions([
@@ -242,12 +351,10 @@ class UserResource extends Resource
                         $plan = Plan::find($data['plan_id']);
                         $record->subscriptions()->create([
                             'plan_id' => $plan->id,
+                            'provider' => 'manual',
                             'status' => 'active',
-                            'current_period_start' => now(),
-                            'current_period_end' => now()->addDays($plan->billing_interval_days),
-                            'auto_renew' => $data['auto_renew'],
-                            'price' => $plan->price,
-                            'currency' => 'ARS',
+                            'current_period_end' => now()->addMonth(),
+                            'auto_renew' => $data['auto_renew'] ?? false,
                         ]);
                     }),
                 Tables\Actions\DeleteAction::make()
