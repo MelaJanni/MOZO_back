@@ -39,7 +39,9 @@ class UserObserver
      */
     public function deleted(User $user): void
     {
-        //
+        // Eliminar perfiles asociados cuando se elimina el usuario
+        $user->adminProfile()?->delete();
+        $user->waiterProfile()?->delete();
     }
 
     /**

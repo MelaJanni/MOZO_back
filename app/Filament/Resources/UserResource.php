@@ -295,7 +295,6 @@ class UserResource extends Resource
                         'warning' => 'Admin',           // Naranja para admin (membresía paga)
                         'primary' => 'Mozo',            // Azul para mozo (gratuito)
                     ])
-                    ->searchable()
                     ->sortable(false),
                 Tables\Columns\BadgeColumn::make('membership_status')
                     ->label('Membresía')
@@ -311,10 +310,40 @@ class UserResource extends Resource
                     ]),
             ])
             ->filters([
-                SelectFilter::make('roles')
+                Filter::make('role_filter')
                     ->label('Rol')
-                    ->relationship('roles', 'name')
-                    ->multiple(),
+                    ->form([
+                        Forms\Components\Select::make('role')
+                            ->label('Filtrar por rol')
+                            ->options([
+                                'super_admin' => 'Super Admin',
+                                'admin' => 'Admin',
+                                'mozo' => 'Mozo',
+                            ])
+                            ->placeholder('Todos los roles')
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        if (!isset($data['role']) || $data['role'] === '') {
+                            return $query;
+                        }
+
+                        return match ($data['role']) {
+                            'super_admin' => $query->where('is_system_super_admin', true),
+                            'admin' => $query->where('is_system_super_admin', false)
+                                             ->where(function ($q) {
+                                                 $q->where('is_lifetime_paid', true)
+                                                   ->orWhereHas('subscriptions', function ($subQ) {
+                                                       $subQ->whereIn('status', ['active', 'in_trial']);
+                                                   });
+                                             }),
+                            'mozo' => $query->where('is_system_super_admin', false)
+                                            ->where('is_lifetime_paid', false)
+                                            ->whereDoesntHave('subscriptions', function ($subQ) {
+                                                $subQ->whereIn('status', ['active', 'in_trial']);
+                                            }),
+                            default => $query,
+                        };
+                    }),
                 Filter::make('membership_status')
                     ->label('Estado de membresía')
                     ->form([

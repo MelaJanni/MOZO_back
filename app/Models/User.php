@@ -22,8 +22,9 @@ class User extends Authenticatable implements FilamentUser
         'password',
         'google_id',
         'google_avatar',
-    'membership_plan',
-    'membership_expires_at',
+        'is_system_super_admin',
+        'is_lifetime_paid',
+        'membership_expires_at',
     ];
 
     protected $hidden = [
@@ -34,7 +35,9 @@ class User extends Authenticatable implements FilamentUser
     protected $casts = [
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
-    'membership_expires_at' => 'datetime',
+        'is_system_super_admin' => 'boolean',
+        'is_lifetime_paid' => 'boolean',
+        'membership_expires_at' => 'datetime',
     ];
 
     // ========================================

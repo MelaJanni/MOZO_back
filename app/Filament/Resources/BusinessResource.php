@@ -109,11 +109,10 @@ class BusinessResource extends Resource
                     ->label('Slug')
                     ->searchable()
                     ->copyable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->hidden(),
                 Tables\Columns\TextColumn::make('address')
                     ->label('Dirección')
-                    ->limit(30)
-                    ->toggleable(),
+                    ->limit(30),
                 Tables\Columns\TextColumn::make('phone')
                     ->label('Teléfono')
                     ->copyable(),
@@ -145,7 +144,7 @@ class BusinessResource extends Resource
                     ->label('Creado')
                     ->dateTime('d/m/Y')
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->hidden(),
             ])
             ->filters([
                 Tables\Filters\TernaryFilter::make('is_active')
@@ -180,9 +179,64 @@ class BusinessResource extends Resource
                 Tables\Actions\Action::make('view_staff')
                     ->label('Ver Personal')
                     ->icon('heroicon-o-users')
-                    ->action(function ($record) {
-                        // Implementar vista de personal
-                    }),
+                    ->modalHeading(fn ($record) => "Personal de {$record->name}")
+                    ->modalDescription('Administradores y mozos del negocio')
+                    ->modalContent(function ($record) {
+                        $admins = $record->admins()->get();
+                        $waiters = $record->waiters()->get();
+
+                        $content = '<div class="space-y-6">';
+
+                        // Administradores
+                        $content .= '<div>';
+                        $content .= '<h3 class="text-lg font-semibold text-gray-900 mb-3">Administradores (' . $admins->count() . ')</h3>';
+                        if ($admins->count() > 0) {
+                            $content .= '<div class="grid gap-3">';
+                            foreach ($admins as $admin) {
+                                $content .= '<div class="flex items-center gap-3 p-3 bg-orange-50 rounded-lg">';
+                                $content .= '<div class="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">';
+                                $content .= strtoupper(substr($admin->name, 0, 2));
+                                $content .= '</div>';
+                                $content .= '<div>';
+                                $content .= '<p class="font-medium text-gray-900">' . $admin->name . '</p>';
+                                $content .= '<p class="text-sm text-gray-600">' . $admin->email . '</p>';
+                                $content .= '</div>';
+                                $content .= '</div>';
+                            }
+                            $content .= '</div>';
+                        } else {
+                            $content .= '<p class="text-gray-500 italic">No hay administradores asignados</p>';
+                        }
+                        $content .= '</div>';
+
+                        // Mozos
+                        $content .= '<div>';
+                        $content .= '<h3 class="text-lg font-semibold text-gray-900 mb-3">Mozos (' . $waiters->count() . ')</h3>';
+                        if ($waiters->count() > 0) {
+                            $content .= '<div class="grid gap-3">';
+                            foreach ($waiters as $waiter) {
+                                $content .= '<div class="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">';
+                                $content .= '<div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">';
+                                $content .= strtoupper(substr($waiter->name, 0, 2));
+                                $content .= '</div>';
+                                $content .= '<div>';
+                                $content .= '<p class="font-medium text-gray-900">' . $waiter->name . '</p>';
+                                $content .= '<p class="text-sm text-gray-600">' . $waiter->email . '</p>';
+                                $content .= '</div>';
+                                $content .= '</div>';
+                            }
+                            $content .= '</div>';
+                        } else {
+                            $content .= '<p class="text-gray-500 italic">No hay mozos asignados</p>';
+                        }
+                        $content .= '</div>';
+
+                        $content .= '</div>';
+
+                        return new \Illuminate\Support\HtmlString($content);
+                    })
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Cerrar'),
                 Tables\Actions\DeleteAction::make()
                     ->label('Eliminar'),
             ])
