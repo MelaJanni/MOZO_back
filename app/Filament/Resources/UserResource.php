@@ -70,7 +70,9 @@ class UserResource extends Resource
                                         Forms\Components\DateTimePicker::make('email_verified_at')
                                             ->label('Email verificado el')
                                             ->disabled(),
-                                    ])->columns(2),
+                                    ])
+                                    ->columns(2)
+                                    ->visible(fn ($record) => $record && !empty($record->google_id)),
 
                                 Section::make('Roles y Permisos')
                                     ->schema([
@@ -83,11 +85,15 @@ class UserResource extends Resource
                                             ])
                                             ->disabled()
                                             ->dehydrated(false)
-                                            ->default(function ($record) {
-                                                if (!$record) return 'mozo';
+                                            ->afterStateHydrated(function ($component, $record) {
+                                                if (!$record) {
+                                                    $component->state('mozo');
+                                                    return;
+                                                }
 
                                                 if ($record->is_system_super_admin) {
-                                                    return 'super_admin';
+                                                    $component->state('super_admin');
+                                                    return;
                                                 }
 
                                                 $hasActiveSubscription = $record->subscriptions()
@@ -95,10 +101,10 @@ class UserResource extends Resource
                                                     ->exists();
 
                                                 if ($hasActiveSubscription) {
-                                                    return 'admin';
+                                                    $component->state('admin');
+                                                } else {
+                                                    $component->state('mozo');
                                                 }
-
-                                                return 'mozo';
                                             }),
                                         Forms\Components\Toggle::make('is_system_super_admin')
                                             ->label('Super Administrador del Sistema')
@@ -113,29 +119,35 @@ class UserResource extends Resource
                                             ->options(Plan::where('is_active', true)->pluck('name', 'id'))
                                             ->disabled()
                                             ->dehydrated(false)
-                                            ->default(function ($record) {
-                                                if (!$record) return null;
+                                            ->afterStateHydrated(function ($component, $record) {
+                                                if (!$record) {
+                                                    $component->state(null);
+                                                    return;
+                                                }
 
                                                 $activeSubscription = $record->subscriptions()
                                                     ->whereIn('status', ['active', 'in_trial'])
                                                     ->with('plan')
                                                     ->first();
 
-                                                return $activeSubscription?->plan?->id;
+                                                $component->state($activeSubscription?->plan?->id);
                                             })
                                             ->placeholder('Sin plan asignado'),
                                         Forms\Components\Toggle::make('auto_renew_display')
                                             ->label('Renovación automática')
                                             ->disabled()
                                             ->dehydrated(false)
-                                            ->default(function ($record) {
-                                                if (!$record) return false;
+                                            ->afterStateHydrated(function ($component, $record) {
+                                                if (!$record) {
+                                                    $component->state(false);
+                                                    return;
+                                                }
 
                                                 $activeSubscription = $record->subscriptions()
                                                     ->whereIn('status', ['active', 'in_trial'])
                                                     ->first();
 
-                                                return $activeSubscription?->auto_renew ?? false;
+                                                $component->state($activeSubscription?->auto_renew ?? false);
                                             })
                                             ->helperText('La suscripción se renueva automáticamente'),
                                         Forms\Components\Toggle::make('is_lifetime_paid')
@@ -146,32 +158,39 @@ class UserResource extends Resource
                                             ->options(Coupon::where('is_active', true)->pluck('code', 'id'))
                                             ->disabled()
                                             ->dehydrated(false)
-                                            ->default(function ($record) {
-                                                if (!$record) return null;
-
-                                                $activeSubscription = $record->subscriptions()
-                                                    ->whereIn('status', ['active', 'in_trial'])
-                                                    ->first();
-
-                                                return $activeSubscription?->coupon_id;
-                                            })
-                                            ->placeholder('Sin cupón aplicado'),
-                                        Forms\Components\DateTimePicker::make('membership_expires_display')
-                                            ->label('Vencimiento de membresía')
-                                            ->disabled()
-                                            ->dehydrated(false)
-                                            ->default(function ($record) {
-                                                if (!$record) return null;
-
-                                                if ($record->is_lifetime_paid) {
-                                                    return null; // No mostrar fecha si es pago permanente
+                                            ->afterStateHydrated(function ($component, $record) {
+                                                if (!$record) {
+                                                    $component->state(null);
+                                                    return;
                                                 }
 
                                                 $activeSubscription = $record->subscriptions()
                                                     ->whereIn('status', ['active', 'in_trial'])
                                                     ->first();
 
-                                                return $activeSubscription?->ends_at;
+                                                $component->state($activeSubscription?->coupon_id);
+                                            })
+                                            ->placeholder('Sin cupón aplicado'),
+                                        Forms\Components\DateTimePicker::make('membership_expires_display')
+                                            ->label('Vencimiento de membresía')
+                                            ->disabled()
+                                            ->dehydrated(false)
+                                            ->afterStateHydrated(function ($component, $record) {
+                                                if (!$record) {
+                                                    $component->state(null);
+                                                    return;
+                                                }
+
+                                                if ($record->is_lifetime_paid) {
+                                                    $component->state(null);
+                                                    return;
+                                                }
+
+                                                $activeSubscription = $record->subscriptions()
+                                                    ->whereIn('status', ['active', 'in_trial'])
+                                                    ->first();
+
+                                                $component->state($activeSubscription?->ends_at);
                                             })
                                             ->placeholder('Sin vencimiento (pago permanente)')
                                             ->helperText(function ($record) {
