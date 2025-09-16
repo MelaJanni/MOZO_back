@@ -35,7 +35,8 @@ class UserResource extends Resource
             ->schema([
                 Tabs::make('Usuario')
                     ->tabs([
-                        Tabs\Tab::make('Información de la Cuenta')
+                        Tabs\Tab::make('cuenta')
+                            ->label('Información de la Cuenta')
                             ->schema([
                                 Section::make('Datos Básicos')
                                     ->schema([
@@ -115,7 +116,8 @@ class UserResource extends Resource
                                     ])->columns(2),
                             ]),
 
-                        Tabs\Tab::make('Perfil de Administrador')
+                        Tabs\Tab::make('admin')
+                            ->label('Perfil de Administrador')
                             ->schema([
                                 Section::make('Información Personal')
                                     ->schema([
@@ -165,10 +167,10 @@ class UserResource extends Resource
                                             ->label('Notificar pagos')
                                             ->default(true),
                                     ])->columns(2),
-                            ])
-                            ->visible(fn ($record) => !$record || $record?->isAdmin()),
+                            ]),
 
-                        Tabs\Tab::make('Perfil de Mozo')
+                        Tabs\Tab::make('mozo')
+                            ->label('Perfil de Mozo')
                             ->schema([
                                 Section::make('Información Personal')
                                     ->schema([
@@ -251,7 +253,6 @@ class UserResource extends Resource
                                             ->maxLength(255),
                                     ])->columns(2),
                             ])
-                            ->visible(fn ($record) => !$record || $record?->isWaiter()),
                     ])
                     ->columnSpanFull(),
             ]);
