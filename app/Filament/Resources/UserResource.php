@@ -85,6 +85,30 @@ class UserResource extends Resource
                                             ])
                                             ->disabled()
                                             ->dehydrated(false)
+                                            ->live()
+                                            ->afterStateUpdated(function ($component, $record, $get) {
+                                                $isSuperAdmin = $get('is_system_super_admin');
+
+                                                if ($isSuperAdmin) {
+                                                    $component->state('super_admin');
+                                                    return;
+                                                }
+
+                                                if (!$record) {
+                                                    $component->state('mozo');
+                                                    return;
+                                                }
+
+                                                $hasActiveSubscription = $record->subscriptions()
+                                                    ->whereIn('status', ['active', 'in_trial'])
+                                                    ->exists();
+
+                                                if ($hasActiveSubscription) {
+                                                    $component->state('admin');
+                                                } else {
+                                                    $component->state('mozo');
+                                                }
+                                            })
                                             ->afterStateHydrated(function ($component, $record) {
                                                 if (!$record) {
                                                     $component->state('mozo');
@@ -110,6 +134,12 @@ class UserResource extends Resource
                                         Forms\Components\Toggle::make('is_system_super_admin')
                                             ->label('Super Administrador del Sistema')
                                             ->helperText('Acceso completo al panel administrativo')
+                                            ->live()
+                                            ->afterStateUpdated(function ($state, $record) {
+                                                if ($record) {
+                                                    $record->update(['is_system_super_admin' => $state]);
+                                                }
+                                            })
                                             ->columnSpanFull(),
                                     ])->columns(2),
 
@@ -146,6 +176,7 @@ class UserResource extends Resource
                                             ->label('Renovación automática')
                                             ->disabled()
                                             ->dehydrated(false)
+                                            ->live()
                                             ->afterStateHydrated(function ($component, $record) {
                                                 if (!$record) return;
 
@@ -155,20 +186,28 @@ class UserResource extends Resource
 
                                                 $component->state($activeSubscription?->auto_renew ?? false);
                                             })
-                                            ->helperText(function ($record) {
-                                                if ($record && $record->is_lifetime_paid) {
+                                            ->helperText(function ($record, $get) {
+                                                $isLifetime = $get('is_lifetime_paid');
+                                                if ($isLifetime) {
                                                     return 'No aplica para clientes con pago permanente';
                                                 }
                                                 return 'La suscripción se renueva automáticamente';
                                             }),
                                         Forms\Components\Toggle::make('is_lifetime_paid')
                                             ->label('Cliente pago permanente')
-                                            ->helperText('Usuario con acceso de por vida sin renovaciones'),
+                                            ->helperText('Usuario con acceso de por vida sin renovaciones')
+                                            ->live()
+                                            ->afterStateUpdated(function ($state, $record) {
+                                                if ($record) {
+                                                    $record->update(['is_lifetime_paid' => $state]);
+                                                }
+                                            }),
                                         Forms\Components\Select::make('active_coupon_display')
                                             ->label('Cupón aplicado')
                                             ->options(Coupon::where('is_active', true)->pluck('code', 'id'))
                                             ->disabled()
                                             ->dehydrated(false)
+                                            ->live()
                                             ->afterStateHydrated(function ($component, $record) {
                                                 if (!$record) return;
 
@@ -178,14 +217,16 @@ class UserResource extends Resource
 
                                                 $component->state($activeSubscription?->coupon_id);
                                             })
-                                            ->placeholder(function ($record) {
-                                                if ($record && $record->is_lifetime_paid) {
+                                            ->placeholder(function ($record, $get) {
+                                                $isLifetime = $get('is_lifetime_paid');
+                                                if ($isLifetime) {
                                                     return 'No aplica para pago permanente';
                                                 }
                                                 return 'Sin cupón aplicado';
                                             }),
                                         Forms\Components\DateTimePicker::make('membership_expires_at')
                                             ->label('Vencimiento de membresía')
+                                            ->live()
                                             ->afterStateHydrated(function ($component, $record) {
                                                 if (!$record) return;
 
@@ -200,11 +241,11 @@ class UserResource extends Resource
 
                                                 $component->state($activeSubscription?->current_period_end);
                                             })
+                                            ->hidden(fn ($get) => $get('is_lifetime_paid'))
                                             ->placeholder('Sin vencimiento (pago permanente)')
-                                            ->helperText(function ($record) {
-                                                if (!$record) return '';
-
-                                                if ($record->is_lifetime_paid) {
+                                            ->helperText(function ($record, $get) {
+                                                $isLifetime = $get('is_lifetime_paid');
+                                                if ($isLifetime) {
                                                     return 'Este usuario tiene acceso de por vida';
                                                 }
 
