@@ -189,7 +189,18 @@ class UserResource extends Resource
 
                                                 return null; // No guardar en el modelo User
                                             })
-                                            ->placeholder('Sin plan asignado'),
+                                            ->placeholder(function ($record) {
+                                                if ($record && $record->is_lifetime_paid) {
+                                                    return 'Acceso permanente (sin plan)';
+                                                }
+                                                return 'Sin plan asignado';
+                                            })
+                                            ->helperText(function ($record) {
+                                                if ($record && $record->is_lifetime_paid) {
+                                                    return 'Cliente con acceso de por vida - El plan es informativo';
+                                                }
+                                                return 'Plan de suscripción activo del usuario';
+                                            }),
                                         Forms\Components\Toggle::make('auto_renew')
                                             ->label('Renovación automática')
                                             ->afterStateHydrated(function ($component, $record) {
@@ -214,7 +225,13 @@ class UserResource extends Resource
 
                                                 return null;
                                             })
-                                            ->helperText('La suscripción se renueva automáticamente'),
+                                            ->disabled(fn ($record) => $record && $record->is_lifetime_paid)
+                                            ->helperText(function ($record) {
+                                                if ($record && $record->is_lifetime_paid) {
+                                                    return 'No aplica para clientes con pago permanente';
+                                                }
+                                                return 'La suscripción se renueva automáticamente';
+                                            }),
                                         Forms\Components\Toggle::make('is_lifetime_paid')
                                             ->label('Cliente pago permanente')
                                             ->helperText('Usuario con acceso de por vida sin renovaciones'),
@@ -245,7 +262,13 @@ class UserResource extends Resource
 
                                                 return null;
                                             })
-                                            ->placeholder('Sin cupón aplicado'),
+                                            ->disabled(fn ($record) => $record && $record->is_lifetime_paid)
+                                            ->placeholder(function ($record) {
+                                                if ($record && $record->is_lifetime_paid) {
+                                                    return 'No aplica para pago permanente';
+                                                }
+                                                return 'Sin cupón aplicado';
+                                            }),
                                         Forms\Components\DateTimePicker::make('membership_expires_at')
                                             ->label('Vencimiento de membresía')
                                             ->afterStateHydrated(function ($component, $record) {
@@ -324,21 +347,6 @@ class UserResource extends Resource
                                             ->maxLength(10),
                                     ])->columns(2),
 
-                                Section::make('Configuraciones de Notificaciones')
-                                    ->schema([
-                                        Forms\Components\Toggle::make('adminProfile.notify_new_orders')
-                                            ->label('Notificar nuevos pedidos')
-                                            ->default(true),
-                                        Forms\Components\Toggle::make('adminProfile.notify_staff_requests')
-                                            ->label('Notificar solicitudes de personal')
-                                            ->default(true),
-                                        Forms\Components\Toggle::make('adminProfile.notify_reviews')
-                                            ->label('Notificar nuevas reseñas')
-                                            ->default(true),
-                                        Forms\Components\Toggle::make('adminProfile.notify_payments')
-                                            ->label('Notificar pagos')
-                                            ->default(true),
-                                    ])->columns(2),
                             ]),
 
                         Tabs\Tab::make('mozo')
