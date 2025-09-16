@@ -17,6 +17,7 @@ use Filament\Forms\Components\Tabs;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\Filter;
 use Spatie\Permission\Models\Role;
+use Illuminate\Database\Eloquent\Model;
 
 class UserResource extends Resource
 {
@@ -165,7 +166,7 @@ class UserResource extends Resource
                                             ->default(true),
                                     ])->columns(2),
                             ])
-                            ->visible(fn ($record) => $record?->isAdmin() || !$record),
+                            ->visible(fn ($record) => !$record || $record?->isAdmin()),
 
                         Tabs\Tab::make('Perfil de Mozo')
                             ->schema([
@@ -250,7 +251,7 @@ class UserResource extends Resource
                                             ->maxLength(255),
                                     ])->columns(2),
                             ])
-                            ->visible(fn ($record) => $record?->isWaiter() || !$record),
+                            ->visible(fn ($record) => !$record || $record?->isWaiter()),
                     ])
                     ->columnSpanFull(),
             ]);
@@ -272,15 +273,46 @@ class UserResource extends Resource
                     ->label('Email')
                     ->searchable()
                     ->copyable(),
-                Tables\Columns\BadgeColumn::make('roles.name')
+                Tables\Columns\BadgeColumn::make('user_roles')
                     ->label('Rol')
+                    ->getStateUsing(function ($record) {
+                        $roles = [];
+
+                        // Verificar si es super admin del sistema
+                        if ($record->is_system_super_admin) {
+                            $roles[] = 'Super Admin';
+                        }
+
+                        // Verificar roles de Spatie
+                        if ($record->roles->isNotEmpty()) {
+                            $roles = array_merge($roles, $record->roles->pluck('name')->toArray());
+                        }
+
+                        // Verificar roles basados en relaciones de negocio
+                        if ($record->isAdmin()) {
+                            $roles[] = 'Admin';
+                        }
+
+                        if ($record->isWaiter()) {
+                            $roles[] = 'Mozo';
+                        }
+
+                        // Si no tiene roles, asignar "Usuario"
+                        if (empty($roles)) {
+                            $roles[] = 'Usuario';
+                        }
+
+                        return implode(', ', array_unique($roles));
+                    })
                     ->colors([
-                        'danger' => 'super_admin',
-                        'warning' => 'admin',
-                        'primary' => 'waiter',
-                        'secondary' => 'user',
+                        'danger' => fn (string $state): bool => str_contains($state, 'Super Admin'),
+                        'warning' => fn (string $state): bool => str_contains($state, 'Admin') && !str_contains($state, 'Super'),
+                        'primary' => fn (string $state): bool => str_contains($state, 'Mozo'),
+                        'secondary' => fn (string $state): bool => $state === 'Usuario',
+                        'success' => fn (string $state): bool => str_contains($state, ','), // Múltiples roles
                     ])
-                    ->separator(','),
+                    ->searchable()
+                    ->sortable(false),
                 Tables\Columns\BadgeColumn::make('membership_status')
                     ->label('Membresía')
                     ->getStateUsing(function ($record) {
@@ -327,23 +359,29 @@ class UserResource extends Resource
             ])
             ->actions([
                 Tables\Actions\ViewAction::make()
-                    ->label('Ver'),
+                    ->label('Ver')
+                    ->modalWidth('7xl'),
                 Tables\Actions\EditAction::make()
-                    ->label('Editar'),
+                    ->label('Editar')
+                    ->modalWidth('7xl'),
                 Tables\Actions\Action::make('assign_plan')
                     ->label('Asignar Plan')
                     ->icon('heroicon-o-credit-card')
+                    ->requiresConfirmation()
+                    ->modalDescription('Esta acción asignará un nuevo plan de suscripción al usuario.')
                     ->form([
                         Forms\Components\Select::make('plan_id')
                             ->label('Plan')
                             ->options(Plan::where('is_active', true)->pluck('name', 'id'))
-                            ->required(),
+                            ->required()
+                            ->searchable(),
                         Forms\Components\Toggle::make('auto_renew')
                             ->label('Renovación automática')
                             ->default(true),
                         Forms\Components\Select::make('coupon_id')
                             ->label('Cupón (opcional)')
                             ->options(Coupon::where('is_active', true)->pluck('code', 'id'))
+                            ->searchable()
                             ->nullable(),
                     ])
                     ->action(function (array $data, $record) {
@@ -356,9 +394,11 @@ class UserResource extends Resource
                             'current_period_end' => now()->addMonth(),
                             'auto_renew' => $data['auto_renew'] ?? false,
                         ]);
-                    }),
+                    })
+                    ->successNotificationTitle('Plan asignado exitosamente'),
                 Tables\Actions\DeleteAction::make()
-                    ->label('Eliminar'),
+                    ->label('Eliminar')
+                    ->requiresConfirmation(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -366,7 +406,18 @@ class UserResource extends Resource
                         ->label('Eliminar seleccionados'),
                 ]),
             ])
-            ->defaultSort('created_at', 'desc');
+            ->defaultSort('created_at', 'desc')
+            ->deferLoading()
+            ->striped()
+            ->persistSortInSession()
+            ->persistSearchInSession()
+            ->persistFiltersInSession()
+            ->paginated([10, 25, 50, 100])
+            ->defaultPaginationPageOption(25)
+            ->poll('30s')
+            ->emptyStateHeading('No hay usuarios registrados')
+            ->emptyStateDescription('Cuando se registren usuarios, aparecerán aquí.')
+            ->emptyStateIcon('heroicon-o-users');
     }
 
     public static function getPages(): array

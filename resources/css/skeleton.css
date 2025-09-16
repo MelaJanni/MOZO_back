@@ -1,0 +1,236 @@
+/* Skeleton Loading Styles for Filament */
+
+/* Base skeleton animation */
+@keyframes skeleton-pulse {
+    0% {
+        background-color: #e5e7eb;
+    }
+    50% {
+        background-color: #f3f4f6;
+    }
+    100% {
+        background-color: #e5e7eb;
+    }
+}
+
+.skeleton {
+    animation: skeleton-pulse 1.5s ease-in-out infinite;
+    border-radius: 6px;
+    display: block;
+}
+
+/* Table skeleton styles */
+.skeleton-table-row {
+    display: table-row;
+}
+
+.skeleton-table-cell {
+    display: table-cell;
+    padding: 12px 16px;
+    vertical-align: middle;
+}
+
+.skeleton-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+}
+
+.skeleton-text {
+    height: 16px;
+    border-radius: 4px;
+}
+
+.skeleton-text-sm {
+    height: 12px;
+    width: 60%;
+    border-radius: 4px;
+}
+
+.skeleton-text-lg {
+    height: 20px;
+    width: 80%;
+    border-radius: 4px;
+}
+
+.skeleton-badge {
+    height: 24px;
+    width: 60px;
+    border-radius: 12px;
+}
+
+.skeleton-button {
+    height: 32px;
+    width: 80px;
+    border-radius: 6px;
+}
+
+/* Form skeleton styles */
+.skeleton-form-section {
+    margin-bottom: 24px;
+}
+
+.skeleton-form-title {
+    height: 24px;
+    width: 200px;
+    margin-bottom: 16px;
+    border-radius: 4px;
+}
+
+.skeleton-form-field {
+    margin-bottom: 16px;
+}
+
+.skeleton-form-label {
+    height: 14px;
+    width: 120px;
+    margin-bottom: 8px;
+    border-radius: 4px;
+}
+
+.skeleton-form-input {
+    height: 40px;
+    width: 100%;
+    border-radius: 6px;
+}
+
+.skeleton-form-textarea {
+    height: 80px;
+    width: 100%;
+    border-radius: 6px;
+}
+
+/* Loading spinner */
+.loading-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #e5e7eb;
+    border-radius: 50%;
+    border-top: 2px solid #3b82f6;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.loading-spinner-lg {
+    width: 40px;
+    height: 40px;
+    border-width: 4px;
+}
+
+/* Loading overlay */
+.loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.loading-overlay-dark {
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+/* Button loading states */
+.btn-loading {
+    position: relative;
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+.btn-loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 16px;
+    height: 16px;
+    margin: -8px 0 0 -8px;
+    border: 2px solid transparent;
+    border-top: 2px solid currentColor;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+/* Filament specific improvements */
+.fi-ta-table {
+    position: relative;
+}
+
+.fi-ta-table.loading {
+    opacity: 0.6;
+}
+
+.fi-ta-table.loading::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.4),
+        transparent
+    );
+    animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    @keyframes skeleton-pulse {
+        0% {
+            background-color: #374151;
+        }
+        50% {
+            background-color: #4b5563;
+        }
+        100% {
+            background-color: #374151;
+        }
+    }
+
+    .loading-overlay {
+        background-color: rgba(0, 0, 0, 0.8);
+    }
+
+    .loading-spinner {
+        border-color: #4b5563;
+        border-top-color: #60a5fa;
+    }
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+    .skeleton-table-cell {
+        padding: 8px 12px;
+    }
+
+    .skeleton-avatar {
+        width: 32px;
+        height: 32px;
+    }
+
+    .skeleton-text {
+        height: 14px;
+    }
+}
