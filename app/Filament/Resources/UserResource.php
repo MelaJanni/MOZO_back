@@ -460,13 +460,16 @@ class UserResource extends Resource
             ])
             ->actions([
                 Tables\Actions\ViewAction::make()
-                    ->label('Ver')
+                    ->label('')
+                    ->tooltip('Ver usuario')
                     ->modalWidth('7xl'),
                 Tables\Actions\EditAction::make()
-                    ->label('Editar')
+                    ->label('')
+                    ->tooltip('Editar usuario')
                     ->modalWidth('7xl'),
                 Tables\Actions\Action::make('assign_plan')
-                    ->label('Asignar Plan')
+                    ->label('')
+                    ->tooltip('Asignar plan')
                     ->icon('heroicon-o-credit-card')
                     ->requiresConfirmation()
                     ->modalDescription('Esta acción asignará un nuevo plan de suscripción al usuario.')
@@ -497,20 +500,9 @@ class UserResource extends Resource
                         ]);
                     })
                     ->successNotificationTitle('Plan asignado exitosamente'),
-                Tables\Actions\Action::make('toggle_super_admin')
-                    ->label('Super Admin')
-                    ->icon('heroicon-o-shield-check')
-                    ->requiresConfirmation()
-                    ->modalDescription('Convertir usuario en Super Administrador de la plataforma.')
-                    ->action(function ($record) {
-                        $record->update([
-                            'is_system_super_admin' => !$record->is_system_super_admin
-                        ]);
-                    })
-                    ->color(fn ($record) => $record->is_system_super_admin ? 'danger' : 'gray')
-                    ->successNotificationTitle('Estado de Super Admin actualizado'),
                 Tables\Actions\DeleteAction::make()
-                    ->label('Eliminar')
+                    ->label('')
+                    ->tooltip('Eliminar usuario')
                     ->requiresConfirmation(),
             ])
             ->bulkActions([
