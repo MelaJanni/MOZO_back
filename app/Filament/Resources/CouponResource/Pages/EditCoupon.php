@@ -13,7 +13,15 @@ class EditCoupon extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\DeleteAction::make(),
+            Actions\ViewAction::make()
+                ->label('Ver'),
+            Actions\DeleteAction::make()
+                ->label('Eliminar'),
         ];
+    }
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
     }
 }

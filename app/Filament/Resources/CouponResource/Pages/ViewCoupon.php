@@ -4,17 +4,17 @@ namespace App\Filament\Resources\CouponResource\Pages;
 
 use App\Filament\Resources\CouponResource;
 use Filament\Actions;
-use Filament\Resources\Pages\ListRecords;
+use Filament\Resources\Pages\ViewRecord;
 
-class ListCoupons extends ListRecords
+class ViewCoupon extends ViewRecord
 {
     protected static string $resource = CouponResource::class;
 
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make()
-                ->label('Crear Cupón'),
+            Actions\EditAction::make()
+                ->label('Editar'),
         ];
     }
 }
