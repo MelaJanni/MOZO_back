@@ -198,10 +198,9 @@ class UserResource extends Resource
                                         Forms\Components\Select::make('waiterProfile.gender')
                                             ->label('Género')
                                             ->options([
-                                                'male' => 'Masculino',
-                                                'female' => 'Femenino',
-                                                'other' => 'Otro',
-                                                'prefer_not_to_say' => 'Prefiero no decir',
+                                                'masculino' => 'Masculino',
+                                                'femenino' => 'Femenino',
+                                                'otro' => 'Otro',
                                             ]),
                                         Forms\Components\TextInput::make('waiterProfile.height')
                                             ->label('Altura (cm)')
@@ -222,19 +221,14 @@ class UserResource extends Resource
                                         Forms\Components\Select::make('waiterProfile.employment_type')
                                             ->label('Tipo de empleo')
                                             ->options([
-                                                'full_time' => 'Tiempo completo',
-                                                'part_time' => 'Medio tiempo',
-                                                'freelance' => 'Freelance',
-                                                'contract' => 'Por contrato',
+                                                'employee' => 'Empleado',
+                                                'freelancer' => 'Freelancer',
+                                                'contractor' => 'Contratista',
                                             ]),
-                                        Forms\Components\Select::make('waiterProfile.current_schedule')
+                                        Forms\Components\TextInput::make('waiterProfile.current_schedule')
                                             ->label('Horario actual')
-                                            ->options([
-                                                'morning' => 'Mañana',
-                                                'afternoon' => 'Tarde',
-                                                'night' => 'Noche',
-                                                'flexible' => 'Flexible',
-                                            ]),
+                                            ->placeholder('Ej: Lunes a Viernes 9:00-17:00')
+                                            ->maxLength(255),
                                         Forms\Components\TagsInput::make('waiterProfile.skills')
                                             ->label('Habilidades')
                                             ->placeholder('Agregar habilidad...'),
@@ -242,8 +236,8 @@ class UserResource extends Resource
 
                                 Section::make('Estado y Disponibilidad')
                                     ->schema([
-                                        Forms\Components\Toggle::make('waiterProfile.is_active')
-                                            ->label('Perfil activo')
+                                        Forms\Components\Toggle::make('waiterProfile.is_available_for_hire')
+                                            ->label('Disponible para contratación')
                                             ->default(true),
                                         Forms\Components\Toggle::make('waiterProfile.is_available')
                                             ->label('Disponible para trabajar')

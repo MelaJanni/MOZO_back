@@ -28,7 +28,7 @@ class WaiterProfile extends Model
         'longitude',
         'availability_hours',
         'skills',
-        'is_active',
+        'is_available_for_hire',
         'is_available',
         'rating',
         'total_reviews',

@@ -20,8 +20,8 @@ class UserObserver
             WaiterProfile::create([
                 'user_id' => $user->id,
                 'display_name' => $user->name,
-                'is_active' => true,
                 'is_available' => true,
+                'is_available_for_hire' => true,
             ]);
         }
     }
