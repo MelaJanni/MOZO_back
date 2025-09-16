@@ -74,71 +74,42 @@ class UserResource extends Resource
                                     ->columns(2)
                                     ->visible(fn ($record) => $record && !empty($record->google_id)),
 
-                                Section::make('Roles y Permisos')
+                                Section::make('Privilegios del Sistema')
                                     ->schema([
-                                        Forms\Components\Select::make('user_role_display')
-                                            ->label('Rol del usuario')
-                                            ->options([
-                                                'super_admin' => 'Super Administrador del Sistema',
-                                                'admin' => 'Administrador (Membresía paga)',
-                                                'mozo' => 'Mozo (Rol gratuito)',
-                                            ])
-                                            ->disabled()
-                                            ->dehydrated(false)
-                                            ->live()
-                                            ->afterStateUpdated(function ($component, $record, $get) {
-                                                $isSuperAdmin = $get('is_system_super_admin');
-
-                                                if ($isSuperAdmin) {
-                                                    $component->state('super_admin');
-                                                    return;
-                                                }
-
-                                                if (!$record) {
-                                                    $component->state('mozo');
-                                                    return;
-                                                }
-
-                                                $hasActiveSubscription = $record->subscriptions()
-                                                    ->whereIn('status', ['active', 'in_trial'])
-                                                    ->exists();
-
-                                                if ($hasActiveSubscription) {
-                                                    $component->state('admin');
-                                                } else {
-                                                    $component->state('mozo');
-                                                }
-                                            })
-                                            ->afterStateHydrated(function ($component, $record) {
-                                                if (!$record) {
-                                                    $component->state('mozo');
-                                                    return;
-                                                }
-
-                                                if ($record->is_system_super_admin) {
-                                                    $component->state('super_admin');
-                                                    return;
-                                                }
-
-                                                $hasActiveSubscription = $record->subscriptions()
-                                                    ->whereIn('status', ['active', 'in_trial'])
-                                                    ->exists();
-
-                                                if ($hasActiveSubscription) {
-                                                    $component->state('admin');
-                                                } else {
-                                                    $component->state('mozo');
-                                                }
-                                            })
-                                            ->helperText('El rol se determina automáticamente según el estado del usuario'),
                                         Forms\Components\Toggle::make('is_system_super_admin')
                                             ->label('Super Administrador del Sistema')
-                                            ->helperText('Acceso completo al panel administrativo')
+                                            ->helperText('Otorga acceso completo al panel administrativo y gestión de usuarios')
                                             ->live()
                                             ->afterStateUpdated(function ($state, $record) {
                                                 if ($record) {
                                                     $record->update(['is_system_super_admin' => $state]);
                                                 }
+                                            }),
+                                        Forms\Components\Placeholder::make('role_info')
+                                            ->label('Roles automáticos del usuario')
+                                            ->content(function ($record) {
+                                                if (!$record) return 'Información no disponible';
+
+                                                $roles = [];
+
+                                                // Siempre es mozo (rol base)
+                                                $roles[] = '🔹 **Mozo**: Rol base gratuito (siempre activo)';
+
+                                                // Admin si tiene suscripción activa
+                                                $hasActiveSubscription = $record->subscriptions()
+                                                    ->whereIn('status', ['active', 'in_trial'])
+                                                    ->exists();
+
+                                                if ($hasActiveSubscription || $record->is_lifetime_paid) {
+                                                    $roles[] = '🔸 **Administrador**: Acceso por membresía paga';
+                                                }
+
+                                                // Super admin si está activado
+                                                if ($record->is_system_super_admin) {
+                                                    $roles[] = '🔶 **Super Administrador**: Acceso total al sistema';
+                                                }
+
+                                                return new \Illuminate\Support\HtmlString(implode('<br>', $roles));
                                             })
                                             ->columnSpanFull(),
                                     ])->columns(2),
