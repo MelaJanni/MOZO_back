@@ -4,17 +4,17 @@ namespace App\Filament\Resources\PlanResource\Pages;
 
 use App\Filament\Resources\PlanResource;
 use Filament\Actions;
-use Filament\Resources\Pages\ListRecords;
+use Filament\Resources\Pages\ViewRecord;
 
-class ListPlans extends ListRecords
+class ViewPlan extends ViewRecord
 {
     protected static string $resource = PlanResource::class;
 
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make()
-                ->label('Crear Plan'),
+            Actions\EditAction::make()
+                ->label('Editar'),
         ];
     }
 }

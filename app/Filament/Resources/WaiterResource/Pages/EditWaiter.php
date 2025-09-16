@@ -1,15 +1,15 @@
 <?php
 
-namespace App\Filament\Resources\UserResource\Pages;
+namespace App\Filament\Resources\WaiterResource\Pages;
 
-use App\Filament\Resources\UserResource;
+use App\Filament\Resources\WaiterResource;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\Hash;
 
-class EditUser extends EditRecord
+class EditWaiter extends EditRecord
 {
-    protected static string $resource = UserResource::class;
+    protected static string $resource = WaiterResource::class;
 
     protected function getHeaderActions(): array
     {
