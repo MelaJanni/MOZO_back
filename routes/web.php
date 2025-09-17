@@ -339,9 +339,9 @@ Route::get('/debug/pdf-style-hash', function(){
     ]);
 });
 
-// Endpoint de debug para probar si el servidor maneja POST correctamente
-Route::post('/debug-502-test', function (Request $request) {
-    \Log::info('502 Debug test endpoint hit', [
+// Endpoint de debug para probar si el servidor maneja requests correctamente
+Route::get('/debug-502-test', function (Request $request) {
+    \Log::info('502 Debug test endpoint hit (GET)', [
         'method' => $request->method(),
         'data' => $request->all(),
         'memory' => memory_get_usage(true),
@@ -360,9 +360,27 @@ Route::post('/debug-502-test', function (Request $request) {
 
     return response()->json([
         'status' => 'success',
-        'message' => 'POST request handled successfully',
+        'message' => 'GET request handled successfully',
         'memory_mb' => round(memory_get_usage(true) / 1024 / 1024, 2),
         'duration_seconds' => round($duration, 2),
+        'time' => now()
+    ]);
+});
+
+// Endpoint POST para probar CSRF
+Route::post('/debug-502-test-post', function (Request $request) {
+    \Log::info('502 Debug test endpoint hit (POST)', [
+        'method' => $request->method(),
+        'data' => $request->all(),
+        'memory' => memory_get_usage(true),
+        'time' => now(),
+        'user_agent' => $request->userAgent()
+    ]);
+
+    return response()->json([
+        'status' => 'success',
+        'message' => 'POST request handled successfully',
+        'memory_mb' => round(memory_get_usage(true) / 1024 / 1024, 2),
         'time' => now()
     ]);
 });
@@ -388,9 +406,26 @@ Route::get('/debug/live-logs', function() {
 
 // Endpoint para limpiar logs
 Route::post('/debug/clear-logs', function() {
-    $logFile = storage_path('logs/laravel.log');
-    file_put_contents($logFile, "=== LOGS CLEARED AT " . now() . " ===\n");
-    return response()->json(['status' => 'cleared']);
+    try {
+        $logFile = storage_path('logs/laravel.log');
+        file_put_contents($logFile, "=== LOGS CLEARED AT " . now() . " ===\n");
+
+        \Log::info('Logs cleared by admin', [
+            'timestamp' => now(),
+            'user' => auth()->user()?->email ?? 'unknown'
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Logs cleared successfully',
+            'timestamp' => now()
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Failed to clear logs: ' . $e->getMessage()
+        ], 500);
+    }
 });
 
 // Endpoint para sincronizar servidor (git pull)

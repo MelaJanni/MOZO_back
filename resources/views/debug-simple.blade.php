@@ -140,17 +140,50 @@
     <script>
         function clearLogs() {
             if (confirm('¿Estás seguro que quieres limpiar los logs?')) {
-                fetch('/debug/clear-logs', { method: 'POST' })
-                    .then(response => response.json())
-                    .then(data => {
-                        alert('Logs limpiados exitosamente');
+                fetch('/debug/clear-logs', {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        alert('✅ Logs limpiados exitosamente');
                         location.reload();
-                    })
-                    .catch(error => {
-                        alert('Error limpiando logs: ' + error);
-                    });
+                    } else {
+                        alert('❌ Error: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    alert('❌ Error limpiando logs: ' + error.message);
+                    console.error('Error:', error);
+                });
             }
         }
+
+        // Función para capturar errores 502 durante cambios de plan
+        function monitorLivewireErrors() {
+            // Interceptar solicitudes fetch
+            const originalFetch = window.fetch;
+            window.fetch = function(...args) {
+                return originalFetch.apply(this, args).then(response => {
+                    if (response.status === 502) {
+                        console.error('🚨 ERROR 502 detectado:', response.url);
+                        alert('🚨 ERROR 502 detectado! Revisa los logs.');
+                    }
+                    return response;
+                }).catch(error => {
+                    console.error('🚨 Error de red:', error);
+                    return Promise.reject(error);
+                });
+            };
+        }
+
+        // Inicializar monitoreo
+        document.addEventListener('DOMContentLoaded', monitorLivewireErrors);
     </script>
 </body>
 </html>

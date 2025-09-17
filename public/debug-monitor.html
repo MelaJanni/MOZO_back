@@ -1,6 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MOZO Debug Monitor</title>
     <style>
         body { font-family: monospace; padding: 20px; background: #1a1a1a; color: #00ff00; }
@@ -153,13 +155,27 @@
         async function clearLogs() {
             if (confirm('¿Estás seguro que quieres limpiar los logs?')) {
                 try {
-                    await fetch('/debug/clear-logs', { method: 'POST' });
-                    updateCount = 0;
-                    lastLogCount = 0;
-                    updateStatus('🗑️ Logs limpiados', '#00ff00');
-                    setTimeout(refreshLogs, 1000);
+                    const response = await fetch('/debug/clear-logs', {
+                        method: 'POST',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json'
+                        }
+                    });
+
+                    const result = await response.json();
+
+                    if (result.status === 'success') {
+                        updateCount = 0;
+                        lastLogCount = 0;
+                        updateStatus('🗑️ Logs limpiados exitosamente', '#00ff00');
+                        setTimeout(refreshLogs, 1000);
+                    } else {
+                        updateStatus('❌ Error: ' + result.message, '#ff0000');
+                    }
                 } catch (error) {
-                    updateStatus('❌ Error limpiando logs', '#ff0000');
+                    updateStatus('❌ Error limpiando logs: ' + error.message, '#ff0000');
+                    console.error('Error:', error);
                 }
             }
         }
