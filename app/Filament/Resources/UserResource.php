@@ -129,6 +129,11 @@ class UserResource extends Resource
                                         Forms\Components\Toggle::make('is_lifetime_paid')
                                             ->label('Cliente pago permanente')
                                             ->live(),
+                                        Forms\Components\Select::make('current_plan_id')
+                                            ->label('Plan asignado')
+                                            ->options(Plan::where('is_active', true)->pluck('name', 'id'))
+                                            ->searchable()
+                                            ->nullable(),
                                     ])->columns(2),
                             ])
                     ])
