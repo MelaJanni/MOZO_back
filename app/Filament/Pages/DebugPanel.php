@@ -17,6 +17,8 @@ class DebugPanel extends Page
 
     protected static ?string $title = '🔍 Debug & Logs del Sistema';
 
+    protected static string $routePath = '/debug-panel';
+
     protected function getHeaderActions(): array
     {
         return [
@@ -108,5 +110,15 @@ class DebugPanel extends Page
         }
 
         return array_reverse($errors);
+    }
+
+    public static function canAccess(): bool
+    {
+        return true; // Permitir acceso a todos los usuarios autenticados
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return true; // Mostrar en navegación
     }
 }
