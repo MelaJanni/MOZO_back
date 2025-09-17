@@ -413,3 +413,64 @@ Route::get('/debug/sync-server', function() {
     ]);
 });
 
+// PANEL DE DEBUG DIRECTO - SIN FILAMENT
+Route::get('/admin/debug-simple', function() {
+    // Verificar autenticación
+    if (!auth()->check()) {
+        return redirect('/admin/login');
+    }
+
+    // Obtener información del sistema
+    $systemInfo = [
+        'php_version' => PHP_VERSION,
+        'laravel_version' => app()->version(),
+        'memory_usage' => memory_get_usage(true),
+        'memory_peak' => memory_get_peak_usage(true),
+        'environment' => app()->environment(),
+        'debug_mode' => config('app.debug'),
+        'timezone' => config('app.timezone'),
+        'cache_driver' => config('cache.default'),
+        'session_driver' => config('session.driver'),
+        'database_connection' => config('database.default'),
+    ];
+
+    // Obtener logs
+    $logFile = storage_path('logs/laravel.log');
+    $logData = [
+        'exists' => file_exists($logFile),
+        'lines' => [],
+        'size' => 0,
+        'modified' => null,
+        'totalLines' => 0
+    ];
+
+    if (file_exists($logFile)) {
+        $lines = file($logFile);
+        $lastLines = array_slice($lines, -100);
+        $logData = [
+            'exists' => true,
+            'lines' => $lastLines,
+            'size' => filesize($logFile),
+            'modified' => filemtime($logFile),
+            'totalLines' => count($lines)
+        ];
+    }
+
+    // Obtener errores recientes
+    $errors = [];
+    if (file_exists($logFile)) {
+        $lines = file($logFile);
+        foreach (array_reverse(array_slice($lines, -200)) as $line) {
+            if (strpos($line, '.ERROR:') !== false ||
+                strpos($line, 'Exception') !== false ||
+                strpos($line, 'error') !== false) {
+                $errors[] = trim($line);
+                if (count($errors) >= 20) break;
+            }
+        }
+        $errors = array_reverse($errors);
+    }
+
+    return view('debug-simple', compact('systemInfo', 'logData', 'errors'));
+})->name('debug.simple');
+
