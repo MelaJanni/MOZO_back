@@ -137,6 +137,7 @@ class UserResource extends Resource
                                                     $sub = $subscriptions->first();
                                                     $plan = $sub->plan;
                                                     $info .= " | Status: {$sub->status}, Plan: " . ($plan ? $plan->name : 'No plan') . ", Auto: " . ($sub->auto_renew ? 'Yes' : 'No');
+                                                    $info .= " | Expires: " . ($sub->current_period_end ? $sub->current_period_end->format('Y-m-d H:i') : 'NULL');
                                                 }
 
                                                 return $info;
@@ -293,6 +294,22 @@ class UserResource extends Resource
                                                     return 'No aplica para pago permanente';
                                                 }
                                                 return 'Sin cupón aplicado';
+                                            }),
+                                        Forms\Components\Placeholder::make('date_debug')
+                                            ->label('Debug: Fecha info')
+                                            ->content(function ($record) {
+                                                if (!$record) return 'No record';
+
+                                                $activeSubscription = \App\Models\Subscription::where('user_id', $record->id)
+                                                    ->whereIn('status', ['active', 'in_trial'])
+                                                    ->first();
+
+                                                if (!$activeSubscription) return 'No active subscription';
+
+                                                $date = $activeSubscription->current_period_end;
+                                                return "Raw date: " . ($date ? $date->toDateTimeString() : 'NULL') .
+                                                       " | Type: " . gettype($date) .
+                                                       " | Is Carbon: " . ($date instanceof \Carbon\Carbon ? 'Yes' : 'No');
                                             }),
                                         Forms\Components\DateTimePicker::make('membership_expires_at')
                                             ->label('Vencimiento de membresía')
