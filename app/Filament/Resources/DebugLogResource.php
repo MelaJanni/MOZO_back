@@ -24,15 +24,15 @@ class DebugLogResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-bug-ant';
 
-    protected static ?string $navigationLabel = '🔍 Debug Logs';
+    protected static ?string $navigationLabel = 'Debug Logs';
 
     protected static ?string $modelLabel = 'Debug Log';
 
     protected static ?string $pluralModelLabel = 'Debug Logs';
 
-    protected static ?string $navigationGroup = 'Sistema';
+    protected static ?string $navigationGroup = null; // Sin grupo para que aparezca directo
 
-    protected static ?int $navigationSort = 999;
+    protected static ?int $navigationSort = 1; // Al principio del menú
 
     public static function form(Form $form): Form
     {
