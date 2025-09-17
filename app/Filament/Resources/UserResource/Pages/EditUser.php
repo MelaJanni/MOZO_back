@@ -148,24 +148,41 @@ class EditUser extends EditRecord
 
     public function updateSubscription($planId)
     {
-        if (!$this->record) return;
+        // Debug logging
+        \Log::info('UpdateSubscription started', [
+            'plan_id' => $planId,
+            'user_id' => $this->record?->id,
+            'memory_usage' => memory_get_usage(true),
+            'timestamp' => now()
+        ]);
+
+        if (!$this->record) {
+            \Log::error('UpdateSubscription failed: No record found');
+            return;
+        }
 
         // Modo demostración - simular actualización sin BD
         if (!$this->isDatabaseConnected()) {
+            \Log::info('Database not connected, using simulation mode');
             $this->simulateSubscriptionUpdate($planId);
             return;
         }
 
         try {
+            \Log::info('Starting database transaction for subscription update');
 
             // Usar transacción para evitar problemas de concurrencia
             \Illuminate\Support\Facades\DB::transaction(function () use ($planId) {
+                \Log::info('Inside DB transaction', ['plan_id' => $planId]);
 
                 if (!$planId) {
+                    \Log::info('Canceling subscription - no plan selected');
                     // Si no hay plan, cancelar suscripciones activas
-                    \App\Models\Subscription::where('user_id', $this->record->id)
+                    $canceledCount = \App\Models\Subscription::where('user_id', $this->record->id)
                         ->whereIn('status', ['active', 'in_trial'])
                         ->update(['status' => 'canceled']);
+
+                    \Log::info('Subscriptions canceled', ['count' => $canceledCount]);
 
                     \Filament\Notifications\Notification::make()
                         ->title('Suscripción cancelada')
@@ -177,12 +194,15 @@ class EditUser extends EditRecord
                 }
 
                 // Calcular nueva fecha de expiración según el plan
+                \Log::info('Calculating new expiration date for plan', ['plan_id' => $planId]);
                 $newExpirationDate = match($planId) {
                     '1' => now()->addMonth(), // Plan Mensual
                     '2' => now()->addYear(),  // Plan Anual
                     '3' => now()->addYear(),  // Plan Premium (anual)
                     default => now()->addMonth()
                 };
+
+                \Log::info('New expiration date calculated', ['date' => $newExpirationDate]);
 
                 $planNames = [
                     '1' => 'Plan Mensual',
@@ -191,9 +211,12 @@ class EditUser extends EditRecord
                 ];
 
                 // Actualizar suscripción existente o crear nueva
+                \Log::info('Looking for active subscription');
                 $activeSubscription = \App\Models\Subscription::where('user_id', $this->record->id)
                     ->whereIn('status', ['active', 'in_trial'])
                     ->first();
+
+                \Log::info('Active subscription found', ['exists' => $activeSubscription ? 'yes' : 'no']);
 
                 if ($activeSubscription) {
                     // Actualizar suscripción existente
@@ -236,18 +259,40 @@ class EditUser extends EditRecord
             $this->refreshFormData(['auto_renew', 'applied_coupon', 'subscription_expires_at']);
 
         } catch (\Illuminate\Database\QueryException $e) {
+            \Log::error('Database error in updateSubscription', [
+                'error' => $e->getMessage(),
+                'code' => $e->getCode(),
+                'plan_id' => $planId,
+                'user_id' => $this->record?->id
+            ]);
+
             \Filament\Notifications\Notification::make()
                 ->title('Error de base de datos')
                 ->body('Error al actualizar la suscripción. Intenta nuevamente.')
                 ->danger()
                 ->send();
         } catch (\Exception $e) {
+            \Log::error('General error in updateSubscription', [
+                'error' => $e->getMessage(),
+                'code' => $e->getCode(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+                'plan_id' => $planId,
+                'user_id' => $this->record?->id
+            ]);
+
             \Filament\Notifications\Notification::make()
                 ->title('Error al actualizar suscripción')
                 ->body('Error interno del servidor. Contacta al administrador.')
                 ->danger()
                 ->send();
         }
+
+        \Log::info('UpdateSubscription completed', [
+            'plan_id' => $planId,
+            'user_id' => $this->record?->id
+        ]);
     }
 
     private function isDatabaseConnected(): bool
