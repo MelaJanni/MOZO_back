@@ -122,6 +122,25 @@ class UserResource extends Resource
 
                                 Section::make('Membresía y Pagos')
                                     ->schema([
+                                        Forms\Components\Placeholder::make('debug_info')
+                                            ->label('Debug: Información de suscripciones')
+                                            ->content(function ($record) {
+                                                if (!$record) return 'No hay registro';
+
+                                                $subscriptions = \App\Models\Subscription::where('user_id', $record->id)->get();
+                                                $total = $subscriptions->count();
+                                                $active = $subscriptions->whereIn('status', ['active', 'in_trial'])->count();
+
+                                                $info = "User ID: {$record->id}, Total subs: {$total}, Active: {$active}";
+
+                                                if ($subscriptions->count() > 0) {
+                                                    $sub = $subscriptions->first();
+                                                    $plan = $sub->plan;
+                                                    $info .= " | Status: {$sub->status}, Plan: " . ($plan ? $plan->name : 'No plan') . ", Auto: " . ($sub->auto_renew ? 'Yes' : 'No');
+                                                }
+
+                                                return $info;
+                                            }),
                                         Forms\Components\Select::make('current_plan_id')
                                             ->label('Plan asignado')
                                             ->options(Plan::where('is_active', true)->pluck('name', 'id'))
@@ -131,12 +150,12 @@ class UserResource extends Resource
                                             ->default(function ($record) {
                                                 if (!$record) return null;
 
-                                                $activeSubscription = $record->subscriptions()
+                                                // Consulta directa simplificada
+                                                $activeSubscription = \App\Models\Subscription::where('user_id', $record->id)
                                                     ->whereIn('status', ['active', 'in_trial'])
-                                                    ->with('plan')
                                                     ->first();
 
-                                                return $activeSubscription?->plan?->id;
+                                                return $activeSubscription?->plan_id;
                                             })
                                             ->afterStateUpdated(function ($state, $record) {
                                                 if (!$record) return;
@@ -194,14 +213,15 @@ class UserResource extends Resource
                                             ->disabled()
                                             ->dehydrated(false)
                                             ->live()
-                                            ->afterStateHydrated(function ($component, $record) {
-                                                if (!$record) return;
+                                            ->default(function ($record) {
+                                                if (!$record) return false;
 
-                                                $activeSubscription = $record->subscriptions()
+                                                // Simplificar consulta directa
+                                                $activeSubscription = \App\Models\Subscription::where('user_id', $record->id)
                                                     ->whereIn('status', ['active', 'in_trial'])
                                                     ->first();
 
-                                                $component->state($activeSubscription?->auto_renew ?? false);
+                                                return $activeSubscription?->auto_renew ?? false;
                                             })
                                             ->helperText(function ($record, $get) {
                                                 $isLifetime = $get('is_lifetime_paid');
@@ -234,7 +254,8 @@ class UserResource extends Resource
                                             ->default(function ($record) {
                                                 if (!$record) return null;
 
-                                                $activeSubscription = $record->subscriptions()
+                                                // Consulta directa simplificada
+                                                $activeSubscription = \App\Models\Subscription::where('user_id', $record->id)
                                                     ->whereIn('status', ['active', 'in_trial'])
                                                     ->first();
 
@@ -283,7 +304,8 @@ class UserResource extends Resource
                                                     return null;
                                                 }
 
-                                                $activeSubscription = $record->subscriptions()
+                                                // Consulta directa simplificada
+                                                $activeSubscription = \App\Models\Subscription::where('user_id', $record->id)
                                                     ->whereIn('status', ['active', 'in_trial'])
                                                     ->first();
 
