@@ -128,15 +128,15 @@ class UserResource extends Resource
                                             ->searchable()
                                             ->nullable()
                                             ->live()
-                                            ->afterStateHydrated(function ($component, $record) {
-                                                if (!$record) return;
+                                            ->default(function ($record) {
+                                                if (!$record) return null;
 
                                                 $activeSubscription = $record->subscriptions()
                                                     ->whereIn('status', ['active', 'in_trial'])
                                                     ->with('plan')
                                                     ->first();
 
-                                                $component->state($activeSubscription?->plan?->id);
+                                                return $activeSubscription?->plan?->id;
                                             })
                                             ->afterStateUpdated(function ($state, $record) {
                                                 if (!$record) return;
@@ -276,19 +276,18 @@ class UserResource extends Resource
                                         Forms\Components\DateTimePicker::make('membership_expires_at')
                                             ->label('Vencimiento de membresía')
                                             ->live()
-                                            ->afterStateHydrated(function ($component, $record) {
-                                                if (!$record) return;
+                                            ->default(function ($record) {
+                                                if (!$record) return null;
 
                                                 if ($record->is_lifetime_paid) {
-                                                    $component->state(null);
-                                                    return;
+                                                    return null;
                                                 }
 
                                                 $activeSubscription = $record->subscriptions()
                                                     ->whereIn('status', ['active', 'in_trial'])
                                                     ->first();
 
-                                                $component->state($activeSubscription?->current_period_end);
+                                                return $activeSubscription?->current_period_end;
                                             })
                                             ->hidden(fn ($get) => $get('is_lifetime_paid'))
                                             ->placeholder('Sin vencimiento (pago permanente)')

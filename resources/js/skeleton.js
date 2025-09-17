@@ -33,16 +33,51 @@ function handleLivewireLoading() {
         console.log('🔄 Livewire loaded');
     });
 
-    document.addEventListener('livewire:start', function() {
+    document.addEventListener('livewire:start', function(event) {
         console.log('⏳ Livewire request started');
-        showTableSkeleton();
-        showGlobalLoading();
+
+        // Check if this is a sorting action
+        const payload = event.detail?.component?.data;
+        const isSorting = payload && (payload.tableSortColumn || payload.tableSortDirection);
+
+        if (isSorting) {
+            // This is a table sorting action
+            const tableContainer = event.detail?.component?.el?.querySelector('.fi-ta-table-container');
+            if (tableContainer) {
+                tableContainer.classList.add('sorting');
+            }
+            showGlobalLoading();
+        } else {
+            // Regular loading
+            showTableSkeleton();
+            showGlobalLoading();
+        }
     });
 
-    document.addEventListener('livewire:finish', function() {
+    document.addEventListener('livewire:finish', function(event) {
         console.log('✅ Livewire request finished');
+
+        // Remove all loading states
         hideTableSkeleton();
         hideGlobalLoading();
+
+        // Remove sorting states
+        const tableContainers = document.querySelectorAll('.fi-ta-table-container.sorting');
+        tableContainers.forEach(container => {
+            container.classList.remove('sorting');
+        });
+
+        const sortingHeaders = document.querySelectorAll('.fi-ta-header-cell.sorting');
+        sortingHeaders.forEach(header => {
+            header.classList.remove('sorting');
+        });
+
+        // Re-enable sort buttons
+        const allSortButtons = document.querySelectorAll('.fi-ta-header-cell-sort-button');
+        allSortButtons.forEach(button => {
+            button.style.pointerEvents = '';
+            button.style.opacity = '';
+        });
     });
 
     // Handle specific Livewire loading targets
@@ -97,6 +132,24 @@ function handleTableActions() {
                 setTimeout(() => {
                     hideTableLoading(table);
                 }, 5000);
+            }
+        }
+    });
+
+    // Handle table sorting actions
+    document.addEventListener('click', function(e) {
+        const sortButton = e.target.closest('.fi-ta-header-cell-sort-button');
+        if (sortButton) {
+            const headerCell = sortButton.closest('.fi-ta-header-cell');
+            const tableContainer = sortButton.closest('.fi-ta-table-container');
+
+            if (headerCell && tableContainer) {
+                showSortingLoading(headerCell, tableContainer);
+
+                // Hide loading after reasonable timeout
+                setTimeout(() => {
+                    hideSortingLoading(headerCell, tableContainer);
+                }, 3000);
             }
         }
     });
@@ -336,6 +389,38 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
+function showSortingLoading(headerCell, tableContainer) {
+    // Add loading class to header cell
+    headerCell.classList.add('sorting');
+
+    // Add loading class to table container
+    tableContainer.classList.add('sorting');
+
+    // Disable all other sort buttons temporarily
+    const allSortButtons = tableContainer.querySelectorAll('.fi-ta-header-cell-sort-button');
+    allSortButtons.forEach(button => {
+        if (button !== headerCell.querySelector('.fi-ta-header-cell-sort-button')) {
+            button.style.pointerEvents = 'none';
+            button.style.opacity = '0.5';
+        }
+    });
+}
+
+function hideSortingLoading(headerCell, tableContainer) {
+    // Remove loading class from header cell
+    headerCell.classList.remove('sorting');
+
+    // Remove loading class from table container
+    tableContainer.classList.remove('sorting');
+
+    // Re-enable all sort buttons
+    const allSortButtons = tableContainer.querySelectorAll('.fi-ta-header-cell-sort-button');
+    allSortButtons.forEach(button => {
+        button.style.pointerEvents = '';
+        button.style.opacity = '';
+    });
+}
+
 // Export functions for external use
 window.SkeletonLoader = {
     showTableSkeleton,
@@ -345,5 +430,7 @@ window.SkeletonLoader = {
     showButtonLoading,
     hideButtonLoading,
     showGlobalLoading,
-    hideGlobalLoading
+    hideGlobalLoading,
+    showSortingLoading,
+    hideSortingLoading
 };
