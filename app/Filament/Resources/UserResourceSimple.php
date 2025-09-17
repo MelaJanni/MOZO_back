@@ -62,6 +62,7 @@ class UserResourceSimple extends Resource
                                 '3' => 'Plan Premium',
                             ])
                             ->nullable()
+                            ->dehydrated(false)
                             ->live()
                             ->afterStateUpdated(function ($state, $record, $livewire) {
                                 if (!$record) return;

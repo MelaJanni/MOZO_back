@@ -26,6 +26,9 @@ class EditUser extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
+        // Remover campos que no pertenecen al modelo User
+        unset($data['current_plan_id'], $data['auto_renew']);
+
         if (isset($data['password']) && !empty($data['password'])) {
             $data['password'] = Hash::make($data['password']);
         } else {

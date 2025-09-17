@@ -12,6 +12,7 @@ class CreateUserResourceSimple extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
+        unset($data['current_plan_id']);
         if (isset($data['password'])) {
             $data['password'] = Hash::make($data['password']);
         }

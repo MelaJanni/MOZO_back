@@ -15,6 +15,9 @@ class CreateUser extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
+        // Remover campos que no pertenecen directamente al modelo User
+        unset($data['current_plan_id'], $data['auto_renew']);
+
         if (isset($data['password'])) {
             $data['password'] = Hash::make($data['password']);
         }
@@ -24,7 +27,7 @@ class CreateUser extends CreateRecord
 
     protected function handleRecordCreation(array $data): Model
     {
-        // Separar datos de perfiles
+    // Separar datos de perfiles
         $adminProfileData = $data['adminProfile'] ?? [];
         $waiterProfileData = $data['waiterProfile'] ?? [];
 

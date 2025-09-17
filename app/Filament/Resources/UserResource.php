@@ -76,10 +76,12 @@ class UserResource extends Resource
                                                 '3' => 'Plan Premium - $19.99',
                                             ])
                                             ->nullable()
+                                            ->dehydrated(false)
                                             ->placeholder('Sin plan asignado')
                                             ->helperText('Cambiar el plan actualiza la suscripción'),
                                         Forms\Components\Toggle::make('auto_renew')
                                             ->label('Renovación automática')
+                                            ->dehydrated(false)
                                             ->helperText('La suscripción se renueva automáticamente'),
                                     ])->columns(2),
                             ]),
