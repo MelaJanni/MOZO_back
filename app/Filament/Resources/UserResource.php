@@ -634,6 +634,7 @@ class UserResource extends Resource
             ->paginated([10, 25, 50, 100])
             ->defaultPaginationPageOption(25)
             ->poll('30s')
+            ->searchPlaceholder('Buscar por nombre, email, teléfono...')
             ->emptyStateHeading('No hay usuarios registrados')
             ->emptyStateDescription('Cuando se registren usuarios, aparecerán aquí.')
             ->emptyStateIcon('heroicon-o-users');
