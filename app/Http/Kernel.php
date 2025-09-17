@@ -19,7 +19,6 @@ class Kernel extends HttpKernel
         \App\Http\Middleware\TrustProxies::class,
         \App\Http\Middleware\PreventRequestsDuringMaintenance::class,
         \App\Http\Middleware\HandleUploadErrors::class, // 📁 Manejo de errores de subida
-        \App\Http\Middleware\DetailedErrorLogger::class, // 🔍 Logging detallado de errores
         \App\Http\Middleware\LivewireDebugMiddleware::class, // 🐛 Debug de errores Livewire
         \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class,
         \App\Http\Middleware\TrimStrings::class,
@@ -36,6 +35,7 @@ class Kernel extends HttpKernel
             \App\Http\Middleware\EncryptCookies::class,
             \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
             \Illuminate\Session\Middleware\StartSession::class,
+            \App\Http\Middleware\DetailedErrorLogger::class, // 🔍 Moved here after session starts
             \Illuminate\View\Middleware\ShareErrorsFromSession::class,
             \App\Http\Middleware\VerifyCsrfToken::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,

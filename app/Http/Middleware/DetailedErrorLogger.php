@@ -15,6 +15,18 @@ class DetailedErrorLogger
         $startMemory = memory_get_usage(true);
 
         // Log request details
+        $sessionId = null;
+        $csrfToken = null;
+
+        try {
+            if ($request->hasSession()) {
+                $sessionId = $request->session()->getId();
+                $csrfToken = $request->session()->token();
+            }
+        } catch (\Exception $e) {
+            // Session not available, continue without it
+        }
+
         Log::info('=== REQUEST START ===', [
             'url' => $request->fullUrl(),
             'method' => $request->method(),
@@ -22,8 +34,9 @@ class DetailedErrorLogger
             'input' => $request->all(),
             'ip' => $request->ip(),
             'user_agent' => $request->userAgent(),
-            'session_id' => $request->session()->getId(),
-            'csrf_token' => $request->session()->token(),
+            'session_id' => $sessionId,
+            'csrf_token' => $csrfToken,
+            'has_session' => $request->hasSession(),
             'memory_start' => $this->formatBytes($startMemory),
             'time_start' => date('Y-m-d H:i:s.u')
         ]);
