@@ -128,7 +128,26 @@ class UserResource extends Resource
                                             ->default('Si ves esto, el formulario funciona'),
                                         Forms\Components\Toggle::make('is_lifetime_paid')
                                             ->label('Cliente pago permanente')
-                                            ->live(),
+                                            ->live()
+                                            ->afterStateUpdated(function ($state, $record) {
+                                                if (!$record) return;
+
+                                                try {
+                                                    $record->update(['is_lifetime_paid' => $state]);
+
+                                                    \Filament\Notifications\Notification::make()
+                                                        ->title($state ? 'Cliente permanente activado' : 'Cliente permanente desactivado')
+                                                        ->success()
+                                                        ->duration(3000)
+                                                        ->send();
+                                                } catch (\Exception $e) {
+                                                    \Filament\Notifications\Notification::make()
+                                                        ->title('Error al actualizar: ' . $e->getMessage())
+                                                        ->danger()
+                                                        ->duration(5000)
+                                                        ->send();
+                                                }
+                                            }),
                                         Forms\Components\Select::make('current_plan_id')
                                             ->label('Plan asignado')
                                             ->options(Plan::where('is_active', true)->pluck('name', 'id'))
