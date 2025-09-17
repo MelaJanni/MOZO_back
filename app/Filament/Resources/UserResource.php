@@ -18,6 +18,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\Filter;
 use Spatie\Permission\Models\Role;
 use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
 class UserResource extends Resource
 {
@@ -309,7 +310,7 @@ class UserResource extends Resource
                                                 $date = $activeSubscription->current_period_end;
                                                 return "Raw date: " . ($date ? $date->toDateTimeString() : 'NULL') .
                                                        " | Type: " . gettype($date) .
-                                                       " | Is Carbon: " . ($date instanceof \Carbon\Carbon ? 'Yes' : 'No');
+                                                       " | Is Carbon: " . ($date instanceof Carbon ? 'Yes' : 'No');
                                             }),
                                         Forms\Components\Placeholder::make('subscription_expires_display')
                                             ->label('Vencimiento de membresía')
