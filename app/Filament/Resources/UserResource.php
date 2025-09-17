@@ -143,6 +143,19 @@ class UserResource extends Resource
 
                                                 $component->state($activeSubscription?->plan_id);
                                             }),
+                                        Forms\Components\Toggle::make('auto_renew_display')
+                                            ->label('Renovación automática')
+                                            ->disabled()
+                                            ->dehydrated(false)
+                                            ->afterStateHydrated(function ($component, $record) {
+                                                if (!$record) return;
+
+                                                $activeSubscription = \App\Models\Subscription::where('user_id', $record->id)
+                                                    ->whereIn('status', ['active', 'in_trial'])
+                                                    ->first();
+
+                                                $component->state($activeSubscription?->auto_renew ?? false);
+                                            }),
                                     ])->columns(2),
                             ])
                     ])
