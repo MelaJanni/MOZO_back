@@ -121,11 +121,14 @@ class UserResource extends Resource
                                             ->columnSpanFull(),
                                     ])->columns(2),
 
-                                Section::make('Membresía y Pagos - MINIMAL TEST')
+                                Section::make('Membresía y Pagos - TEST GRADUAL')
                                     ->schema([
                                         Forms\Components\TextInput::make('test_field')
                                             ->label('Test básico')
                                             ->default('Si ves esto, el formulario funciona'),
+                                        Forms\Components\Toggle::make('is_lifetime_paid')
+                                            ->label('Cliente pago permanente')
+                                            ->live(),
                                     ])->columns(2),
                             ])
                     ])
