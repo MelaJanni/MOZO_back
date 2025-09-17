@@ -123,26 +123,26 @@ class UserResource extends Resource
 
                                 Section::make('Membresía y Pagos')
                                     ->schema([
-                                        Forms\Components\Placeholder::make('debug_info')
-                                            ->label('Debug: Información de suscripciones')
-                                            ->content(function ($record) {
-                                                if (!$record) return 'No hay registro';
+                                        // Forms\Components\Placeholder::make('debug_info')
+                                        //     ->label('Debug: Información de suscripciones')
+                                        //     ->content(function ($record) {
+                                        //         if (!$record) return 'No hay registro';
 
-                                                $subscriptions = \App\Models\Subscription::where('user_id', $record->id)->get();
-                                                $total = $subscriptions->count();
-                                                $active = $subscriptions->whereIn('status', ['active', 'in_trial'])->count();
+                                        //         $subscriptions = \App\Models\Subscription::where('user_id', $record->id)->get();
+                                        //         $total = $subscriptions->count();
+                                        //         $active = $subscriptions->whereIn('status', ['active', 'in_trial'])->count();
 
-                                                $info = "User ID: {$record->id}, Total subs: {$total}, Active: {$active}";
+                                        //         $info = "User ID: {$record->id}, Total subs: {$total}, Active: {$active}";
 
-                                                if ($subscriptions->count() > 0) {
-                                                    $sub = $subscriptions->first();
-                                                    $plan = $sub->plan;
-                                                    $info .= " | Status: {$sub->status}, Plan: " . ($plan ? $plan->name : 'No plan') . ", Auto: " . ($sub->auto_renew ? 'Yes' : 'No');
-                                                    $info .= " | Expires: " . ($sub->current_period_end ? $sub->current_period_end->format('Y-m-d H:i') : 'NULL');
-                                                }
+                                        //         if ($subscriptions->count() > 0) {
+                                        //             $sub = $subscriptions->first();
+                                        //             $plan = $sub->plan;
+                                        //             $info .= " | Status: {$sub->status}, Plan: " . ($plan ? $plan->name : 'No plan') . ", Auto: " . ($sub->auto_renew ? 'Yes' : 'No');
+                                        //             $info .= " | Expires: " . ($sub->current_period_end ? $sub->current_period_end->format('Y-m-d H:i') : 'NULL');
+                                        //         }
 
-                                                return $info;
-                                            }),
+                                        //         return $info;
+                                        //     }),
                                         Forms\Components\Select::make('current_plan_id')
                                             ->label('Plan asignado')
                                             ->options(Plan::where('is_active', true)->pluck('name', 'id'))
@@ -296,22 +296,22 @@ class UserResource extends Resource
                                                 }
                                                 return 'Sin cupón aplicado';
                                             }),
-                                        Forms\Components\Placeholder::make('date_debug')
-                                            ->label('Debug: Fecha info')
-                                            ->content(function ($record) {
-                                                if (!$record) return 'No record';
+                                        // Forms\Components\Placeholder::make('date_debug')
+                                        //     ->label('Debug: Fecha info')
+                                        //     ->content(function ($record) {
+                                        //         if (!$record) return 'No record';
 
-                                                $activeSubscription = \App\Models\Subscription::where('user_id', $record->id)
-                                                    ->whereIn('status', ['active', 'in_trial'])
-                                                    ->first();
+                                        //         $activeSubscription = \App\Models\Subscription::where('user_id', $record->id)
+                                        //             ->whereIn('status', ['active', 'in_trial'])
+                                        //             ->first();
 
-                                                if (!$activeSubscription) return 'No active subscription';
+                                        //         if (!$activeSubscription) return 'No active subscription';
 
-                                                $date = $activeSubscription->current_period_end;
-                                                return "Raw date: " . ($date ? $date->toDateTimeString() : 'NULL') .
-                                                       " | Type: " . gettype($date) .
-                                                       " | Is Carbon: " . ($date instanceof Carbon ? 'Yes' : 'No');
-                                            }),
+                                        //         $date = $activeSubscription->current_period_end;
+                                        //         return "Raw date: " . ($date ? $date->toDateTimeString() : 'NULL') .
+                                        //                " | Type: " . gettype($date) .
+                                        //                " | Is Carbon: " . ($date instanceof Carbon ? 'Yes' : 'No');
+                                        //     }),
                                         Forms\Components\Placeholder::make('subscription_expires_display')
                                             ->label('Vencimiento de membresía')
                                             ->content(function ($record) {
@@ -321,17 +321,21 @@ class UserResource extends Resource
                                                     return 'Sin vencimiento (pago permanente)';
                                                 }
 
-                                                // Consulta directa simplificada
-                                                $activeSubscription = \App\Models\Subscription::where('user_id', $record->id)
-                                                    ->whereIn('status', ['active', 'in_trial'])
-                                                    ->first();
+                                                try {
+                                                    // Consulta directa simplificada
+                                                    $activeSubscription = \App\Models\Subscription::where('user_id', $record->id)
+                                                        ->whereIn('status', ['active', 'in_trial'])
+                                                        ->first();
 
-                                                if (!$activeSubscription || !$activeSubscription->current_period_end) {
-                                                    return 'Sin fecha de vencimiento';
+                                                    if (!$activeSubscription || !$activeSubscription->current_period_end) {
+                                                        return 'Sin fecha de vencimiento';
+                                                    }
+
+                                                    $date = $activeSubscription->current_period_end;
+                                                    return $date->format('d/m/Y H:i') . ' (' . $date->diffForHumans() . ')';
+                                                } catch (\Exception $e) {
+                                                    return 'Error al cargar fecha: ' . $e->getMessage();
                                                 }
-
-                                                return $activeSubscription->current_period_end->format('d/m/Y H:i') .
-                                                       ' (' . $activeSubscription->current_period_end->diffForHumans() . ')';
                                             })
                                             ->hidden(fn ($get) => $get('is_lifetime_paid'))
                                             ->placeholder('Sin vencimiento (pago permanente)')
