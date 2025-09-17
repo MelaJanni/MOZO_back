@@ -17,71 +17,12 @@ class EditUser extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\Action::make('save')
-                ->label('Guardar Cambios')
-                ->icon('heroicon-o-check')
-                ->color('success')
-                ->action(function () {
-                    // Mostrar notificación de guardado inmediatamente
-                    \Filament\Notifications\Notification::make()
-                        ->title('Guardando cambios...')
-                        ->body('Por favor espera mientras se actualizan los datos')
-                        ->info()
-                        ->duration(2000)
-                        ->send();
-
-                    try {
-                        $this->save();
-
-                        \Filament\Notifications\Notification::make()
-                            ->title('Cambios guardados exitosamente')
-                            ->body('Todos los datos han sido actualizados correctamente')
-                            ->success()
-                            ->duration(4000)
-                            ->sendAfter(1500);
-                    } catch (\Exception $e) {
-                        \Filament\Notifications\Notification::make()
-                            ->title('Error al guardar')
-                            ->body($e->getMessage())
-                            ->danger()
-                            ->send();
-                    }
-                }),
             Actions\DeleteAction::make()
                 ->label('Eliminar'),
         ];
     }
 
-    protected function mutateFormDataBeforeFill(array $data): array
-    {
-        $user = $this->record;
-
-        if (!$user) {
-            return $data;
-        }
-
-        try {
-            // Cargar perfil de admin si existe
-            if ($user->adminProfile) {
-                $adminData = $user->adminProfile->toArray();
-                $data['adminProfile'] = $adminData;
-            }
-        } catch (\Exception $e) {
-            \Log::error('Error loading adminProfile: ' . $e->getMessage());
-        }
-
-        try {
-            // Cargar perfil de mozo si existe
-            if ($user->waiterProfile) {
-                $waiterData = $user->waiterProfile->toArray();
-                $data['waiterProfile'] = $waiterData;
-            }
-        } catch (\Exception $e) {
-            \Log::error('Error loading waiterProfile: ' . $e->getMessage());
-        }
-
-        return $data;
-    }
+    // Eliminamos la carga de perfiles por ahora para evitar errores
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
@@ -96,18 +37,21 @@ class EditUser extends EditRecord
 
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
-        // Versión simplificada - solo actualizar datos básicos del usuario
+        // Versión ultra-simple para encontrar el problema
         try {
-            // Remover datos de perfiles para evitar cualquier conflicto
-            unset($data['adminProfile'], $data['waiterProfile']);
+            \Log::info('Inicio de handleRecordUpdate', ['data_keys' => array_keys($data)]);
 
-            // Actualizar solo el usuario básico
             $record->update($data);
 
+            \Log::info('handleRecordUpdate exitoso');
             return $record;
 
         } catch (\Exception $e) {
-            \Log::error('Error en handleRecordUpdate: ' . $e->getMessage());
+            \Log::error('Error específico en handleRecordUpdate', [
+                'message' => $e->getMessage(),
+                'line' => $e->getLine(),
+                'file' => $e->getFile()
+            ]);
             throw $e;
         }
     }

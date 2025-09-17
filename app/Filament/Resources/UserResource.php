@@ -25,23 +25,66 @@ class UserResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('name')
-                    ->label('Nombre')
-                    ->required(),
-                Forms\Components\TextInput::make('email')
-                    ->label('Email')
-                    ->email()
-                    ->required(),
-                Forms\Components\TextInput::make('password')
-                    ->label('Contraseña')
-                    ->password()
-                    ->dehydrateStateUsing(fn ($state) => filled($state) ? bcrypt($state) : null)
-                    ->dehydrated(fn ($state) => filled($state))
-                    ->required(fn (string $context): bool => $context === 'create'),
-                Forms\Components\Toggle::make('is_system_super_admin')
-                    ->label('Super Admin'),
-                Forms\Components\Toggle::make('is_lifetime_paid')
-                    ->label('Cliente Permanente'),
+                Forms\Components\Tabs::make('Usuario')
+                    ->tabs([
+                        Forms\Components\Tabs\Tab::make('cuenta')
+                            ->label('Información de la Cuenta')
+                            ->schema([
+                                Forms\Components\Section::make('Datos Básicos')
+                                    ->schema([
+                                        Forms\Components\TextInput::make('name')
+                                            ->label('Nombre completo')
+                                            ->required()
+                                            ->maxLength(255),
+                                        Forms\Components\TextInput::make('email')
+                                            ->label('Correo electrónico')
+                                            ->email()
+                                            ->required()
+                                            ->unique(ignoreRecord: true)
+                                            ->maxLength(255),
+                                        Forms\Components\TextInput::make('password')
+                                            ->label('Contraseña')
+                                            ->password()
+                                            ->required(fn (string $context): bool => $context === 'create')
+                                            ->dehydrated(fn ($state) => filled($state))
+                                            ->minLength(8)
+                                            ->helperText(fn ($context) => $context === 'edit' ? 'Dejar vacío para mantener la contraseña actual' : 'Mínimo 8 caracteres'),
+                                    ])->columns(2),
+
+                                Forms\Components\Section::make('Privilegios del Sistema')
+                                    ->schema([
+                                        Forms\Components\Toggle::make('is_system_super_admin')
+                                            ->label('Super Administrador del Sistema')
+                                            ->helperText('Otorga acceso completo al panel administrativo'),
+                                        Forms\Components\Toggle::make('is_lifetime_paid')
+                                            ->label('Cliente pago permanente')
+                                            ->helperText('Usuario con acceso de por vida sin renovaciones'),
+                                    ])->columns(2),
+                            ]),
+
+                        Forms\Components\Tabs\Tab::make('membresía')
+                            ->label('Membresía y Pagos')
+                            ->schema([
+                                Forms\Components\Section::make('Plan Actual')
+                                    ->schema([
+                                        Forms\Components\Select::make('current_plan_id')
+                                            ->label('Plan asignado')
+                                            ->options([
+                                                '' => 'Sin plan asignado',
+                                                '1' => 'Plan Mensual - $9.99',
+                                                '2' => 'Plan Anual - $99.99',
+                                                '3' => 'Plan Premium - $19.99',
+                                            ])
+                                            ->nullable()
+                                            ->placeholder('Sin plan asignado')
+                                            ->helperText('Cambiar el plan actualiza la suscripción'),
+                                        Forms\Components\Toggle::make('auto_renew')
+                                            ->label('Renovación automática')
+                                            ->helperText('La suscripción se renueva automáticamente'),
+                                    ])->columns(2),
+                            ]),
+                    ])
+                    ->columnSpanFull(),
             ]);
     }
 
