@@ -14,5 +14,8 @@ class VerifyCsrfToken extends Middleware
     protected $except = [
     'api/*',              // Excluir todas las rutas API del CSRF
     'qr/call-waiter',     // Llamado de mozo desde página pública QR (se maneja con validaciones propias)
+    'debug-502-test',     // Endpoint de debug para troubleshooting
+    'webhooks/*',         // Excluir webhooks del CSRF
+    'livewire/update',    // Temporal fix para Livewire - revisar configuración CSRF
     ];
 }
