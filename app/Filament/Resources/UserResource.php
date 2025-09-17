@@ -83,6 +83,12 @@ class UserResource extends Resource
                                             ->afterStateUpdated(function ($state, $record) {
                                                 if ($record) {
                                                     $record->update(['is_system_super_admin' => $state]);
+
+                                                    \Filament\Notifications\Notification::make()
+                                                        ->title($state ? 'Super Admin activado' : 'Super Admin desactivado')
+                                                        ->success()
+                                                        ->duration(3000)
+                                                        ->send();
                                                 }
                                             }),
                                         Forms\Components\Placeholder::make('role_info')
@@ -116,11 +122,12 @@ class UserResource extends Resource
 
                                 Section::make('Membresía y Pagos')
                                     ->schema([
-                                        Forms\Components\Select::make('active_plan_display')
+                                        Forms\Components\Select::make('current_plan_id')
                                             ->label('Plan asignado')
                                             ->options(Plan::where('is_active', true)->pluck('name', 'id'))
-                                            ->disabled()
-                                            ->dehydrated(false)
+                                            ->searchable()
+                                            ->nullable()
+                                            ->live()
                                             ->afterStateHydrated(function ($component, $record) {
                                                 if (!$record) return;
 
@@ -131,14 +138,53 @@ class UserResource extends Resource
 
                                                 $component->state($activeSubscription?->plan?->id);
                                             })
-                                            ->placeholder(function ($record) {
-                                                if ($record && $record->is_lifetime_paid) {
+                                            ->afterStateUpdated(function ($state, $record) {
+                                                if (!$record) return;
+
+                                                try {
+                                                    if ($state) {
+                                                        // Actualizar o crear suscripción
+                                                        $activeSubscription = $record->subscriptions()
+                                                            ->whereIn('status', ['active', 'in_trial'])
+                                                            ->first();
+
+                                                        if ($activeSubscription) {
+                                                            $activeSubscription->update(['plan_id' => $state]);
+                                                        } else {
+                                                            $record->subscriptions()->create([
+                                                                'plan_id' => $state,
+                                                                'provider' => 'admin',
+                                                                'status' => 'active',
+                                                                'auto_renew' => false,
+                                                                'current_period_end' => now()->addMonth(),
+                                                            ]);
+                                                        }
+
+                                                        \Filament\Notifications\Notification::make()
+                                                            ->title('Plan actualizado')
+                                                            ->success()
+                                                            ->duration(3000)
+                                                            ->send();
+                                                    }
+                                                } catch (\Exception $e) {
+                                                    \Filament\Notifications\Notification::make()
+                                                        ->title('Error al actualizar plan')
+                                                        ->danger()
+                                                        ->duration(5000)
+                                                        ->send();
+                                                }
+                                            })
+                                            ->disabled(fn ($get) => $get('is_lifetime_paid'))
+                                            ->placeholder(function ($record, $get) {
+                                                $isLifetime = $get('is_lifetime_paid');
+                                                if ($isLifetime) {
                                                     return 'Acceso permanente (sin plan)';
                                                 }
                                                 return 'Sin plan asignado';
                                             })
-                                            ->helperText(function ($record) {
-                                                if ($record && $record->is_lifetime_paid) {
+                                            ->helperText(function ($record, $get) {
+                                                $isLifetime = $get('is_lifetime_paid');
+                                                if ($isLifetime) {
                                                     return 'Cliente con acceso de por vida';
                                                 }
                                                 return 'Plan de suscripción activo del usuario';
@@ -171,13 +217,19 @@ class UserResource extends Resource
                                             ->afterStateUpdated(function ($state, $record) {
                                                 if ($record) {
                                                     $record->update(['is_lifetime_paid' => $state]);
+
+                                                    \Filament\Notifications\Notification::make()
+                                                        ->title($state ? 'Cliente permanente activado' : 'Cliente permanente desactivado')
+                                                        ->success()
+                                                        ->duration(3000)
+                                                        ->send();
                                                 }
                                             }),
-                                        Forms\Components\Select::make('active_coupon_display')
+                                        Forms\Components\Select::make('coupon_id')
                                             ->label('Cupón aplicado')
                                             ->options(Coupon::where('is_active', true)->pluck('code', 'id'))
-                                            ->disabled()
-                                            ->dehydrated(false)
+                                            ->searchable()
+                                            ->nullable()
                                             ->live()
                                             ->afterStateHydrated(function ($component, $record) {
                                                 if (!$record) return;
@@ -188,6 +240,32 @@ class UserResource extends Resource
 
                                                 $component->state($activeSubscription?->coupon_id);
                                             })
+                                            ->afterStateUpdated(function ($state, $record) {
+                                                if (!$record) return;
+
+                                                try {
+                                                    $activeSubscription = $record->subscriptions()
+                                                        ->whereIn('status', ['active', 'in_trial'])
+                                                        ->first();
+
+                                                    if ($activeSubscription) {
+                                                        $activeSubscription->update(['coupon_id' => $state]);
+
+                                                        \Filament\Notifications\Notification::make()
+                                                            ->title($state ? 'Cupón aplicado' : 'Cupón removido')
+                                                            ->success()
+                                                            ->duration(3000)
+                                                            ->send();
+                                                    }
+                                                } catch (\Exception $e) {
+                                                    \Filament\Notifications\Notification::make()
+                                                        ->title('Error al actualizar cupón')
+                                                        ->danger()
+                                                        ->duration(5000)
+                                                        ->send();
+                                                }
+                                            })
+                                            ->disabled(fn ($get) => $get('is_lifetime_paid'))
                                             ->placeholder(function ($record, $get) {
                                                 $isLifetime = $get('is_lifetime_paid');
                                                 if ($isLifetime) {
