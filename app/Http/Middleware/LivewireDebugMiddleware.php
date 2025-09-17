@@ -15,7 +15,7 @@ class LivewireDebugMiddleware
             return $next($request);
         }
 
-        Log::info('Livewire request started', [
+        Log::channel('livewire')->info('Livewire request started', [
             'url' => $request->fullUrl(),
             'method' => $request->method(),
             'ip' => $request->ip(),
@@ -27,7 +27,7 @@ class LivewireDebugMiddleware
         try {
             $response = $next($request);
 
-            Log::info('Livewire request completed successfully', [
+            Log::channel('livewire')->info('Livewire request completed successfully', [
                 'status' => $response->getStatusCode(),
                 'memory_end' => memory_get_usage(true),
                 'time_end' => microtime(true)
@@ -36,7 +36,7 @@ class LivewireDebugMiddleware
             return $response;
 
         } catch (\Throwable $e) {
-            Log::error('Livewire request failed', [
+            Log::channel('livewire')->error('Livewire request failed', [
                 'error' => $e->getMessage(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
