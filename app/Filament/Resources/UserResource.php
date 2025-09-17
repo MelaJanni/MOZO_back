@@ -311,15 +311,13 @@ class UserResource extends Resource
                                                        " | Type: " . gettype($date) .
                                                        " | Is Carbon: " . ($date instanceof \Carbon\Carbon ? 'Yes' : 'No');
                                             }),
-                                        Forms\Components\DateTimePicker::make('membership_expires_at')
+                                        Forms\Components\Placeholder::make('subscription_expires_display')
                                             ->label('Vencimiento de membresía')
-                                            ->live()
-                                            ->afterStateHydrated(function ($component, $record) {
-                                                if (!$record) return;
+                                            ->content(function ($record) {
+                                                if (!$record) return 'No disponible';
 
                                                 if ($record->is_lifetime_paid) {
-                                                    $component->state(null);
-                                                    return;
+                                                    return 'Sin vencimiento (pago permanente)';
                                                 }
 
                                                 // Consulta directa simplificada
@@ -327,7 +325,12 @@ class UserResource extends Resource
                                                     ->whereIn('status', ['active', 'in_trial'])
                                                     ->first();
 
-                                                $component->state($activeSubscription?->current_period_end);
+                                                if (!$activeSubscription || !$activeSubscription->current_period_end) {
+                                                    return 'Sin fecha de vencimiento';
+                                                }
+
+                                                return $activeSubscription->current_period_end->format('d/m/Y H:i') .
+                                                       ' (' . $activeSubscription->current_period_end->diffForHumans() . ')';
                                             })
                                             ->hidden(fn ($get) => $get('is_lifetime_paid'))
                                             ->placeholder('Sin vencimiento (pago permanente)')
