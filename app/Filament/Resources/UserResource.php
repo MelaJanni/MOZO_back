@@ -434,11 +434,47 @@ class UserResource extends Resource
                     ->defaultImageUrl(fn ($record) => 'https://ui-avatars.com/api/?name=' . urlencode($record->name) . '&color=7F9CF5&background=EBF4FF'),
                 Tables\Columns\TextColumn::make('name')
                     ->label('Nombre')
-                    ->searchable()
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query->where(function ($q) use ($search) {
+                            // Búsqueda normal en nombre
+                            $q->where('name', 'like', "%{$search}%")
+                                // Búsqueda en email
+                                ->orWhere('email', 'like', "%{$search}%")
+                                // Búsqueda en perfiles relacionados
+                                ->orWhereHas('waiterProfile', function ($waiterQuery) use ($search) {
+                                    $waiterQuery->where('display_name', 'like', "%{$search}%")
+                                               ->orWhere('phone', 'like', "%{$search}%");
+                                })
+                                ->orWhereHas('adminProfile', function ($adminQuery) use ($search) {
+                                    $adminQuery->where('display_name', 'like', "%{$search}%")
+                                              ->orWhere('corporate_email', 'like', "%{$search}%")
+                                              ->orWhere('corporate_phone', 'like', "%{$search}%");
+                                });
+
+                            // Búsqueda tolerante a errores para nombres comunes
+                            $fuzzyMatches = static::getFuzzyMatches($search);
+                            foreach ($fuzzyMatches as $fuzzyTerm) {
+                                $q->orWhere('name', 'like', "%{$fuzzyTerm}%")
+                                  ->orWhere('email', 'like', "%{$fuzzyTerm}%");
+                            }
+
+                            // Búsqueda por roles
+                            $roleSearch = strtolower($search);
+                            if (str_contains($roleSearch, 'super') || str_contains($roleSearch, 'admin')) {
+                                if (str_contains($roleSearch, 'super')) {
+                                    $q->orWhere('is_system_super_admin', true);
+                                } else {
+                                    $q->orWhereHas('subscriptions', function ($subQuery) {
+                                        $subQuery->whereIn('status', ['active', 'in_trial']);
+                                    })->orWhere('is_lifetime_paid', true);
+                                }
+                            }
+                        });
+                    })
                     ->sortable(),
                 Tables\Columns\TextColumn::make('email')
                     ->label('Email')
-                    ->searchable()
+                    ->searchable(isIndividual: false) // Deshabilitamos búsqueda individual ya que se maneja arriba
                     ->copyable(),
                 Tables\Columns\BadgeColumn::make('user_roles')
                     ->label('Rol')
@@ -601,6 +637,121 @@ class UserResource extends Resource
             ->emptyStateHeading('No hay usuarios registrados')
             ->emptyStateDescription('Cuando se registren usuarios, aparecerán aquí.')
             ->emptyStateIcon('heroicon-o-users');
+    }
+
+    /**
+     * Genera variaciones tolerantes a errores tipográficos
+     */
+    protected static function getFuzzyMatches(string $search): array
+    {
+        $search = strtolower(trim($search));
+        $fuzzyMatches = [];
+
+        // Diccionario de correcciones comunes
+        $commonCorrections = [
+            // Nombres comunes mal escritos
+            'maria' => ['maria', 'marta', 'mario', 'mary'],
+            'marta' => ['marta', 'maria', 'martha'],
+            'mario' => ['mario', 'maria', 'marco'],
+            'carlos' => ['carlos', 'carlo', 'carla'],
+            'ana' => ['ana', 'anna', 'ani'],
+            'luis' => ['luis', 'luiz', 'luisa'],
+            'jose' => ['jose', 'josef', 'josie'],
+            'juan' => ['juan', 'joan', 'juana'],
+
+            // Términos de sistema
+            'admin' => ['admin', 'administrator', 'administrador'],
+            'super' => ['super', 'supper', 'sistem'],
+            'mozo' => ['mozo', 'moso', 'waiter'],
+
+            // Errores comunes de teclado
+            'marua' => ['maria'],
+            'mraio' => ['mario'],
+            'cralos' => ['carlos'],
+            'admun' => ['admin'],
+            'suoer' => ['super'],
+        ];
+
+        // Si encontramos una corrección exacta, la usamos
+        if (isset($commonCorrections[$search])) {
+            return $commonCorrections[$search];
+        }
+
+        // Buscar correcciones por similitud
+        foreach ($commonCorrections as $correct => $variations) {
+            foreach ($variations as $variant) {
+                if (static::levenshteinDistance($search, $variant) <= 2) {
+                    $fuzzyMatches = array_merge($fuzzyMatches, $variations);
+                    break 2;
+                }
+            }
+        }
+
+        // Generar variaciones automáticas para errores tipográficos comunes
+        $autoVariations = static::generateTypoVariations($search);
+        $fuzzyMatches = array_merge($fuzzyMatches, $autoVariations);
+
+        return array_unique($fuzzyMatches);
+    }
+
+    /**
+     * Calcula la distancia de Levenshtein entre dos strings
+     */
+    protected static function levenshteinDistance(string $str1, string $str2): int
+    {
+        $len1 = strlen($str1);
+        $len2 = strlen($str2);
+
+        if ($len1 == 0) return $len2;
+        if ($len2 == 0) return $len1;
+
+        $matrix = [];
+        for ($i = 0; $i <= $len1; $i++) {
+            $matrix[$i][0] = $i;
+        }
+        for ($j = 0; $j <= $len2; $j++) {
+            $matrix[0][$j] = $j;
+        }
+
+        for ($i = 1; $i <= $len1; $i++) {
+            for ($j = 1; $j <= $len2; $j++) {
+                $cost = ($str1[$i-1] == $str2[$j-1]) ? 0 : 1;
+                $matrix[$i][$j] = min(
+                    $matrix[$i-1][$j] + 1,     // deletion
+                    $matrix[$i][$j-1] + 1,     // insertion
+                    $matrix[$i-1][$j-1] + $cost // substitution
+                );
+            }
+        }
+
+        return $matrix[$len1][$len2];
+    }
+
+    /**
+     * Genera variaciones automáticas para errores tipográficos comunes
+     */
+    protected static function generateTypoVariations(string $search): array
+    {
+        if (strlen($search) < 3) return [$search];
+
+        $variations = [$search];
+        $chars = str_split($search);
+
+        // Intercambio de caracteres adyacentes (transposición)
+        for ($i = 0; $i < count($chars) - 1; $i++) {
+            $temp = $chars;
+            [$temp[$i], $temp[$i + 1]] = [$temp[$i + 1], $temp[$i]];
+            $variations[] = implode('', $temp);
+        }
+
+        // Eliminación de un carácter
+        for ($i = 0; $i < count($chars); $i++) {
+            $temp = $chars;
+            unset($temp[$i]);
+            $variations[] = implode('', $temp);
+        }
+
+        return array_unique($variations);
     }
 
     public static function getPages(): array
