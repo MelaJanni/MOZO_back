@@ -118,27 +118,38 @@ class DemoDataSeeder extends Seeder
 
         // Suscripciones demo (fuente de verdad)
         $monthly = Plan::where('code','monthly')->first();
-        foreach ([$maria,$carlos,$ana,$luis] as $u) {
-            if (!$u || !$monthly) continue;
-            $has = Subscription::where('user_id',$u->id)->whereIn('status',['active','in_trial'])->exists();
+        $annual = Plan::where('code','annual')->first();
+
+        $subscriptionData = [
+            $maria->id => ['plan' => $annual, 'auto_renew' => true, 'period_end' => now()->addYear()],
+            $carlos->id => ['plan' => $monthly, 'auto_renew' => false, 'period_end' => now()->addMonth()],
+            $ana->id => ['plan' => $monthly, 'auto_renew' => true, 'period_end' => now()->addDays(15)],
+            $luis->id => ['plan' => $annual, 'auto_renew' => false, 'period_end' => now()->addMonths(8)],
+        ];
+
+        foreach ($subscriptionData as $userId => $data) {
+            if (!$data['plan']) continue;
+
+            $has = Subscription::where('user_id', $userId)->whereIn('status',['active','in_trial'])->exists();
             if (!$has) {
                 $sub = Subscription::create([
-                    'user_id' => $u->id,
-                    'plan_id' => $monthly->id,
+                    'user_id' => $userId,
+                    'plan_id' => $data['plan']->id,
                     'provider' => 'offline',
                     'status' => 'active',
-                    'auto_renew' => false,
-                    'current_period_end' => now()->addMonth(),
+                    'auto_renew' => $data['auto_renew'],
+                    'current_period_end' => $data['period_end'],
                     'metadata' => ['seeded' => true],
                 ]);
+
                 // Pago de cortesía (paid)
                 Payment::create([
                     'subscription_id' => $sub->id,
-                    'user_id' => $u->id,
+                    'user_id' => $userId,
                     'provider' => 'offline',
                     'provider_payment_id' => 'SEED-'.uniqid(),
-                    'amount_cents' => $monthly->price_cents,
-                    'currency' => $monthly->currency,
+                    'amount_cents' => $data['plan']->price_cents,
+                    'currency' => $data['plan']->currency,
                     'status' => 'paid',
                     'paid_at' => now(),
                     'raw_payload' => ['seeded'=>true],

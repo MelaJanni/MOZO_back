@@ -231,14 +231,14 @@ class UserResource extends Resource
                                             ->searchable()
                                             ->nullable()
                                             ->live()
-                                            ->afterStateHydrated(function ($component, $record) {
-                                                if (!$record) return;
+                                            ->default(function ($record) {
+                                                if (!$record) return null;
 
                                                 $activeSubscription = $record->subscriptions()
                                                     ->whereIn('status', ['active', 'in_trial'])
                                                     ->first();
 
-                                                $component->state($activeSubscription?->coupon_id);
+                                                return $activeSubscription?->coupon_id;
                                             })
                                             ->afterStateUpdated(function ($state, $record) {
                                                 if (!$record) return;
@@ -752,6 +752,20 @@ class UserResource extends Resource
         }
 
         return array_unique($variations);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->with([
+                'subscriptions' => function ($query) {
+                    $query->whereIn('status', ['active', 'in_trial'])
+                        ->with('plan')
+                        ->latest();
+                },
+                'adminProfile',
+                'waiterProfile'
+            ]);
     }
 
     public static function getPages(): array
