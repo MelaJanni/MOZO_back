@@ -378,7 +378,7 @@ class UserResource extends Resource
                                             ->helperText('Entre 0 - 50 años'),
                                     ])->columns(2),
 
-                                Section::make('Empleo y Horarios')
+                                Section::make('Empleo y Ubicación')
                                     ->schema([
                                         Forms\Components\Select::make('waiterProfile.employment_type')
                                             ->label('Tipo de empleo')
@@ -387,8 +387,7 @@ class UserResource extends Resource
                                                 'freelancer' => 'Freelancer',
                                                 'contractor' => 'Contratista',
                                             ])
-                                            ->placeholder('Selecciona tipo de empleo')
-                                            ->helperText('Valores en inglés según API'),
+                                            ->placeholder('Selecciona tipo de empleo'),
                                         Forms\Components\Select::make('waiterProfile.current_schedule')
                                             ->label('Horario actual')
                                             ->options([
@@ -397,41 +396,23 @@ class UserResource extends Resource
                                                 'night' => 'Noche',
                                                 'mixed' => 'Mixto',
                                             ])
-                                            ->placeholder('Selecciona tu horario')
-                                            ->helperText('Valores en inglés según API'),
+                                            ->placeholder('Selecciona tu horario'),
                                         Forms\Components\TextInput::make('waiterProfile.current_location')
                                             ->label('Ubicación actual')
                                             ->maxLength(255)
                                             ->placeholder('Ciudad, País'),
                                         Forms\Components\Toggle::make('waiterProfile.is_available')
-                                            ->label('Disponible')
-                                            ->helperText('¿Estás disponible actualmente?'),
+                                            ->label('Disponible'),
                                     ])->columns(2),
 
-                                Section::make('Coordenadas y Habilidades')
+                                Section::make('Habilidades y Horarios')
                                     ->schema([
-                                        Forms\Components\TextInput::make('waiterProfile.latitude')
-                                            ->label('Latitud')
-                                            ->numeric()
-                                            ->minValue(-90)
-                                            ->maxValue(90)
-                                            ->placeholder('-34.603722')
-                                            ->helperText('Entre -90 y 90'),
-                                        Forms\Components\TextInput::make('waiterProfile.longitude')
-                                            ->label('Longitud')
-                                            ->numeric()
-                                            ->minValue(-180)
-                                            ->maxValue(180)
-                                            ->placeholder('-58.381592')
-                                            ->helperText('Entre -180 y 180'),
                                         Forms\Components\TagsInput::make('waiterProfile.availability_hours')
                                             ->label('Horarios de disponibilidad')
-                                            ->placeholder('9:00-17:00, Lunes-Viernes')
-                                            ->helperText('Array de horarios disponibles'),
+                                            ->placeholder('9:00-17:00, Lunes-Viernes'),
                                         Forms\Components\TagsInput::make('waiterProfile.skills')
                                             ->label('Habilidades')
                                             ->placeholder('Barista, Sommelier, Inglés')
-                                            ->helperText('Array de habilidades')
                                             ->suggestions([
                                                 'Barista',
                                                 'Sommelier',
@@ -458,7 +439,6 @@ class UserResource extends Resource
                             ->label('Información Admin')
                             ->schema([
                                 Section::make('Perfil de Administrador')
-                                    ->description('Información empresarial según API')
                                     ->schema([
                                         Forms\Components\TextInput::make('adminProfile.display_name')
                                             ->label('Nombre de administrador')
@@ -479,64 +459,18 @@ class UserResource extends Resource
                                             ->placeholder('contacto@empresa.com'),
                                     ])->columns(2),
 
-                                Section::make('Contacto y Comunicación')
+                                Section::make('Contacto')
                                     ->schema([
                                         Forms\Components\TextInput::make('adminProfile.corporate_phone')
                                             ->label('Teléfono corporativo')
                                             ->tel()
                                             ->maxLength(20)
                                             ->placeholder('+1 234 567 8900'),
-                                        Forms\Components\TextInput::make('adminProfile.office_extension')
-                                            ->label('Extensión de oficina')
-                                            ->maxLength(10)
-                                            ->placeholder('101'),
                                         Forms\Components\Textarea::make('adminProfile.business_description')
                                             ->label('Descripción del negocio')
                                             ->maxLength(1000)
                                             ->rows(3)
                                             ->placeholder('Describe tu negocio...'),
-                                        Forms\Components\TextInput::make('adminProfile.business_website')
-                                            ->label('Sitio web del negocio')
-                                            ->url()
-                                            ->maxLength(255)
-                                            ->placeholder('https://www.mirestaurante.com'),
-                                    ])->columns(2),
-
-                                Section::make('Redes Sociales y Permisos')
-                                    ->schema([
-                                        Forms\Components\TagsInput::make('adminProfile.social_media')
-                                            ->label('Redes sociales')
-                                            ->placeholder('@instagram, @facebook, @twitter')
-                                            ->helperText('Array de redes sociales'),
-                                        Forms\Components\TagsInput::make('adminProfile.permissions')
-                                            ->label('Permisos')
-                                            ->placeholder('manage_orders, view_reports, manage_staff')
-                                            ->helperText('Array de permisos administrativos')
-                                            ->suggestions([
-                                                'manage_orders',
-                                                'view_reports',
-                                                'manage_staff',
-                                                'manage_menu',
-                                                'view_analytics',
-                                                'manage_payments',
-                                            ]),
-                                    ])->columns(2),
-
-                                Section::make('Notificaciones')
-                                    ->description('Configuración de notificaciones')
-                                    ->schema([
-                                        Forms\Components\Toggle::make('adminProfile.notify_new_orders')
-                                            ->label('Notificar nuevas órdenes')
-                                            ->helperText('Recibir alertas de nuevos pedidos'),
-                                        Forms\Components\Toggle::make('adminProfile.notify_staff_requests')
-                                            ->label('Notificar solicitudes de personal')
-                                            ->helperText('Alertas de solicitudes de empleados'),
-                                        Forms\Components\Toggle::make('adminProfile.notify_reviews')
-                                            ->label('Notificar reseñas')
-                                            ->helperText('Notificaciones de nuevas reseñas'),
-                                        Forms\Components\Toggle::make('adminProfile.notify_payments')
-                                            ->label('Notificar pagos')
-                                            ->helperText('Alertas sobre transacciones'),
                                     ])->columns(2),
 
                                 Section::make('Avatar')
@@ -546,8 +480,7 @@ class UserResource extends Resource
                                             ->image()
                                             ->maxSize(2048)
                                             ->directory('admin-avatars')
-                                            ->visibility('public')
-                                            ->helperText('Imagen máximo 2MB'),
+                                            ->visibility('public'),
                                     ])->columns(1),
                             ]),
 

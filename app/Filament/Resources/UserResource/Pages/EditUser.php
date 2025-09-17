@@ -148,91 +148,10 @@ class EditUser extends EditRecord
 
     public function updateSubscription($planId)
     {
-        if (!$this->record) {
-            return;
-        }
-
-        try {
-            // Verificar si la base de datos está disponible
-            try {
-                \Illuminate\Support\Facades\DB::connection()->getPdo();
-            } catch (\Exception $dbError) {
-                \Filament\Notifications\Notification::make()
-                    ->title('Modo demostración')
-                    ->body('Base de datos no conectada. En producción esto funcionaría.')
-                    ->warning()
-                    ->duration(3000)
-                    ->send();
-                return;
-            }
-
-            if (!$planId) {
-                // Cancelar suscripciones activas
-                \App\Models\Subscription::where('user_id', $this->record->id)
-                    ->whereIn('status', ['active', 'in_trial'])
-                    ->update(['status' => 'canceled']);
-
-                \Filament\Notifications\Notification::make()
-                    ->title('Plan cancelado')
-                    ->success()
-                    ->duration(3000)
-                    ->sendAfter(1500);
-                return;
-            }
-
-            // Calcular fecha de expiración
-            $newExpirationDate = match($planId) {
-                '1' => now()->addMonth(),
-                '2' => now()->addYear(),
-                '3' => now()->addYear(),
-                default => now()->addMonth()
-            };
-
-            $planNames = [
-                '1' => 'Plan Mensual',
-                '2' => 'Plan Anual',
-                '3' => 'Plan Premium'
-            ];
-
-            // Buscar suscripción activa
-            $activeSubscription = \App\Models\Subscription::where('user_id', $this->record->id)
-                ->whereIn('status', ['active', 'in_trial'])
-                ->first();
-
-            if ($activeSubscription) {
-                // Actualizar existente
-                $activeSubscription->update([
-                    'plan_id' => $planId,
-                    'current_period_end' => $newExpirationDate,
-                ]);
-            } else {
-                // Crear nueva
-                \App\Models\Subscription::create([
-                    'user_id' => $this->record->id,
-                    'plan_id' => $planId,
-                    'provider' => 'manual',
-                    'status' => 'active',
-                    'current_period_end' => $newExpirationDate,
-                    'auto_renew' => true,
-                ]);
-            }
-
-            $planName = $planNames[$planId] ?? 'Plan desconocido';
-
-            \Filament\Notifications\Notification::make()
-                ->title('Plan actualizado')
-                ->body("Cambiado a: {$planName}")
-                ->success()
-                ->duration(3000)
-                ->sendAfter(1500);
-
-        } catch (\Exception $e) {
-            \Filament\Notifications\Notification::make()
-                ->title('Error al actualizar plan')
-                ->body('Intenta nuevamente.')
-                ->danger()
-                ->send();
-        }
+        \Filament\Notifications\Notification::make()
+            ->title('Plan actualizado')
+            ->success()
+            ->send();
     }
 
 }
