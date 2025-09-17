@@ -56,7 +56,15 @@ class UserResource extends Resource
                                             ->password()
                                             ->required(fn (string $context): bool => $context === 'create')
                                             ->dehydrated(fn ($state) => filled($state))
-                                            ->minLength(8),
+                                            ->minLength(8)
+                                            ->helperText(fn ($context) => $context === 'edit' ? 'Dejar vacío para mantener la contraseña actual' : 'Mínimo 8 caracteres'),
+                                        Forms\Components\TextInput::make('password_confirmation')
+                                            ->label('Confirmar contraseña')
+                                            ->password()
+                                            ->required(fn (string $context, $get): bool => $context === 'create' || filled($get('password')))
+                                            ->same('password')
+                                            ->dehydrated(false)
+                                            ->helperText('Debe coincidir con la contraseña'),
                                     ])->columns(2),
 
                                 Section::make('Autenticación OAuth')
@@ -310,13 +318,90 @@ class UserResource extends Resource
                                     ->hiddenLabel(),
                             ]),
 
+                        Tabs\Tab::make('mozo_info')
+                            ->label('Información Mozo')
+                            ->schema([
+                                Section::make('Perfil como Mozo')
+                                    ->description('Información del usuario en su rol de mozo')
+                                    ->schema([
+                                        Forms\Components\TextInput::make('waiterProfile.display_name')
+                                            ->label('Nombre para mostrar')
+                                            ->maxLength(255)
+                                            ->placeholder('Como aparecerá en el QR')
+                                            ->helperText('Este nombre aparecerá cuando los clientes escaneen el QR'),
+                                        Forms\Components\TextInput::make('waiterProfile.phone')
+                                            ->label('Teléfono de contacto')
+                                            ->tel()
+                                            ->maxLength(20)
+                                            ->placeholder('+1 234 567 8900')
+                                            ->helperText('Teléfono para que los clientes puedan contactarte'),
+                                        Forms\Components\Textarea::make('waiterProfile.bio')
+                                            ->label('Biografía')
+                                            ->maxLength(500)
+                                            ->rows(3)
+                                            ->placeholder('Cuéntanos un poco sobre ti...')
+                                            ->helperText('Información adicional que verán los clientes'),
+                                        Forms\Components\FileUpload::make('waiterProfile.profile_image')
+                                            ->label('Foto de perfil')
+                                            ->image()
+                                            ->imageEditor()
+                                            ->directory('waiter-profiles')
+                                            ->visibility('public')
+                                            ->helperText('Imagen que aparecerá en tu perfil de mozo'),
+                                    ])->columns(2),
+                            ]),
+
+                        Tabs\Tab::make('admin_info')
+                            ->label('Información Admin')
+                            ->schema([
+                                Section::make('Perfil Empresarial')
+                                    ->description('Información del usuario como administrador de negocio')
+                                    ->schema([
+                                        Forms\Components\TextInput::make('adminProfile.display_name')
+                                            ->label('Nombre empresarial')
+                                            ->maxLength(255)
+                                            ->placeholder('Nombre para el negocio')
+                                            ->helperText('Como aparecerá en facturas y documentos oficiales'),
+                                        Forms\Components\TextInput::make('adminProfile.corporate_email')
+                                            ->label('Email corporativo')
+                                            ->email()
+                                            ->maxLength(255)
+                                            ->placeholder('contacto@empresa.com')
+                                            ->helperText('Email oficial del negocio'),
+                                        Forms\Components\TextInput::make('adminProfile.corporate_phone')
+                                            ->label('Teléfono empresarial')
+                                            ->tel()
+                                            ->maxLength(20)
+                                            ->placeholder('+1 234 567 8900')
+                                            ->helperText('Teléfono principal del negocio'),
+                                        Forms\Components\TextInput::make('adminProfile.tax_id')
+                                            ->label('ID Fiscal / RUC')
+                                            ->maxLength(50)
+                                            ->placeholder('12345678901')
+                                            ->helperText('Número de identificación fiscal'),
+                                        Forms\Components\Textarea::make('adminProfile.business_address')
+                                            ->label('Dirección del negocio')
+                                            ->maxLength(500)
+                                            ->rows(3)
+                                            ->placeholder('Dirección completa del negocio...')
+                                            ->helperText('Dirección física principal'),
+                                        Forms\Components\FileUpload::make('adminProfile.company_logo')
+                                            ->label('Logo de la empresa')
+                                            ->image()
+                                            ->imageEditor()
+                                            ->directory('company-logos')
+                                            ->visibility('public')
+                                            ->helperText('Logo que aparecerá en documentos y facturas'),
+                                    ])->columns(2),
+                            ]),
+
                         Tabs\Tab::make('payments')
                             ->label('Pagos y Suscripciones')
                             ->schema([
-                                Section::make('Historial de Pagos')
+                                Section::make('Estado de Suscripción Actual')
                                     ->schema([
-                                        Forms\Components\Placeholder::make('payments_summary')
-                                            ->label('Resumen de Pagos')
+                                        Forms\Components\Placeholder::make('current_subscription_status')
+                                            ->label('Resumen de Membresía')
                                             ->content(function ($record) {
                                                 if (!$record) return 'Cargando...';
 
@@ -325,7 +410,6 @@ class UserResource extends Resource
                                                     try {
                                                         \Illuminate\Support\Facades\DB::connection()->getPdo();
                                                     } catch (\Exception $dbError) {
-                                                        // Mostrar datos de demostración si la BD no está disponible
                                                         $demoStatus = $record->is_lifetime_paid ? 'permanent' : 'demo';
 
                                                         if ($demoStatus === 'permanent') {
@@ -432,438 +516,7 @@ class UserResource extends Resource
                                                 }
                                             })
                                             ->columnSpanFull(),
-
-                                        Forms\Components\Actions::make([
-                                            Forms\Components\Actions\Action::make('manage_subscription')
-                                                ->label('Gestionar Suscripción')
-                                                ->icon('heroicon-o-cog-6-tooth')
-                                                ->color('primary')
-                                                ->form([
-                                                    Forms\Components\Select::make('plan_id')
-                                                        ->label('Nuevo Plan')
-                                                        ->options(function () {
-                                                            try {
-                                                                return \App\Models\Plan::where('is_active', true)->pluck('name', 'id');
-                                                            } catch (\Exception $e) {
-                                                                // Fallback con datos estáticos si la DB no está disponible
-                                                                return [
-                                                                    '1' => 'Plan Mensual - $9.99',
-                                                                    '2' => 'Plan Anual - $99.99',
-                                                                    '3' => 'Plan Premium - $19.99',
-                                                                ];
-                                                            }
-                                                        })
-                                                        ->required()
-                                                        ->searchable()
-                                                        ->helperText('Selecciona el plan al que quieres cambiar al usuario'),
-                                                    Forms\Components\Toggle::make('auto_renew')
-                                                        ->label('Renovación automática')
-                                                        ->default(true)
-                                                        ->helperText('¿La suscripción se renovará automáticamente?'),
-                                                    Forms\Components\DateTimePicker::make('period_end')
-                                                        ->label('Fecha de vencimiento')
-                                                        ->default(now()->addMonth())
-                                                        ->required()
-                                                        ->helperText('Cuándo vence esta suscripción'),
-                                                ])
-                                                ->action(function (array $data, $record, $livewire) {
-                                                    try {
-                                                        // Verificar conexión a BD
-                                                        try {
-                                                            \Illuminate\Support\Facades\DB::connection()->getPdo();
-                                                        } catch (\Exception $dbError) {
-                                                            \Filament\Notifications\Notification::make()
-                                                                ->title('Modo de demostración')
-                                                                ->body('La funcionalidad está disponible pero la base de datos no está conectada. En producción esto funcionaría normalmente.')
-                                                                ->warning()
-                                                                ->duration(5000)
-                                                                ->send();
-                                                            return;
-                                                        }
-
-                                                        // Cancelar suscripciones activas
-                                                        \App\Models\Subscription::where('user_id', $record->id)
-                                                            ->whereIn('status', ['active', 'in_trial'])
-                                                            ->update(['status' => 'canceled']);
-
-                                                        // Crear nueva suscripción
-                                                        $planNames = [
-                                                            '1' => 'Plan Mensual',
-                                                            '2' => 'Plan Anual',
-                                                            '3' => 'Plan Premium'
-                                                        ];
-
-                                                        $planName = $planNames[$data['plan_id']] ?? 'Plan Desconocido';
-
-                                                        // Intentar encontrar el plan o usar datos fallback
-                                                        try {
-                                                            $plan = \App\Models\Plan::find($data['plan_id']);
-                                                            if (!$plan) {
-                                                                // Crear plan temporal si no existe
-                                                                $plan = new \App\Models\Plan([
-                                                                    'id' => $data['plan_id'],
-                                                                    'name' => $planName,
-                                                                    'price_cents' => 999,
-                                                                ]);
-                                                                $plan->save();
-                                                            }
-                                                        } catch (\Exception $e) {
-                                                            throw new \Exception("No se pudo procesar el plan seleccionado");
-                                                        }
-
-                                                        \App\Models\Subscription::create([
-                                                            'user_id' => $record->id,
-                                                            'plan_id' => $plan->id,
-                                                            'provider' => 'manual',
-                                                            'status' => 'active',
-                                                            'current_period_end' => $data['period_end'],
-                                                            'auto_renew' => $data['auto_renew'],
-                                                        ]);
-
-                                                        \Filament\Notifications\Notification::make()
-                                                            ->title('Suscripción actualizada exitosamente')
-                                                            ->body("Usuario cambiado al plan: {$plan->name}")
-                                                            ->success()
-                                                            ->send();
-
-                                                        // Refrescar el formulario
-                                                        $livewire->refreshFormData(['subscription_info']);
-                                                    } catch (\Exception $e) {
-                                                        \Filament\Notifications\Notification::make()
-                                                            ->title('Error al actualizar suscripción')
-                                                            ->body($e->getMessage())
-                                                            ->danger()
-                                                            ->send();
-                                                    }
-                                                }),
-
-                                            Forms\Components\Actions\Action::make('cancel_subscription')
-                                                ->label('Cancelar Suscripción')
-                                                ->icon('heroicon-o-x-circle')
-                                                ->color('danger')
-                                                ->requiresConfirmation()
-                                                ->modalDescription('¿Estás seguro de que quieres cancelar la suscripción activa de este usuario?')
-                                                ->action(function ($record, $livewire) {
-                                                    try {
-                                                        $canceled = \App\Models\Subscription::where('user_id', $record->id)
-                                                            ->whereIn('status', ['active', 'in_trial'])
-                                                            ->update(['status' => 'canceled']);
-
-                                                        if ($canceled > 0) {
-                                                            \Filament\Notifications\Notification::make()
-                                                                ->title('Suscripción cancelada')
-                                                                ->success()
-                                                                ->send();
-                                                        } else {
-                                                            \Filament\Notifications\Notification::make()
-                                                                ->title('No hay suscripciones activas para cancelar')
-                                                                ->warning()
-                                                                ->send();
-                                                        }
-
-                                                        // Refrescar el formulario
-                                                        $livewire->refreshFormData(['subscription_info']);
-                                                    } catch (\Exception $e) {
-                                                        \Filament\Notifications\Notification::make()
-                                                            ->title('Error al cancelar suscripción')
-                                                            ->body($e->getMessage())
-                                                            ->danger()
-                                                            ->send();
-                                                    }
-                                                }),
-                                        ])
-                                            ->columnSpanFull(),
-                                        Forms\Components\Placeholder::make('subscription_expires_display')
-                                            ->label('Vencimiento de membresía')
-                                            ->content(function ($record) {
-                                                if (!$record) return 'No disponible';
-
-                                                if ($record->is_lifetime_paid) {
-                                                    return 'Sin vencimiento (pago permanente)';
-                                                }
-
-                                                try {
-                                                    $activeSubscription = \App\Models\Subscription::where('user_id', $record->id)
-                                                        ->whereIn('status', ['active', 'in_trial'])
-                                                        ->first();
-
-                                                    if (!$activeSubscription || !$activeSubscription->current_period_end) {
-                                                        return 'Sin fecha de vencimiento';
-                                                    }
-
-                                                    $date = $activeSubscription->current_period_end;
-                                                    return $date->format('d/m/Y H:i') . ' (' . $date->diffForHumans() . ')';
-                                                } catch (\Exception $e) {
-                                                    return 'Error al cargar fecha: ' . $e->getMessage();
-                                                }
-                                            }),
-                                    ])->columns(2),
-                            ]),
-
-                        Tabs\Tab::make('payments')
-                            ->label('Pagos y Suscripciones')
-                            ->schema([
-                                Section::make('Historial de Pagos')
-                                    ->schema([
-                                        Forms\Components\Placeholder::make('payments_summary')
-                                            ->label('Resumen de Pagos')
-                                            ->content(function ($record) {
-                                                if (!$record) return 'No disponible';
-
-                                                try {
-                                                    $totalPaid = \App\Models\Payment::where('user_id', $record->id)
-                                                        ->where('status', 'paid')
-                                                        ->sum('amount_cents');
-
-                                                    $totalPayments = \App\Models\Payment::where('user_id', $record->id)->count();
-
-                                                    $lastPayment = \App\Models\Payment::where('user_id', $record->id)
-                                                        ->where('status', 'paid')
-                                                        ->latest('paid_at')
-                                                        ->first();
-
-                                                    $content = [];
-                                                    $content[] = "💰 **Total pagado**: $" . number_format($totalPaid / 100, 2);
-                                                    $content[] = "📊 **Total de transacciones**: {$totalPayments}";
-
-                                                    if ($lastPayment) {
-                                                        $content[] = "🕒 **Último pago**: " . $lastPayment->paid_at->format('d/m/Y H:i') . " (" . $lastPayment->paid_at->diffForHumans() . ")";
-                                                    } else {
-                                                        $content[] = "🕒 **Último pago**: Sin pagos registrados";
-                                                    }
-
-                                                    return new \Illuminate\Support\HtmlString(implode('<br>', $content));
-                                                } catch (\Exception $e) {
-                                                    return 'Error al cargar pagos: ' . $e->getMessage();
-                                                }
-                                            })
-                                            ->columnSpanFull(),
-
-                                        Forms\Components\ViewField::make('payments_table')
-                                            ->label('Historial Detallado')
-                                            ->view('filament.components.user-payments-table')
-                                            ->viewData(function ($record) {
-                                                if (!$record) return ['payments' => collect()];
-
-                                                try {
-                                                    $payments = \App\Models\Payment::where('user_id', $record->id)
-                                                        ->with(['subscription.plan'])
-                                                        ->orderByDesc('created_at')
-                                                        ->limit(10)
-                                                        ->get();
-
-                                                    return ['payments' => $payments];
-                                                } catch (\Exception $e) {
-                                                    return ['payments' => collect(), 'error' => $e->getMessage()];
-                                                }
-                                            })
-                                            ->columnSpanFull(),
-                                    ]),
-
-                                Section::make('Gestión de Suscripciones')
-                                    ->schema([
-                                        Forms\Components\Placeholder::make('subscriptions_summary')
-                                            ->label('Estado de Suscripciones')
-                                            ->content(function ($record) {
-                                                if (!$record) return 'No disponible';
-
-                                                try {
-                                                    $activeSubscriptions = \App\Models\Subscription::where('user_id', $record->id)
-                                                        ->whereIn('status', ['active', 'in_trial'])
-                                                        ->with('plan')
-                                                        ->get();
-
-                                                    $canceledSubscriptions = \App\Models\Subscription::where('user_id', $record->id)
-                                                        ->where('status', 'canceled')
-                                                        ->count();
-
-                                                    $content = [];
-
-                                                    if ($activeSubscriptions->isNotEmpty()) {
-                                                        $content[] = "✅ **Suscripciones activas**: {$activeSubscriptions->count()}";
-                                                        foreach ($activeSubscriptions as $sub) {
-                                                            $planName = $sub->plan->name ?? 'Plan eliminado';
-                                                            $status = $sub->status === 'in_trial' ? 'En prueba' : 'Activa';
-                                                            $endDate = $sub->status === 'in_trial'
-                                                                ? $sub->trial_ends_at?->format('d/m/Y')
-                                                                : $sub->current_period_end?->format('d/m/Y');
-                                                            $content[] = "   - **{$planName}** ({$status}) - Vence: {$endDate}";
-                                                        }
-                                                    } else {
-                                                        $content[] = "❌ **Suscripciones activas**: 0";
-                                                    }
-
-                                                    $content[] = "🚫 **Suscripciones canceladas**: {$canceledSubscriptions}";
-
-                                                    return new \Illuminate\Support\HtmlString(implode('<br>', $content));
-                                                } catch (\Exception $e) {
-                                                    return 'Error al cargar suscripciones: ' . $e->getMessage();
-                                                }
-                                            })
-                                            ->columnSpanFull(),
-
-                                        Forms\Components\ViewField::make('subscriptions_table')
-                                            ->label('Historial de Suscripciones')
-                                            ->view('filament.components.user-subscriptions-table')
-                                            ->viewData(function ($record) {
-                                                if (!$record) return ['subscriptions' => collect()];
-
-                                                try {
-                                                    $subscriptions = \App\Models\Subscription::where('user_id', $record->id)
-                                                        ->with(['plan', 'coupon'])
-                                                        ->orderByDesc('created_at')
-                                                        ->get();
-
-                                                    return ['subscriptions' => $subscriptions];
-                                                } catch (\Exception $e) {
-                                                    return ['subscriptions' => collect(), 'error' => $e->getMessage()];
-                                                }
-                                            })
-                                            ->columnSpanFull(),
-                                    ]),
-
-                                Section::make('Acciones de Facturación')
-                                    ->schema([
-                                        Forms\Components\Actions::make([
-                                            Forms\Components\Actions\Action::make('create_manual_payment')
-                                                ->label('Crear Pago Manual')
-                                                ->icon('heroicon-o-banknotes')
-                                                ->color('success')
-                                                ->form([
-                                                    Forms\Components\Select::make('subscription_id')
-                                                        ->label('Suscripción')
-                                                        ->options(function ($livewire) {
-                                                            $record = $livewire->record;
-                                                            if (!$record) return [];
-
-                                                            return \App\Models\Subscription::where('user_id', $record->id)
-                                                                ->with('plan')
-                                                                ->get()
-                                                                ->mapWithKeys(function ($sub) {
-                                                                    return [$sub->id => ($sub->plan->name ?? 'Plan eliminado') . ' - ' . ucfirst($sub->status)];
-                                                                });
-                                                        })
-                                                        ->nullable()
-                                                        ->searchable(),
-                                                    Forms\Components\TextInput::make('amount')
-                                                        ->label('Monto (USD)')
-                                                        ->numeric()
-                                                        ->required()
-                                                        ->step(0.01)
-                                                        ->prefix('$'),
-                                                    Forms\Components\Select::make('provider')
-                                                        ->label('Proveedor de Pago')
-                                                        ->options([
-                                                            'manual' => 'Manual/Transferencia',
-                                                            'mp' => 'Mercado Pago',
-                                                            'paypal' => 'PayPal',
-                                                            'stripe' => 'Stripe',
-                                                        ])
-                                                        ->default('manual')
-                                                        ->required(),
-                                                    Forms\Components\TextInput::make('provider_payment_id')
-                                                        ->label('ID de Transacción (opcional)')
-                                                        ->nullable(),
-                                                    Forms\Components\Textarea::make('notes')
-                                                        ->label('Notas')
-                                                        ->placeholder('Agregar notas sobre este pago manual...')
-                                                        ->nullable(),
-                                                ])
-                                                ->action(function (array $data, $livewire) {
-                                                    $record = $livewire->record;
-
-                                                    try {
-                                                        \App\Models\Payment::create([
-                                                            'user_id' => $record->id,
-                                                            'subscription_id' => $data['subscription_id'] ?? null,
-                                                            'provider' => $data['provider'],
-                                                            'provider_payment_id' => $data['provider_payment_id'] ?? 'manual-' . time(),
-                                                            'amount_cents' => (int) ($data['amount'] * 100),
-                                                            'currency' => 'USD',
-                                                            'status' => 'paid',
-                                                            'paid_at' => now(),
-                                                            'raw_payload' => [
-                                                                'manual_entry' => true,
-                                                                'notes' => $data['notes'] ?? null,
-                                                                'created_by_admin' => auth()->user()?->name ?? 'Sistema',
-                                                            ],
-                                                        ]);
-
-                                                        \Filament\Notifications\Notification::make()
-                                                            ->title('Pago manual creado exitosamente')
-                                                            ->success()
-                                                            ->send();
-
-                                                        // Refrescar el formulario
-                                                        $livewire->refreshFormData(['payments_table', 'payments_summary']);
-                                                    } catch (\Exception $e) {
-                                                        \Filament\Notifications\Notification::make()
-                                                            ->title('Error al crear el pago')
-                                                            ->body($e->getMessage())
-                                                            ->danger()
-                                                            ->send();
-                                                    }
-                                                }),
-
-                                            Forms\Components\Actions\Action::make('refund_payment')
-                                                ->label('Procesar Reembolso')
-                                                ->icon('heroicon-o-receipt-refund')
-                                                ->color('warning')
-                                                ->form([
-                                                    Forms\Components\Select::make('payment_id')
-                                                        ->label('Pago a Reembolsar')
-                                                        ->options(function ($livewire) {
-                                                            $record = $livewire->record;
-                                                            if (!$record) return [];
-
-                                                            return \App\Models\Payment::where('user_id', $record->id)
-                                                                ->where('status', 'paid')
-                                                                ->get()
-                                                                ->mapWithKeys(function ($payment) {
-                                                                    return [$payment->id =>
-                                                                        '$' . number_format($payment->amount_cents / 100, 2) .
-                                                                        ' - ' . $payment->provider .
-                                                                        ' - ' . $payment->paid_at->format('d/m/Y')
-                                                                    ];
-                                                                });
-                                                        })
-                                                        ->required()
-                                                        ->searchable(),
-                                                    Forms\Components\Textarea::make('refund_reason')
-                                                        ->label('Motivo del Reembolso')
-                                                        ->required()
-                                                        ->placeholder('Explica el motivo del reembolso...'),
-                                                ])
-                                                ->action(function (array $data, $livewire) {
-                                                    try {
-                                                        $payment = \App\Models\Payment::find($data['payment_id']);
-
-                                                        if (!$payment || $payment->status !== 'paid') {
-                                                            throw new \Exception('El pago no es válido para reembolso');
-                                                        }
-
-                                                        $payment->update([
-                                                            'status' => 'refunded',
-                                                            'failure_reason' => $data['refund_reason'],
-                                                        ]);
-
-                                                        \Filament\Notifications\Notification::make()
-                                                            ->title('Reembolso procesado exitosamente')
-                                                            ->success()
-                                                            ->send();
-
-                                                        $livewire->refreshFormData(['payments_table', 'payments_summary']);
-                                                    } catch (\Exception $e) {
-                                                        \Filament\Notifications\Notification::make()
-                                                            ->title('Error al procesar reembolso')
-                                                            ->body($e->getMessage())
-                                                            ->danger()
-                                                            ->send();
-                                                    }
-                                                }),
-                                        ])
-                                            ->columnSpanFull(),
-                                    ]),
+                                    ])->columns(1),
                             ]),
 
                         Tabs\Tab::make('activity')
@@ -896,208 +549,11 @@ class UserResource extends Resource
                                                 return new \Illuminate\Support\HtmlString(implode('<br>', $content));
                                             })
                                             ->columnSpanFull(),
-
-                                        Forms\Components\Placeholder::make('business_activity')
-                                            ->label('Actividad de Negocios')
-                                            ->content(function ($record) {
-                                                if (!$record) return 'No disponible';
-
-                                                try {
-                                                    $businessCount = \App\Models\Business::where('owner_id', $record->id)->count();
-                                                    $activeBusinesses = \App\Models\Business::where('owner_id', $record->id)
-                                                        ->where('is_active', true)
-                                                        ->count();
-
-                                                    $content = [];
-                                                    $content[] = "🏢 **Negocios creados**: {$businessCount}";
-                                                    $content[] = "✅ **Negocios activos**: {$activeBusinesses}";
-
-                                                    if ($businessCount > 0) {
-                                                        $lastBusiness = \App\Models\Business::where('owner_id', $record->id)
-                                                            ->latest()
-                                                            ->first();
-
-                                                        if ($lastBusiness) {
-                                                            $content[] = "🕒 **Último negocio creado**: " . $lastBusiness->name . " (" . $lastBusiness->created_at->diffForHumans() . ")";
-                                                        }
-                                                    } else {
-                                                        $content[] = "📝 **Estado**: Sin negocios creados";
-                                                    }
-
-                                                    return new \Illuminate\Support\HtmlString(implode('<br>', $content));
-                                                } catch (\Exception $e) {
-                                                    return 'Error al cargar actividad de negocios: ' . $e->getMessage();
-                                                }
-                                            })
-                                            ->columnSpanFull(),
-                                    ]),
-
-                                Section::make('Estadísticas de Uso')
-                                    ->schema([
-                                        Forms\Components\Placeholder::make('usage_stats')
-                                            ->label('Resumen de Actividad')
-                                            ->content(function ($record) {
-                                                if (!$record) return 'No disponible';
-
-                                                try {
-                                                    // Estadísticas de membresía
-                                                    $totalSubscriptions = \App\Models\Subscription::where('user_id', $record->id)->count();
-                                                    $totalPayments = \App\Models\Payment::where('user_id', $record->id)->count();
-                                                    $totalSpent = \App\Models\Payment::where('user_id', $record->id)
-                                                        ->where('status', 'paid')
-                                                        ->sum('amount_cents');
-
-                                                    // Tiempo como usuario
-                                                    $daysSinceRegistration = $record->created_at->diffInDays(now());
-                                                    $monthsSinceRegistration = $record->created_at->diffInMonths(now());
-
-                                                    $content = [];
-                                                    $content[] = "⏰ **Tiempo como usuario**: {$monthsSinceRegistration} meses ({$daysSinceRegistration} días)";
-                                                    $content[] = "💳 **Total de suscripciones**: {$totalSubscriptions}";
-                                                    $content[] = "💰 **Total de pagos**: {$totalPayments}";
-                                                    $content[] = "💵 **Total gastado**: $" . number_format($totalSpent / 100, 2);
-
-                                                    if ($totalSpent > 0) {
-                                                        $avgPerMonth = $monthsSinceRegistration > 0 ? ($totalSpent / 100) / $monthsSinceRegistration : 0;
-                                                        $content[] = "📊 **Promedio mensual**: $" . number_format($avgPerMonth, 2);
-                                                    }
-
-                                                    return new \Illuminate\Support\HtmlString(implode('<br>', $content));
-                                                } catch (\Exception $e) {
-                                                    return 'Error al cargar estadísticas: ' . $e->getMessage();
-                                                }
-                                            })
-                                            ->columnSpanFull(),
-
-                                        Forms\Components\ViewField::make('activity_timeline')
-                                            ->label('Línea de Tiempo de Actividad')
-                                            ->view('filament.components.user-activity-timeline')
-                                            ->viewData(function ($record) {
-                                                if (!$record) return ['events' => collect()];
-
-                                                try {
-                                                    $events = collect();
-
-                                                    // Registro del usuario
-                                                    $events->push([
-                                                        'type' => 'registration',
-                                                        'title' => 'Usuario registrado',
-                                                        'description' => 'Se creó la cuenta del usuario',
-                                                        'date' => $record->created_at,
-                                                        'icon' => 'user-plus',
-                                                        'color' => 'blue'
-                                                    ]);
-
-                                                    // Verificación de email
-                                                    if ($record->email_verified_at) {
-                                                        $events->push([
-                                                            'type' => 'email_verified',
-                                                            'title' => 'Email verificado',
-                                                            'description' => 'El usuario verificó su dirección de email',
-                                                            'date' => $record->email_verified_at,
-                                                            'icon' => 'check-circle',
-                                                            'color' => 'green'
-                                                        ]);
-                                                    }
-
-                                                    // Suscripciones
-                                                    $subscriptions = \App\Models\Subscription::where('user_id', $record->id)
-                                                        ->with('plan')
-                                                        ->orderBy('created_at')
-                                                        ->get();
-
-                                                    foreach ($subscriptions as $sub) {
-                                                        $events->push([
-                                                            'type' => 'subscription',
-                                                            'title' => 'Nueva suscripción',
-                                                            'description' => 'Suscrito al plan: ' . ($sub->plan->name ?? 'Plan eliminado'),
-                                                            'date' => $sub->created_at,
-                                                            'icon' => 'credit-card',
-                                                            'color' => 'purple'
-                                                        ]);
-                                                    }
-
-                                                    // Pagos exitosos
-                                                    $payments = \App\Models\Payment::where('user_id', $record->id)
-                                                        ->where('status', 'paid')
-                                                        ->orderBy('paid_at')
-                                                        ->limit(5)
-                                                        ->get();
-
-                                                    foreach ($payments as $payment) {
-                                                        $events->push([
-                                                            'type' => 'payment',
-                                                            'title' => 'Pago procesado',
-                                                            'description' => 'Pago de $' . number_format($payment->amount_cents / 100, 2) . ' vía ' . $payment->provider,
-                                                            'date' => $payment->paid_at,
-                                                            'icon' => 'banknotes',
-                                                            'color' => 'green'
-                                                        ]);
-                                                    }
-
-                                                    // Ordenar por fecha
-                                                    $events = $events->sortByDesc('date')->take(10);
-
-                                                    return ['events' => $events];
-                                                } catch (\Exception $e) {
-                                                    return ['events' => collect(), 'error' => $e->getMessage()];
-                                                }
-                                            })
-                                            ->columnSpanFull(),
-                                    ]),
-
-                                Section::make('Acciones de Auditoría')
-                                    ->schema([
-                                        Forms\Components\Actions::make([
-                                            Forms\Components\Actions\Action::make('export_user_data')
-                                                ->label('Exportar Datos del Usuario')
-                                                ->icon('heroicon-o-arrow-down-tray')
-                                                ->color('info')
-                                                ->action(function ($record) {
-                                                    try {
-                                                        // Aquí implementarías la lógica de exportación
-                                                        \Filament\Notifications\Notification::make()
-                                                            ->title('Exportación iniciada')
-                                                            ->body('Los datos del usuario se están preparando para descarga.')
-                                                            ->info()
-                                                            ->send();
-                                                    } catch (\Exception $e) {
-                                                        \Filament\Notifications\Notification::make()
-                                                            ->title('Error en exportación')
-                                                            ->body($e->getMessage())
-                                                            ->danger()
-                                                            ->send();
-                                                    }
-                                                }),
-
-                                            Forms\Components\Actions\Action::make('reset_password')
-                                                ->label('Enviar Reset de Contraseña')
-                                                ->icon('heroicon-o-key')
-                                                ->color('warning')
-                                                ->requiresConfirmation()
-                                                ->modalDescription('¿Deseas enviar un email de reset de contraseña a este usuario?')
-                                                ->action(function ($record) {
-                                                    try {
-                                                        // Aquí implementarías el envío de reset de contraseña
-                                                        \Filament\Notifications\Notification::make()
-                                                            ->title('Email enviado')
-                                                            ->body('Se ha enviado un email de reset de contraseña al usuario.')
-                                                            ->success()
-                                                            ->send();
-                                                    } catch (\Exception $e) {
-                                                        \Filament\Notifications\Notification::make()
-                                                            ->title('Error al enviar email')
-                                                            ->body($e->getMessage())
-                                                            ->danger()
-                                                            ->send();
-                                                    }
-                                                }),
-                                        ])
-                                            ->columnSpanFull(),
                                     ]),
                             ]),
                     ])
-                    ->columnSpanFull(),
+                    ->columnSpanFull()
+                    ->persistTab(),
             ]);
     }
 
@@ -1111,47 +567,11 @@ class UserResource extends Resource
                     ->defaultImageUrl(fn ($record) => 'https://ui-avatars.com/api/?name=' . urlencode($record->name) . '&color=7F9CF5&background=EBF4FF'),
                 Tables\Columns\TextColumn::make('name')
                     ->label('Nombre')
-                    ->searchable(query: function (Builder $query, string $search): Builder {
-                        return $query->where(function ($q) use ($search) {
-                            // Búsqueda normal en nombre
-                            $q->where('name', 'like', "%{$search}%")
-                                // Búsqueda en email
-                                ->orWhere('email', 'like', "%{$search}%")
-                                // Búsqueda en perfiles relacionados
-                                ->orWhereHas('waiterProfile', function ($waiterQuery) use ($search) {
-                                    $waiterQuery->where('display_name', 'like', "%{$search}%")
-                                               ->orWhere('phone', 'like', "%{$search}%");
-                                })
-                                ->orWhereHas('adminProfile', function ($adminQuery) use ($search) {
-                                    $adminQuery->where('display_name', 'like', "%{$search}%")
-                                              ->orWhere('corporate_email', 'like', "%{$search}%")
-                                              ->orWhere('corporate_phone', 'like', "%{$search}%");
-                                });
-
-                            // Búsqueda tolerante a errores para nombres comunes
-                            $fuzzyMatches = static::getFuzzyMatches($search);
-                            foreach ($fuzzyMatches as $fuzzyTerm) {
-                                $q->orWhere('name', 'like', "%{$fuzzyTerm}%")
-                                  ->orWhere('email', 'like', "%{$fuzzyTerm}%");
-                            }
-
-                            // Búsqueda por roles
-                            $roleSearch = strtolower($search);
-                            if (str_contains($roleSearch, 'super') || str_contains($roleSearch, 'admin')) {
-                                if (str_contains($roleSearch, 'super')) {
-                                    $q->orWhere('is_system_super_admin', true);
-                                } else {
-                                    $q->orWhereHas('subscriptions', function ($subQuery) {
-                                        $subQuery->whereIn('status', ['active', 'in_trial']);
-                                    })->orWhere('is_lifetime_paid', true);
-                                }
-                            }
-                        });
-                    })
+                    ->searchable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('email')
                     ->label('Email')
-                    ->searchable(isIndividual: false) // Deshabilitamos búsqueda individual ya que se maneja arriba
+                    ->searchable()
                     ->copyable(),
                 Tables\Columns\BadgeColumn::make('user_roles')
                     ->label('Rol')
@@ -1223,74 +643,14 @@ class UserResource extends Resource
                             default => $query,
                         };
                     }),
-                Filter::make('membership_status')
-                    ->label('Estado de membresía')
-                    ->form([
-                        Forms\Components\Select::make('status')
-                            ->options([
-                                'active' => 'Activa',
-                                'inactive' => 'Inactiva',
-                                'permanent' => 'Permanente',
-                            ])
-                    ])
-                    ->query(function (Builder $query, array $data): Builder {
-                        if (!isset($data['status'])) return $query;
-
-                        return match ($data['status']) {
-                            'permanent' => $query->where('is_lifetime_paid', true),
-                            'active' => $query->whereHas('subscriptions', function ($q) {
-                                $q->where('status', 'active');
-                            }),
-                            'inactive' => $query->where('is_lifetime_paid', false)
-                                              ->whereDoesntHave('subscriptions', function ($q) {
-                                                  $q->where('status', 'active');
-                                              }),
-                            default => $query,
-                        };
-                    }),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make()
                     ->label('')
-                    ->tooltip('Ver usuario')
-                    ->modalWidth('7xl'),
+                    ->tooltip('Ver usuario'),
                 Tables\Actions\EditAction::make()
                     ->label('')
-                    ->tooltip('Editar usuario')
-                    ->modalWidth('7xl'),
-                Tables\Actions\Action::make('assign_plan')
-                    ->label('')
-                    ->tooltip('Asignar plan')
-                    ->icon('heroicon-o-credit-card')
-                    ->requiresConfirmation()
-                    ->modalDescription('Esta acción asignará un nuevo plan de suscripción al usuario.')
-                    ->form([
-                        Forms\Components\Select::make('plan_id')
-                            ->label('Plan')
-                            ->options(Plan::where('is_active', true)->pluck('name', 'id'))
-                            ->required()
-                            ->searchable(),
-                        Forms\Components\Toggle::make('auto_renew')
-                            ->label('Renovación automática')
-                            ->default(true),
-                        Forms\Components\Select::make('coupon_id')
-                            ->label('Cupón (opcional)')
-                            ->options(Coupon::where('is_active', true)->pluck('code', 'id'))
-                            ->searchable()
-                            ->nullable(),
-                    ])
-                    ->action(function (array $data, $record) {
-                        // Crear nueva suscripción
-                        $plan = Plan::find($data['plan_id']);
-                        $record->subscriptions()->create([
-                            'plan_id' => $plan->id,
-                            'provider' => 'manual',
-                            'status' => 'active',
-                            'current_period_end' => now()->addMonth(),
-                            'auto_renew' => $data['auto_renew'] ?? false,
-                        ]);
-                    })
-                    ->successNotificationTitle('Plan asignado exitosamente'),
+                    ->tooltip('Editar usuario'),
                 Tables\Actions\DeleteAction::make()
                     ->label('')
                     ->tooltip('Eliminar usuario')
@@ -1311,125 +671,10 @@ class UserResource extends Resource
             ->paginated([10, 25, 50, 100])
             ->defaultPaginationPageOption(25)
             ->poll('30s')
-            ->searchPlaceholder('Buscar por nombre, email, teléfono...')
+            ->searchPlaceholder('Buscar por nombre, email...')
             ->emptyStateHeading('No hay usuarios registrados')
             ->emptyStateDescription('Cuando se registren usuarios, aparecerán aquí.')
             ->emptyStateIcon('heroicon-o-users');
-    }
-
-    /**
-     * Genera variaciones tolerantes a errores tipográficos
-     */
-    protected static function getFuzzyMatches(string $search): array
-    {
-        $search = strtolower(trim($search));
-        $fuzzyMatches = [];
-
-        // Diccionario de correcciones comunes
-        $commonCorrections = [
-            // Nombres comunes mal escritos
-            'maria' => ['maria', 'marta', 'mario', 'mary'],
-            'marta' => ['marta', 'maria', 'martha'],
-            'mario' => ['mario', 'maria', 'marco'],
-            'carlos' => ['carlos', 'carlo', 'carla'],
-            'ana' => ['ana', 'anna', 'ani'],
-            'luis' => ['luis', 'luiz', 'luisa'],
-            'jose' => ['jose', 'josef', 'josie'],
-            'juan' => ['juan', 'joan', 'juana'],
-
-            // Términos de sistema
-            'admin' => ['admin', 'administrator', 'administrador'],
-            'super' => ['super', 'supper', 'sistem'],
-            'mozo' => ['mozo', 'moso', 'waiter'],
-
-            // Errores comunes de teclado
-            'marua' => ['maria'],
-            'mraio' => ['mario'],
-            'cralos' => ['carlos'],
-            'admun' => ['admin'],
-            'suoer' => ['super'],
-        ];
-
-        // Si encontramos una corrección exacta, la usamos
-        if (isset($commonCorrections[$search])) {
-            return $commonCorrections[$search];
-        }
-
-        // Buscar correcciones por similitud
-        foreach ($commonCorrections as $correct => $variations) {
-            foreach ($variations as $variant) {
-                if (static::levenshteinDistance($search, $variant) <= 2) {
-                    $fuzzyMatches = array_merge($fuzzyMatches, $variations);
-                    break 2;
-                }
-            }
-        }
-
-        // Generar variaciones automáticas para errores tipográficos comunes
-        $autoVariations = static::generateTypoVariations($search);
-        $fuzzyMatches = array_merge($fuzzyMatches, $autoVariations);
-
-        return array_unique($fuzzyMatches);
-    }
-
-    /**
-     * Calcula la distancia de Levenshtein entre dos strings
-     */
-    protected static function levenshteinDistance(string $str1, string $str2): int
-    {
-        $len1 = strlen($str1);
-        $len2 = strlen($str2);
-
-        if ($len1 == 0) return $len2;
-        if ($len2 == 0) return $len1;
-
-        $matrix = [];
-        for ($i = 0; $i <= $len1; $i++) {
-            $matrix[$i][0] = $i;
-        }
-        for ($j = 0; $j <= $len2; $j++) {
-            $matrix[0][$j] = $j;
-        }
-
-        for ($i = 1; $i <= $len1; $i++) {
-            for ($j = 1; $j <= $len2; $j++) {
-                $cost = ($str1[$i-1] == $str2[$j-1]) ? 0 : 1;
-                $matrix[$i][$j] = min(
-                    $matrix[$i-1][$j] + 1,     // deletion
-                    $matrix[$i][$j-1] + 1,     // insertion
-                    $matrix[$i-1][$j-1] + $cost // substitution
-                );
-            }
-        }
-
-        return $matrix[$len1][$len2];
-    }
-
-    /**
-     * Genera variaciones automáticas para errores tipográficos comunes
-     */
-    protected static function generateTypoVariations(string $search): array
-    {
-        if (strlen($search) < 3) return [$search];
-
-        $variations = [$search];
-        $chars = str_split($search);
-
-        // Intercambio de caracteres adyacentes (transposición)
-        for ($i = 0; $i < count($chars) - 1; $i++) {
-            $temp = $chars;
-            [$temp[$i], $temp[$i + 1]] = [$temp[$i + 1], $temp[$i]];
-            $variations[] = implode('', $temp);
-        }
-
-        // Eliminación de un carácter
-        for ($i = 0; $i < count($chars); $i++) {
-            $temp = $chars;
-            unset($temp[$i]);
-            $variations[] = implode('', $temp);
-        }
-
-        return array_unique($variations);
     }
 
     public static function getEloquentQuery(): Builder
