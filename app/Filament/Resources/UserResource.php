@@ -147,15 +147,15 @@ class UserResource extends Resource
                                             ->searchable()
                                             ->nullable()
                                             ->live()
-                                            ->default(function ($record) {
-                                                if (!$record) return null;
+                                            ->afterStateHydrated(function ($component, $record) {
+                                                if (!$record) return;
 
                                                 // Consulta directa simplificada
                                                 $activeSubscription = \App\Models\Subscription::where('user_id', $record->id)
                                                     ->whereIn('status', ['active', 'in_trial'])
                                                     ->first();
 
-                                                return $activeSubscription?->plan_id;
+                                                $component->state($activeSubscription?->plan_id);
                                             })
                                             ->afterStateUpdated(function ($state, $record) {
                                                 if (!$record) return;
@@ -213,15 +213,15 @@ class UserResource extends Resource
                                             ->disabled()
                                             ->dehydrated(false)
                                             ->live()
-                                            ->default(function ($record) {
-                                                if (!$record) return false;
+                                            ->afterStateHydrated(function ($component, $record) {
+                                                if (!$record) return;
 
-                                                // Simplificar consulta directa
+                                                // Consulta directa simplificada
                                                 $activeSubscription = \App\Models\Subscription::where('user_id', $record->id)
                                                     ->whereIn('status', ['active', 'in_trial'])
                                                     ->first();
 
-                                                return $activeSubscription?->auto_renew ?? false;
+                                                $component->state($activeSubscription?->auto_renew ?? false);
                                             })
                                             ->helperText(function ($record, $get) {
                                                 $isLifetime = $get('is_lifetime_paid');
@@ -251,15 +251,15 @@ class UserResource extends Resource
                                             ->searchable()
                                             ->nullable()
                                             ->live()
-                                            ->default(function ($record) {
-                                                if (!$record) return null;
+                                            ->afterStateHydrated(function ($component, $record) {
+                                                if (!$record) return;
 
                                                 // Consulta directa simplificada
                                                 $activeSubscription = \App\Models\Subscription::where('user_id', $record->id)
                                                     ->whereIn('status', ['active', 'in_trial'])
                                                     ->first();
 
-                                                return $activeSubscription?->coupon_id;
+                                                $component->state($activeSubscription?->coupon_id);
                                             })
                                             ->afterStateUpdated(function ($state, $record) {
                                                 if (!$record) return;
@@ -297,11 +297,12 @@ class UserResource extends Resource
                                         Forms\Components\DateTimePicker::make('membership_expires_at')
                                             ->label('Vencimiento de membresía')
                                             ->live()
-                                            ->default(function ($record) {
-                                                if (!$record) return null;
+                                            ->afterStateHydrated(function ($component, $record) {
+                                                if (!$record) return;
 
                                                 if ($record->is_lifetime_paid) {
-                                                    return null;
+                                                    $component->state(null);
+                                                    return;
                                                 }
 
                                                 // Consulta directa simplificada
@@ -309,7 +310,7 @@ class UserResource extends Resource
                                                     ->whereIn('status', ['active', 'in_trial'])
                                                     ->first();
 
-                                                return $activeSubscription?->current_period_end;
+                                                $component->state($activeSubscription?->current_period_end);
                                             })
                                             ->hidden(fn ($get) => $get('is_lifetime_paid'))
                                             ->placeholder('Sin vencimiento (pago permanente)')
