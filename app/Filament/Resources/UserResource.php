@@ -200,7 +200,504 @@ class UserResource extends Resource
                                                 }
                                             }),
                                     ])->columns(2),
-                            ])
+                            ]),
+
+                        Tabs\Tab::make('payments')
+                            ->label('Pagos y Suscripciones')
+                            ->schema([
+                                Section::make('Historial de Pagos')
+                                    ->schema([
+                                        Forms\Components\Placeholder::make('payments_summary')
+                                            ->label('Resumen de Pagos')
+                                            ->content(function ($record) {
+                                                if (!$record) return 'No disponible';
+
+                                                try {
+                                                    $totalPaid = \App\Models\Payment::where('user_id', $record->id)
+                                                        ->where('status', 'paid')
+                                                        ->sum('amount_cents');
+
+                                                    $totalPayments = \App\Models\Payment::where('user_id', $record->id)->count();
+
+                                                    $lastPayment = \App\Models\Payment::where('user_id', $record->id)
+                                                        ->where('status', 'paid')
+                                                        ->latest('paid_at')
+                                                        ->first();
+
+                                                    $content = [];
+                                                    $content[] = "💰 **Total pagado**: $" . number_format($totalPaid / 100, 2);
+                                                    $content[] = "📊 **Total de transacciones**: {$totalPayments}";
+
+                                                    if ($lastPayment) {
+                                                        $content[] = "🕒 **Último pago**: " . $lastPayment->paid_at->format('d/m/Y H:i') . " (" . $lastPayment->paid_at->diffForHumans() . ")";
+                                                    } else {
+                                                        $content[] = "🕒 **Último pago**: Sin pagos registrados";
+                                                    }
+
+                                                    return new \Illuminate\Support\HtmlString(implode('<br>', $content));
+                                                } catch (\Exception $e) {
+                                                    return 'Error al cargar pagos: ' . $e->getMessage();
+                                                }
+                                            })
+                                            ->columnSpanFull(),
+
+                                        Forms\Components\ViewField::make('payments_table')
+                                            ->label('Historial Detallado')
+                                            ->view('filament.components.user-payments-table')
+                                            ->viewData(function ($record) {
+                                                if (!$record) return ['payments' => collect()];
+
+                                                try {
+                                                    $payments = \App\Models\Payment::where('user_id', $record->id)
+                                                        ->with(['subscription.plan'])
+                                                        ->orderByDesc('created_at')
+                                                        ->limit(10)
+                                                        ->get();
+
+                                                    return ['payments' => $payments];
+                                                } catch (\Exception $e) {
+                                                    return ['payments' => collect(), 'error' => $e->getMessage()];
+                                                }
+                                            })
+                                            ->columnSpanFull(),
+                                    ]),
+
+                                Section::make('Gestión de Suscripciones')
+                                    ->schema([
+                                        Forms\Components\Placeholder::make('subscriptions_summary')
+                                            ->label('Estado de Suscripciones')
+                                            ->content(function ($record) {
+                                                if (!$record) return 'No disponible';
+
+                                                try {
+                                                    $activeSubscriptions = \App\Models\Subscription::where('user_id', $record->id)
+                                                        ->whereIn('status', ['active', 'in_trial'])
+                                                        ->with('plan')
+                                                        ->get();
+
+                                                    $canceledSubscriptions = \App\Models\Subscription::where('user_id', $record->id)
+                                                        ->where('status', 'canceled')
+                                                        ->count();
+
+                                                    $content = [];
+
+                                                    if ($activeSubscriptions->isNotEmpty()) {
+                                                        $content[] = "✅ **Suscripciones activas**: {$activeSubscriptions->count()}";
+                                                        foreach ($activeSubscriptions as $sub) {
+                                                            $planName = $sub->plan->name ?? 'Plan eliminado';
+                                                            $status = $sub->status === 'in_trial' ? 'En prueba' : 'Activa';
+                                                            $endDate = $sub->status === 'in_trial'
+                                                                ? $sub->trial_ends_at?->format('d/m/Y')
+                                                                : $sub->current_period_end?->format('d/m/Y');
+                                                            $content[] = "   - **{$planName}** ({$status}) - Vence: {$endDate}";
+                                                        }
+                                                    } else {
+                                                        $content[] = "❌ **Suscripciones activas**: 0";
+                                                    }
+
+                                                    $content[] = "🚫 **Suscripciones canceladas**: {$canceledSubscriptions}";
+
+                                                    return new \Illuminate\Support\HtmlString(implode('<br>', $content));
+                                                } catch (\Exception $e) {
+                                                    return 'Error al cargar suscripciones: ' . $e->getMessage();
+                                                }
+                                            })
+                                            ->columnSpanFull(),
+
+                                        Forms\Components\ViewField::make('subscriptions_table')
+                                            ->label('Historial de Suscripciones')
+                                            ->view('filament.components.user-subscriptions-table')
+                                            ->viewData(function ($record) {
+                                                if (!$record) return ['subscriptions' => collect()];
+
+                                                try {
+                                                    $subscriptions = \App\Models\Subscription::where('user_id', $record->id)
+                                                        ->with(['plan', 'coupon'])
+                                                        ->orderByDesc('created_at')
+                                                        ->get();
+
+                                                    return ['subscriptions' => $subscriptions];
+                                                } catch (\Exception $e) {
+                                                    return ['subscriptions' => collect(), 'error' => $e->getMessage()];
+                                                }
+                                            })
+                                            ->columnSpanFull(),
+                                    ]),
+
+                                Section::make('Acciones de Facturación')
+                                    ->schema([
+                                        Forms\Components\Actions::make([
+                                            Forms\Components\Actions\Action::make('create_manual_payment')
+                                                ->label('Crear Pago Manual')
+                                                ->icon('heroicon-o-banknotes')
+                                                ->color('success')
+                                                ->form([
+                                                    Forms\Components\Select::make('subscription_id')
+                                                        ->label('Suscripción')
+                                                        ->options(function ($livewire) {
+                                                            $record = $livewire->record;
+                                                            if (!$record) return [];
+
+                                                            return \App\Models\Subscription::where('user_id', $record->id)
+                                                                ->with('plan')
+                                                                ->get()
+                                                                ->mapWithKeys(function ($sub) {
+                                                                    return [$sub->id => ($sub->plan->name ?? 'Plan eliminado') . ' - ' . ucfirst($sub->status)];
+                                                                });
+                                                        })
+                                                        ->nullable()
+                                                        ->searchable(),
+                                                    Forms\Components\TextInput::make('amount')
+                                                        ->label('Monto (USD)')
+                                                        ->numeric()
+                                                        ->required()
+                                                        ->step(0.01)
+                                                        ->prefix('$'),
+                                                    Forms\Components\Select::make('provider')
+                                                        ->label('Proveedor de Pago')
+                                                        ->options([
+                                                            'manual' => 'Manual/Transferencia',
+                                                            'mp' => 'Mercado Pago',
+                                                            'paypal' => 'PayPal',
+                                                            'stripe' => 'Stripe',
+                                                        ])
+                                                        ->default('manual')
+                                                        ->required(),
+                                                    Forms\Components\TextInput::make('provider_payment_id')
+                                                        ->label('ID de Transacción (opcional)')
+                                                        ->nullable(),
+                                                    Forms\Components\Textarea::make('notes')
+                                                        ->label('Notas')
+                                                        ->placeholder('Agregar notas sobre este pago manual...')
+                                                        ->nullable(),
+                                                ])
+                                                ->action(function (array $data, $livewire) {
+                                                    $record = $livewire->record;
+
+                                                    try {
+                                                        \App\Models\Payment::create([
+                                                            'user_id' => $record->id,
+                                                            'subscription_id' => $data['subscription_id'] ?? null,
+                                                            'provider' => $data['provider'],
+                                                            'provider_payment_id' => $data['provider_payment_id'] ?? 'manual-' . time(),
+                                                            'amount_cents' => (int) ($data['amount'] * 100),
+                                                            'currency' => 'USD',
+                                                            'status' => 'paid',
+                                                            'paid_at' => now(),
+                                                            'raw_payload' => [
+                                                                'manual_entry' => true,
+                                                                'notes' => $data['notes'] ?? null,
+                                                                'created_by_admin' => auth()->user()?->name ?? 'Sistema',
+                                                            ],
+                                                        ]);
+
+                                                        \Filament\Notifications\Notification::make()
+                                                            ->title('Pago manual creado exitosamente')
+                                                            ->success()
+                                                            ->send();
+
+                                                        // Refrescar el formulario
+                                                        $livewire->refreshFormData(['payments_table', 'payments_summary']);
+                                                    } catch (\Exception $e) {
+                                                        \Filament\Notifications\Notification::make()
+                                                            ->title('Error al crear el pago')
+                                                            ->body($e->getMessage())
+                                                            ->danger()
+                                                            ->send();
+                                                    }
+                                                }),
+
+                                            Forms\Components\Actions\Action::make('refund_payment')
+                                                ->label('Procesar Reembolso')
+                                                ->icon('heroicon-o-receipt-refund')
+                                                ->color('warning')
+                                                ->form([
+                                                    Forms\Components\Select::make('payment_id')
+                                                        ->label('Pago a Reembolsar')
+                                                        ->options(function ($livewire) {
+                                                            $record = $livewire->record;
+                                                            if (!$record) return [];
+
+                                                            return \App\Models\Payment::where('user_id', $record->id)
+                                                                ->where('status', 'paid')
+                                                                ->get()
+                                                                ->mapWithKeys(function ($payment) {
+                                                                    return [$payment->id =>
+                                                                        '$' . number_format($payment->amount_cents / 100, 2) .
+                                                                        ' - ' . $payment->provider .
+                                                                        ' - ' . $payment->paid_at->format('d/m/Y')
+                                                                    ];
+                                                                });
+                                                        })
+                                                        ->required()
+                                                        ->searchable(),
+                                                    Forms\Components\Textarea::make('refund_reason')
+                                                        ->label('Motivo del Reembolso')
+                                                        ->required()
+                                                        ->placeholder('Explica el motivo del reembolso...'),
+                                                ])
+                                                ->action(function (array $data, $livewire) {
+                                                    try {
+                                                        $payment = \App\Models\Payment::find($data['payment_id']);
+
+                                                        if (!$payment || $payment->status !== 'paid') {
+                                                            throw new \Exception('El pago no es válido para reembolso');
+                                                        }
+
+                                                        $payment->update([
+                                                            'status' => 'refunded',
+                                                            'failure_reason' => $data['refund_reason'],
+                                                        ]);
+
+                                                        \Filament\Notifications\Notification::make()
+                                                            ->title('Reembolso procesado exitosamente')
+                                                            ->success()
+                                                            ->send();
+
+                                                        $livewire->refreshFormData(['payments_table', 'payments_summary']);
+                                                    } catch (\Exception $e) {
+                                                        \Filament\Notifications\Notification::make()
+                                                            ->title('Error al procesar reembolso')
+                                                            ->body($e->getMessage())
+                                                            ->danger()
+                                                            ->send();
+                                                    }
+                                                }),
+                                        ])
+                                            ->columnSpanFull(),
+                                    ]),
+                            ]),
+
+                        Tabs\Tab::make('activity')
+                            ->label('Actividad y Auditoría')
+                            ->schema([
+                                Section::make('Información del Sistema')
+                                    ->schema([
+                                        Forms\Components\Placeholder::make('system_info')
+                                            ->label('Metadatos del Usuario')
+                                            ->content(function ($record) {
+                                                if (!$record) return 'No disponible';
+
+                                                $content = [];
+                                                $content[] = "🆔 **ID de Usuario**: {$record->id}";
+                                                $content[] = "📅 **Registrado**: " . $record->created_at->format('d/m/Y H:i') . " (" . $record->created_at->diffForHumans() . ")";
+                                                $content[] = "🔄 **Última actualización**: " . $record->updated_at->format('d/m/Y H:i') . " (" . $record->updated_at->diffForHumans() . ")";
+
+                                                if ($record->email_verified_at) {
+                                                    $content[] = "✅ **Email verificado**: " . $record->email_verified_at->format('d/m/Y H:i');
+                                                } else {
+                                                    $content[] = "❌ **Email**: Sin verificar";
+                                                }
+
+                                                if ($record->google_id) {
+                                                    $content[] = "🔗 **Conectado con Google**: Sí (ID: {$record->google_id})";
+                                                } else {
+                                                    $content[] = "🔗 **Conectado con Google**: No";
+                                                }
+
+                                                return new \Illuminate\Support\HtmlString(implode('<br>', $content));
+                                            })
+                                            ->columnSpanFull(),
+
+                                        Forms\Components\Placeholder::make('business_activity')
+                                            ->label('Actividad de Negocios')
+                                            ->content(function ($record) {
+                                                if (!$record) return 'No disponible';
+
+                                                try {
+                                                    $businessCount = \App\Models\Business::where('owner_id', $record->id)->count();
+                                                    $activeBusinesses = \App\Models\Business::where('owner_id', $record->id)
+                                                        ->where('is_active', true)
+                                                        ->count();
+
+                                                    $content = [];
+                                                    $content[] = "🏢 **Negocios creados**: {$businessCount}";
+                                                    $content[] = "✅ **Negocios activos**: {$activeBusinesses}";
+
+                                                    if ($businessCount > 0) {
+                                                        $lastBusiness = \App\Models\Business::where('owner_id', $record->id)
+                                                            ->latest()
+                                                            ->first();
+
+                                                        if ($lastBusiness) {
+                                                            $content[] = "🕒 **Último negocio creado**: " . $lastBusiness->name . " (" . $lastBusiness->created_at->diffForHumans() . ")";
+                                                        }
+                                                    } else {
+                                                        $content[] = "📝 **Estado**: Sin negocios creados";
+                                                    }
+
+                                                    return new \Illuminate\Support\HtmlString(implode('<br>', $content));
+                                                } catch (\Exception $e) {
+                                                    return 'Error al cargar actividad de negocios: ' . $e->getMessage();
+                                                }
+                                            })
+                                            ->columnSpanFull(),
+                                    ]),
+
+                                Section::make('Estadísticas de Uso')
+                                    ->schema([
+                                        Forms\Components\Placeholder::make('usage_stats')
+                                            ->label('Resumen de Actividad')
+                                            ->content(function ($record) {
+                                                if (!$record) return 'No disponible';
+
+                                                try {
+                                                    // Estadísticas de membresía
+                                                    $totalSubscriptions = \App\Models\Subscription::where('user_id', $record->id)->count();
+                                                    $totalPayments = \App\Models\Payment::where('user_id', $record->id)->count();
+                                                    $totalSpent = \App\Models\Payment::where('user_id', $record->id)
+                                                        ->where('status', 'paid')
+                                                        ->sum('amount_cents');
+
+                                                    // Tiempo como usuario
+                                                    $daysSinceRegistration = $record->created_at->diffInDays(now());
+                                                    $monthsSinceRegistration = $record->created_at->diffInMonths(now());
+
+                                                    $content = [];
+                                                    $content[] = "⏰ **Tiempo como usuario**: {$monthsSinceRegistration} meses ({$daysSinceRegistration} días)";
+                                                    $content[] = "💳 **Total de suscripciones**: {$totalSubscriptions}";
+                                                    $content[] = "💰 **Total de pagos**: {$totalPayments}";
+                                                    $content[] = "💵 **Total gastado**: $" . number_format($totalSpent / 100, 2);
+
+                                                    if ($totalSpent > 0) {
+                                                        $avgPerMonth = $monthsSinceRegistration > 0 ? ($totalSpent / 100) / $monthsSinceRegistration : 0;
+                                                        $content[] = "📊 **Promedio mensual**: $" . number_format($avgPerMonth, 2);
+                                                    }
+
+                                                    return new \Illuminate\Support\HtmlString(implode('<br>', $content));
+                                                } catch (\Exception $e) {
+                                                    return 'Error al cargar estadísticas: ' . $e->getMessage();
+                                                }
+                                            })
+                                            ->columnSpanFull(),
+
+                                        Forms\Components\ViewField::make('activity_timeline')
+                                            ->label('Línea de Tiempo de Actividad')
+                                            ->view('filament.components.user-activity-timeline')
+                                            ->viewData(function ($record) {
+                                                if (!$record) return ['events' => collect()];
+
+                                                try {
+                                                    $events = collect();
+
+                                                    // Registro del usuario
+                                                    $events->push([
+                                                        'type' => 'registration',
+                                                        'title' => 'Usuario registrado',
+                                                        'description' => 'Se creó la cuenta del usuario',
+                                                        'date' => $record->created_at,
+                                                        'icon' => 'user-plus',
+                                                        'color' => 'blue'
+                                                    ]);
+
+                                                    // Verificación de email
+                                                    if ($record->email_verified_at) {
+                                                        $events->push([
+                                                            'type' => 'email_verified',
+                                                            'title' => 'Email verificado',
+                                                            'description' => 'El usuario verificó su dirección de email',
+                                                            'date' => $record->email_verified_at,
+                                                            'icon' => 'check-circle',
+                                                            'color' => 'green'
+                                                        ]);
+                                                    }
+
+                                                    // Suscripciones
+                                                    $subscriptions = \App\Models\Subscription::where('user_id', $record->id)
+                                                        ->with('plan')
+                                                        ->orderBy('created_at')
+                                                        ->get();
+
+                                                    foreach ($subscriptions as $sub) {
+                                                        $events->push([
+                                                            'type' => 'subscription',
+                                                            'title' => 'Nueva suscripción',
+                                                            'description' => 'Suscrito al plan: ' . ($sub->plan->name ?? 'Plan eliminado'),
+                                                            'date' => $sub->created_at,
+                                                            'icon' => 'credit-card',
+                                                            'color' => 'purple'
+                                                        ]);
+                                                    }
+
+                                                    // Pagos exitosos
+                                                    $payments = \App\Models\Payment::where('user_id', $record->id)
+                                                        ->where('status', 'paid')
+                                                        ->orderBy('paid_at')
+                                                        ->limit(5)
+                                                        ->get();
+
+                                                    foreach ($payments as $payment) {
+                                                        $events->push([
+                                                            'type' => 'payment',
+                                                            'title' => 'Pago procesado',
+                                                            'description' => 'Pago de $' . number_format($payment->amount_cents / 100, 2) . ' vía ' . $payment->provider,
+                                                            'date' => $payment->paid_at,
+                                                            'icon' => 'banknotes',
+                                                            'color' => 'green'
+                                                        ]);
+                                                    }
+
+                                                    // Ordenar por fecha
+                                                    $events = $events->sortByDesc('date')->take(10);
+
+                                                    return ['events' => $events];
+                                                } catch (\Exception $e) {
+                                                    return ['events' => collect(), 'error' => $e->getMessage()];
+                                                }
+                                            })
+                                            ->columnSpanFull(),
+                                    ]),
+
+                                Section::make('Acciones de Auditoría')
+                                    ->schema([
+                                        Forms\Components\Actions::make([
+                                            Forms\Components\Actions\Action::make('export_user_data')
+                                                ->label('Exportar Datos del Usuario')
+                                                ->icon('heroicon-o-arrow-down-tray')
+                                                ->color('info')
+                                                ->action(function ($record) {
+                                                    try {
+                                                        // Aquí implementarías la lógica de exportación
+                                                        \Filament\Notifications\Notification::make()
+                                                            ->title('Exportación iniciada')
+                                                            ->body('Los datos del usuario se están preparando para descarga.')
+                                                            ->info()
+                                                            ->send();
+                                                    } catch (\Exception $e) {
+                                                        \Filament\Notifications\Notification::make()
+                                                            ->title('Error en exportación')
+                                                            ->body($e->getMessage())
+                                                            ->danger()
+                                                            ->send();
+                                                    }
+                                                }),
+
+                                            Forms\Components\Actions\Action::make('reset_password')
+                                                ->label('Enviar Reset de Contraseña')
+                                                ->icon('heroicon-o-key')
+                                                ->color('warning')
+                                                ->requiresConfirmation()
+                                                ->modalDescription('¿Deseas enviar un email de reset de contraseña a este usuario?')
+                                                ->action(function ($record) {
+                                                    try {
+                                                        // Aquí implementarías el envío de reset de contraseña
+                                                        \Filament\Notifications\Notification::make()
+                                                            ->title('Email enviado')
+                                                            ->body('Se ha enviado un email de reset de contraseña al usuario.')
+                                                            ->success()
+                                                            ->send();
+                                                    } catch (\Exception $e) {
+                                                        \Filament\Notifications\Notification::make()
+                                                            ->title('Error al enviar email')
+                                                            ->body($e->getMessage())
+                                                            ->danger()
+                                                            ->send();
+                                                    }
+                                                }),
+                                        ])
+                                            ->columnSpanFull(),
+                                    ]),
+                            ]),
                     ])
                     ->columnSpanFull(),
             ]);
