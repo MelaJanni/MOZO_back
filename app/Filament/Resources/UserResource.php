@@ -156,6 +156,30 @@ class UserResource extends Resource
 
                                                 $component->state($activeSubscription?->auto_renew ?? false);
                                             }),
+                                        Forms\Components\Placeholder::make('subscription_expires_display')
+                                            ->label('Vencimiento de membresía')
+                                            ->content(function ($record) {
+                                                if (!$record) return 'No disponible';
+
+                                                if ($record->is_lifetime_paid) {
+                                                    return 'Sin vencimiento (pago permanente)';
+                                                }
+
+                                                try {
+                                                    $activeSubscription = \App\Models\Subscription::where('user_id', $record->id)
+                                                        ->whereIn('status', ['active', 'in_trial'])
+                                                        ->first();
+
+                                                    if (!$activeSubscription || !$activeSubscription->current_period_end) {
+                                                        return 'Sin fecha de vencimiento';
+                                                    }
+
+                                                    $date = $activeSubscription->current_period_end;
+                                                    return $date->format('d/m/Y H:i') . ' (' . $date->diffForHumans() . ')';
+                                                } catch (\Exception $e) {
+                                                    return 'Error al cargar fecha: ' . $e->getMessage();
+                                                }
+                                            }),
                                     ])->columns(2),
                             ])
                     ])
