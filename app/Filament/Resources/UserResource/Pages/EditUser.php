@@ -150,18 +150,13 @@ class EditUser extends EditRecord
     {
         if (!$this->record) return;
 
+        // Modo demostración - simular actualización sin BD
+        if (!$this->isDatabaseConnected()) {
+            $this->simulateSubscriptionUpdate($planId);
+            return;
+        }
+
         try {
-            // Verificar conexión a BD con timeout más corto
-            try {
-                \Illuminate\Support\Facades\DB::connection()->getPdo();
-            } catch (\Exception $dbError) {
-                \Filament\Notifications\Notification::make()
-                    ->title('Modo demostración')
-                    ->body('Base de datos no conectada - funcionaría en producción')
-                    ->warning()
-                    ->send();
-                return;
-            }
 
             // Usar transacción para evitar problemas de concurrencia
             \Illuminate\Support\Facades\DB::transaction(function () use ($planId) {
@@ -253,5 +248,53 @@ class EditUser extends EditRecord
                 ->danger()
                 ->send();
         }
+    }
+
+    private function isDatabaseConnected(): bool
+    {
+        try {
+            \Illuminate\Support\Facades\DB::connection()->getPdo();
+            return true;
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
+    private function simulateSubscriptionUpdate($planId): void
+    {
+        $planNames = [
+            '1' => 'Plan Mensual',
+            '2' => 'Plan Anual',
+            '3' => 'Plan Premium',
+            null => 'Sin plan'
+        ];
+
+        $planName = $planNames[$planId] ?? 'Plan desconocido';
+
+        if (!$planId) {
+            \Filament\Notifications\Notification::make()
+                ->title('Simulación: Suscripción cancelada')
+                ->body('En producción se cancelaría el plan del usuario')
+                ->warning()
+                ->duration(3000)
+                ->send();
+        } else {
+            \Filament\Notifications\Notification::make()
+                ->title('Simulación: Plan actualizado')
+                ->body("En producción se cambiaría a: {$planName}")
+                ->info()
+                ->duration(3000)
+                ->send();
+        }
+
+        // Simular refrescar los datos del formulario
+        sleep(1);
+
+        \Filament\Notifications\Notification::make()
+            ->title('Modo demostración activo')
+            ->body('Conecta la base de datos para funcionalidad completa')
+            ->warning()
+            ->duration(2000)
+            ->sendAfter(1000);
     }
 }
