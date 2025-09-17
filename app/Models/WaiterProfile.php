@@ -16,6 +16,7 @@ class WaiterProfile extends Model
         'display_name',
         'bio',
         'phone',
+        'profile_image',
         'birth_date',
         'height',
         'weight',
@@ -74,10 +75,13 @@ class WaiterProfile extends Model
      */
     public function getAvatarUrlAttribute(): string
     {
+        if ($this->profile_image) {
+            return asset('storage/' . $this->profile_image);
+        }
         if ($this->avatar) {
             return asset('storage/' . $this->avatar);
         }
-        
+
         return 'https://ui-avatars.com/api/?name=' . urlencode($this->display_name) . '&color=7F9CF5&background=EBF4FF';
     }
 

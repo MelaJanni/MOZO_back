@@ -148,198 +148,91 @@ class EditUser extends EditRecord
 
     public function updateSubscription($planId)
     {
-        // Debug logging
-        \Log::info('UpdateSubscription started', [
-            'plan_id' => $planId,
-            'user_id' => $this->record?->id,
-            'memory_usage' => memory_get_usage(true),
-            'timestamp' => now()
-        ]);
-
         if (!$this->record) {
-            \Log::error('UpdateSubscription failed: No record found');
-            return;
-        }
-
-        // Modo demostración - simular actualización sin BD
-        if (!$this->isDatabaseConnected()) {
-            \Log::info('Database not connected, using simulation mode');
-            $this->simulateSubscriptionUpdate($planId);
             return;
         }
 
         try {
-            \Log::info('Starting database transaction for subscription update');
+            // Verificar si la base de datos está disponible
+            try {
+                \Illuminate\Support\Facades\DB::connection()->getPdo();
+            } catch (\Exception $dbError) {
+                \Filament\Notifications\Notification::make()
+                    ->title('Modo demostración')
+                    ->body('Base de datos no conectada. En producción esto funcionaría.')
+                    ->warning()
+                    ->duration(3000)
+                    ->send();
+                return;
+            }
 
-            // Usar transacción para evitar problemas de concurrencia
-            \Illuminate\Support\Facades\DB::transaction(function () use ($planId) {
-                \Log::info('Inside DB transaction', ['plan_id' => $planId]);
-
-                if (!$planId) {
-                    \Log::info('Canceling subscription - no plan selected');
-                    // Si no hay plan, cancelar suscripciones activas
-                    $canceledCount = \App\Models\Subscription::where('user_id', $this->record->id)
-                        ->whereIn('status', ['active', 'in_trial'])
-                        ->update(['status' => 'canceled']);
-
-                    \Log::info('Subscriptions canceled', ['count' => $canceledCount]);
-
-                    \Filament\Notifications\Notification::make()
-                        ->title('Suscripción cancelada')
-                        ->body('El usuario ya no tiene plan asignado')
-                        ->success()
-                        ->duration(4000)
-                        ->sendAfter(1500);
-                    return;
-                }
-
-                // Calcular nueva fecha de expiración según el plan
-                \Log::info('Calculating new expiration date for plan', ['plan_id' => $planId]);
-                $newExpirationDate = match($planId) {
-                    '1' => now()->addMonth(), // Plan Mensual
-                    '2' => now()->addYear(),  // Plan Anual
-                    '3' => now()->addYear(),  // Plan Premium (anual)
-                    default => now()->addMonth()
-                };
-
-                \Log::info('New expiration date calculated', ['date' => $newExpirationDate]);
-
-                $planNames = [
-                    '1' => 'Plan Mensual',
-                    '2' => 'Plan Anual',
-                    '3' => 'Plan Premium'
-                ];
-
-                // Actualizar suscripción existente o crear nueva
-                \Log::info('Looking for active subscription');
-                $activeSubscription = \App\Models\Subscription::where('user_id', $this->record->id)
+            if (!$planId) {
+                // Cancelar suscripciones activas
+                \App\Models\Subscription::where('user_id', $this->record->id)
                     ->whereIn('status', ['active', 'in_trial'])
-                    ->first();
+                    ->update(['status' => 'canceled']);
 
-                \Log::info('Active subscription found', ['exists' => $activeSubscription ? 'yes' : 'no']);
+                \Filament\Notifications\Notification::make()
+                    ->title('Plan cancelado')
+                    ->success()
+                    ->duration(3000)
+                    ->sendAfter(1500);
+                return;
+            }
 
-                if ($activeSubscription) {
-                    // Actualizar suscripción existente
-                    $activeSubscription->update([
-                        'plan_id' => $planId,
-                        'current_period_end' => $newExpirationDate,
-                    ]);
+            // Calcular fecha de expiración
+            $newExpirationDate = match($planId) {
+                '1' => now()->addMonth(),
+                '2' => now()->addYear(),
+                '3' => now()->addYear(),
+                default => now()->addMonth()
+            };
 
-                    $planName = $planNames[$planId] ?? 'Plan desconocido';
+            $planNames = [
+                '1' => 'Plan Mensual',
+                '2' => 'Plan Anual',
+                '3' => 'Plan Premium'
+            ];
 
-                    \Filament\Notifications\Notification::make()
-                        ->title('Plan actualizado')
-                        ->body("Suscripción cambiada a: {$planName}")
-                        ->success()
-                        ->duration(4000)
-                        ->sendAfter(1500);
-                } else {
-                    // Crear nueva suscripción
-                    \App\Models\Subscription::create([
-                        'user_id' => $this->record->id,
-                        'plan_id' => $planId,
-                        'provider' => 'manual',
-                        'status' => 'active',
-                        'current_period_end' => $newExpirationDate,
-                        'auto_renew' => true,
-                    ]);
+            // Buscar suscripción activa
+            $activeSubscription = \App\Models\Subscription::where('user_id', $this->record->id)
+                ->whereIn('status', ['active', 'in_trial'])
+                ->first();
 
-                    $planName = $planNames[$planId] ?? 'Plan desconocido';
+            if ($activeSubscription) {
+                // Actualizar existente
+                $activeSubscription->update([
+                    'plan_id' => $planId,
+                    'current_period_end' => $newExpirationDate,
+                ]);
+            } else {
+                // Crear nueva
+                \App\Models\Subscription::create([
+                    'user_id' => $this->record->id,
+                    'plan_id' => $planId,
+                    'provider' => 'manual',
+                    'status' => 'active',
+                    'current_period_end' => $newExpirationDate,
+                    'auto_renew' => true,
+                ]);
+            }
 
-                    \Filament\Notifications\Notification::make()
-                        ->title('Nueva suscripción creada')
-                        ->body("Usuario suscrito a: {$planName}")
-                        ->success()
-                        ->duration(4000)
-                        ->sendAfter(1500);
-                }
-            });
-
-            // Refrescar campos después de la transacción
-            $this->refreshFormData(['auto_renew', 'applied_coupon', 'subscription_expires_at']);
-
-        } catch (\Illuminate\Database\QueryException $e) {
-            \Log::error('Database error in updateSubscription', [
-                'error' => $e->getMessage(),
-                'code' => $e->getCode(),
-                'plan_id' => $planId,
-                'user_id' => $this->record?->id
-            ]);
+            $planName = $planNames[$planId] ?? 'Plan desconocido';
 
             \Filament\Notifications\Notification::make()
-                ->title('Error de base de datos')
-                ->body('Error al actualizar la suscripción. Intenta nuevamente.')
-                ->danger()
-                ->send();
+                ->title('Plan actualizado')
+                ->body("Cambiado a: {$planName}")
+                ->success()
+                ->duration(3000)
+                ->sendAfter(1500);
+
         } catch (\Exception $e) {
-            \Log::error('General error in updateSubscription', [
-                'error' => $e->getMessage(),
-                'code' => $e->getCode(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString(),
-                'plan_id' => $planId,
-                'user_id' => $this->record?->id
-            ]);
-
             \Filament\Notifications\Notification::make()
-                ->title('Error al actualizar suscripción')
-                ->body('Error interno del servidor. Contacta al administrador.')
+                ->title('Error al actualizar plan')
+                ->body('Intenta nuevamente.')
                 ->danger()
                 ->send();
         }
-
-        \Log::info('UpdateSubscription completed', [
-            'plan_id' => $planId,
-            'user_id' => $this->record?->id
-        ]);
     }
 
-    private function isDatabaseConnected(): bool
-    {
-        try {
-            \Illuminate\Support\Facades\DB::connection()->getPdo();
-            return true;
-        } catch (\Exception $e) {
-            return false;
-        }
-    }
-
-    private function simulateSubscriptionUpdate($planId): void
-    {
-        $planNames = [
-            '1' => 'Plan Mensual',
-            '2' => 'Plan Anual',
-            '3' => 'Plan Premium',
-            null => 'Sin plan'
-        ];
-
-        $planName = $planNames[$planId] ?? 'Plan desconocido';
-
-        if (!$planId) {
-            \Filament\Notifications\Notification::make()
-                ->title('Simulación: Suscripción cancelada')
-                ->body('En producción se cancelaría el plan del usuario')
-                ->warning()
-                ->duration(3000)
-                ->send();
-        } else {
-            \Filament\Notifications\Notification::make()
-                ->title('Simulación: Plan actualizado')
-                ->body("En producción se cambiaría a: {$planName}")
-                ->info()
-                ->duration(3000)
-                ->send();
-        }
-
-        // Simular refrescar los datos del formulario
-        sleep(1);
-
-        \Filament\Notifications\Notification::make()
-            ->title('Modo demostración activo')
-            ->body('Conecta la base de datos para funcionalidad completa')
-            ->warning()
-            ->duration(2000)
-            ->sendAfter(1000);
-    }
 }

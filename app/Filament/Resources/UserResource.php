@@ -321,8 +321,8 @@ class UserResource extends Resource
                         Tabs\Tab::make('mozo_info')
                             ->label('Información Mozo')
                             ->schema([
-                                Section::make('Perfil como Mozo')
-                                    ->description('Información del usuario en su rol de mozo')
+                                Section::make('Información Personal')
+                                    ->description('Datos básicos del perfil como mozo')
                                     ->schema([
                                         Forms\Components\TextInput::make('waiterProfile.display_name')
                                             ->label('Nombre para mostrar')
@@ -349,19 +349,179 @@ class UserResource extends Resource
                                             ->visibility('public')
                                             ->helperText('Imagen que aparecerá en tu perfil de mozo'),
                                     ])->columns(2),
+
+                                Section::make('Datos Físicos y Personales')
+                                    ->description('Información física y personal del mozo')
+                                    ->schema([
+                                        Forms\Components\DatePicker::make('waiterProfile.birth_date')
+                                            ->label('Fecha de nacimiento')
+                                            ->maxDate(now()->subYears(16))
+                                            ->helperText('Debes ser mayor de 16 años'),
+                                        Forms\Components\TextInput::make('waiterProfile.height')
+                                            ->label('Altura (metros)')
+                                            ->numeric()
+                                            ->step(0.01)
+                                            ->minValue(1.20)
+                                            ->maxValue(2.50)
+                                            ->placeholder('1.75')
+                                            ->suffix('m'),
+                                        Forms\Components\TextInput::make('waiterProfile.weight')
+                                            ->label('Peso (kg)')
+                                            ->numeric()
+                                            ->minValue(40)
+                                            ->maxValue(200)
+                                            ->placeholder('70')
+                                            ->suffix('kg'),
+                                        Forms\Components\Select::make('waiterProfile.gender')
+                                            ->label('Género')
+                                            ->options([
+                                                'male' => 'Masculino',
+                                                'female' => 'Femenino',
+                                                'other' => 'Otro',
+                                                'prefer_not_to_say' => 'Prefiero no decir',
+                                            ])
+                                            ->placeholder('Selecciona tu género'),
+                                    ])->columns(2),
+
+                                Section::make('Experiencia Laboral')
+                                    ->description('Información sobre experiencia y disponibilidad')
+                                    ->schema([
+                                        Forms\Components\TextInput::make('waiterProfile.experience_years')
+                                            ->label('Años de experiencia')
+                                            ->numeric()
+                                            ->minValue(0)
+                                            ->maxValue(50)
+                                            ->placeholder('2')
+                                            ->suffix('años')
+                                            ->helperText('Experiencia como mozo o en servicio al cliente'),
+                                        Forms\Components\Select::make('waiterProfile.employment_type')
+                                            ->label('Tipo de empleo')
+                                            ->options([
+                                                'full_time' => 'Tiempo completo',
+                                                'part_time' => 'Medio tiempo',
+                                                'freelance' => 'Freelance',
+                                                'occasional' => 'Ocasional',
+                                            ])
+                                            ->placeholder('Selecciona tipo de empleo'),
+                                        Forms\Components\Select::make('waiterProfile.current_schedule')
+                                            ->label('Horario actual')
+                                            ->options([
+                                                'morning' => 'Mañana (6:00 - 14:00)',
+                                                'afternoon' => 'Tarde (14:00 - 22:00)',
+                                                'night' => 'Noche (22:00 - 6:00)',
+                                                'flexible' => 'Horario flexible',
+                                                'weekends_only' => 'Solo fines de semana',
+                                            ])
+                                            ->placeholder('Selecciona tu horario'),
+                                        Forms\Components\TextInput::make('waiterProfile.current_location')
+                                            ->label('Ubicación actual')
+                                            ->maxLength(255)
+                                            ->placeholder('Ciudad, País')
+                                            ->helperText('Dónde trabajas actualmente'),
+                                    ])->columns(2),
+
+                                Section::make('Habilidades y Disponibilidad')
+                                    ->description('Habilidades especiales y estado de disponibilidad')
+                                    ->schema([
+                                        Forms\Components\TagsInput::make('waiterProfile.skills')
+                                            ->label('Habilidades especiales')
+                                            ->placeholder('Ej: Barista, Sommelier, Inglés, etc.')
+                                            ->helperText('Presiona Enter después de cada habilidad')
+                                            ->suggestions([
+                                                'Barista',
+                                                'Sommelier',
+                                                'Inglés',
+                                                'Francés',
+                                                'Italiano',
+                                                'Coctelería',
+                                                'Vinos',
+                                                'Atención VIP',
+                                                'Eventos',
+                                                'Catering',
+                                            ]),
+                                        Forms\Components\Textarea::make('waiterProfile.availability_hours')
+                                            ->label('Horarios de disponibilidad')
+                                            ->placeholder('Lunes a Viernes: 9:00 - 18:00\nSábados: 10:00 - 16:00')
+                                            ->rows(3)
+                                            ->helperText('Describe tus horarios disponibles'),
+                                        Forms\Components\Toggle::make('waiterProfile.is_available_for_hire')
+                                            ->label('Disponible para contratación')
+                                            ->helperText('¿Estás buscando trabajo actualmente?')
+                                            ->default(true),
+                                        Forms\Components\Toggle::make('waiterProfile.is_available')
+                                            ->label('Disponible ahora')
+                                            ->helperText('¿Estás disponible para trabajar hoy?')
+                                            ->default(false),
+                                    ])->columns(2),
+
+                                Section::make('Calificación y Estadísticas')
+                                    ->description('Rating y estadísticas de desempeño')
+                                    ->schema([
+                                        Forms\Components\TextInput::make('waiterProfile.rating')
+                                            ->label('Calificación promedio')
+                                            ->numeric()
+                                            ->minValue(0)
+                                            ->maxValue(5)
+                                            ->step(0.1)
+                                            ->placeholder('4.5')
+                                            ->suffix('⭐')
+                                            ->disabled()
+                                            ->helperText('Calculado automáticamente basado en reseñas'),
+                                        Forms\Components\TextInput::make('waiterProfile.total_reviews')
+                                            ->label('Total de reseñas')
+                                            ->numeric()
+                                            ->minValue(0)
+                                            ->placeholder('25')
+                                            ->disabled()
+                                            ->helperText('Número total de reseñas recibidas'),
+                                        Forms\Components\Placeholder::make('profile_completion')
+                                            ->label('Completitud del perfil')
+                                            ->content(function ($record) {
+                                                if (!$record || !$record->waiterProfile) {
+                                                    return 'Perfil no creado';
+                                                }
+
+                                                $profile = $record->waiterProfile;
+                                                $completedFields = 0;
+                                                $totalFields = 8;
+
+                                                if ($profile->birth_date) $completedFields++;
+                                                if ($profile->height) $completedFields++;
+                                                if ($profile->weight) $completedFields++;
+                                                if ($profile->gender) $completedFields++;
+                                                if ($profile->experience_years !== null) $completedFields++;
+                                                if ($profile->employment_type) $completedFields++;
+                                                if ($profile->current_schedule) $completedFields++;
+                                                if ($profile->skills && count($profile->skills) > 0) $completedFields++;
+
+                                                $percentage = round(($completedFields / $totalFields) * 100);
+                                                $color = $percentage >= 80 ? 'text-green-600' : ($percentage >= 50 ? 'text-yellow-600' : 'text-red-600');
+
+                                                return new \Illuminate\Support\HtmlString("
+                                                    <div class='{$color} font-semibold'>
+                                                        {$percentage}% completado ({$completedFields}/{$totalFields} campos)
+                                                    </div>
+                                                ");
+                                            }),
+                                    ])->columns(3),
                             ]),
 
                         Tabs\Tab::make('admin_info')
                             ->label('Información Admin')
                             ->schema([
-                                Section::make('Perfil Empresarial')
-                                    ->description('Información del usuario como administrador de negocio')
+                                Section::make('Información Empresarial')
+                                    ->description('Datos básicos del perfil empresarial')
                                     ->schema([
                                         Forms\Components\TextInput::make('adminProfile.display_name')
                                             ->label('Nombre empresarial')
                                             ->maxLength(255)
                                             ->placeholder('Nombre para el negocio')
                                             ->helperText('Como aparecerá en facturas y documentos oficiales'),
+                                        Forms\Components\TextInput::make('adminProfile.position')
+                                            ->label('Cargo/Posición')
+                                            ->maxLength(255)
+                                            ->placeholder('Gerente General, CEO, Propietario')
+                                            ->helperText('Tu posición en la empresa'),
                                         Forms\Components\TextInput::make('adminProfile.corporate_email')
                                             ->label('Email corporativo')
                                             ->email()
@@ -374,6 +534,23 @@ class UserResource extends Resource
                                             ->maxLength(20)
                                             ->placeholder('+1 234 567 8900')
                                             ->helperText('Teléfono principal del negocio'),
+                                        Forms\Components\TextInput::make('adminProfile.office_extension')
+                                            ->label('Extensión de oficina')
+                                            ->maxLength(10)
+                                            ->placeholder('101')
+                                            ->helperText('Extensión interna si aplica'),
+                                        Forms\Components\FileUpload::make('adminProfile.company_logo')
+                                            ->label('Logo de la empresa')
+                                            ->image()
+                                            ->imageEditor()
+                                            ->directory('company-logos')
+                                            ->visibility('public')
+                                            ->helperText('Logo que aparecerá en documentos y facturas'),
+                                    ])->columns(2),
+
+                                Section::make('Información Fiscal y Legal')
+                                    ->description('Datos fiscales y de ubicación del negocio')
+                                    ->schema([
                                         Forms\Components\TextInput::make('adminProfile.tax_id')
                                             ->label('ID Fiscal / RUC')
                                             ->maxLength(50)
@@ -385,14 +562,88 @@ class UserResource extends Resource
                                             ->rows(3)
                                             ->placeholder('Dirección completa del negocio...')
                                             ->helperText('Dirección física principal'),
-                                        Forms\Components\FileUpload::make('adminProfile.company_logo')
-                                            ->label('Logo de la empresa')
-                                            ->image()
-                                            ->imageEditor()
-                                            ->directory('company-logos')
-                                            ->visibility('public')
-                                            ->helperText('Logo que aparecerá en documentos y facturas'),
+                                        Forms\Components\Textarea::make('adminProfile.bio')
+                                            ->label('Descripción del negocio')
+                                            ->maxLength(1000)
+                                            ->rows(4)
+                                            ->placeholder('Describe tu negocio, especialidades, historia...')
+                                            ->helperText('Información que verán los clientes sobre tu negocio'),
                                     ])->columns(2),
+
+                                Section::make('Preferencias de Notificaciones')
+                                    ->description('Configura qué notificaciones quieres recibir')
+                                    ->schema([
+                                        Forms\Components\Toggle::make('adminProfile.notify_new_orders')
+                                            ->label('Notificar nuevas órdenes')
+                                            ->helperText('Recibir alertas cuando lleguen nuevos pedidos')
+                                            ->default(true),
+                                        Forms\Components\Toggle::make('adminProfile.notify_staff_requests')
+                                            ->label('Notificar solicitudes de personal')
+                                            ->helperText('Alertas sobre solicitudes de mozos y empleados')
+                                            ->default(true),
+                                        Forms\Components\Toggle::make('adminProfile.notify_reviews')
+                                            ->label('Notificar reseñas')
+                                            ->helperText('Recibir notificaciones de nuevas reseñas')
+                                            ->default(true),
+                                        Forms\Components\Toggle::make('adminProfile.notify_payments')
+                                            ->label('Notificar pagos')
+                                            ->helperText('Alertas sobre pagos y transacciones')
+                                            ->default(true),
+                                    ])->columns(2),
+
+                                Section::make('Actividad y Estadísticas')
+                                    ->description('Información sobre actividad y estado del perfil')
+                                    ->schema([
+                                        Forms\Components\Placeholder::make('last_active')
+                                            ->label('Última actividad')
+                                            ->content(function ($record) {
+                                                if (!$record || !$record->adminProfile || !$record->adminProfile->last_active_at) {
+                                                    return 'Sin actividad registrada';
+                                                }
+                                                return $record->adminProfile->last_active_at->format('d/m/Y H:i') .
+                                                       ' (' . $record->adminProfile->last_active_at->diffForHumans() . ')';
+                                            }),
+                                        Forms\Components\Placeholder::make('businesses_count')
+                                            ->label('Negocios administrados')
+                                            ->content(function ($record) {
+                                                if (!$record) return '0';
+                                                try {
+                                                    $count = \App\Models\Business::where('owner_id', $record->id)->count();
+                                                    $active = \App\Models\Business::where('owner_id', $record->id)
+                                                                ->where('is_active', true)->count();
+                                                    return "{$active} activos de {$count} totales";
+                                                } catch (\Exception $e) {
+                                                    return 'No disponible';
+                                                }
+                                            }),
+                                        Forms\Components\Placeholder::make('admin_profile_completion')
+                                            ->label('Completitud del perfil')
+                                            ->content(function ($record) {
+                                                if (!$record || !$record->adminProfile) {
+                                                    return 'Perfil no creado';
+                                                }
+
+                                                $profile = $record->adminProfile;
+                                                $completedFields = 0;
+                                                $totalFields = 6;
+
+                                                if ($profile->display_name) $completedFields++;
+                                                if ($profile->position) $completedFields++;
+                                                if ($profile->corporate_email) $completedFields++;
+                                                if ($profile->corporate_phone) $completedFields++;
+                                                if ($profile->tax_id) $completedFields++;
+                                                if ($profile->business_address) $completedFields++;
+
+                                                $percentage = round(($completedFields / $totalFields) * 100);
+                                                $color = $percentage >= 80 ? 'text-green-600' : ($percentage >= 50 ? 'text-yellow-600' : 'text-red-600');
+
+                                                return new \Illuminate\Support\HtmlString("
+                                                    <div class='{$color} font-semibold'>
+                                                        {$percentage}% completado ({$completedFields}/{$totalFields} campos)
+                                                    </div>
+                                                ");
+                                            }),
+                                    ])->columns(3),
                             ]),
 
                         Tabs\Tab::make('payments')

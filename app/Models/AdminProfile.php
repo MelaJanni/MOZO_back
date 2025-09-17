@@ -19,6 +19,9 @@ class AdminProfile extends Model
         'corporate_phone',
         'office_extension',
         'bio',
+        'tax_id',
+        'business_address',
+        'company_logo',
         'last_active_at',
         'notify_new_orders',
         'notify_staff_requests',
@@ -56,10 +59,13 @@ class AdminProfile extends Model
      */
     public function getAvatarUrlAttribute(): string
     {
+        if ($this->company_logo) {
+            return asset('storage/' . $this->company_logo);
+        }
         if ($this->avatar) {
             return asset('storage/' . $this->avatar);
         }
-        
+
         return 'https://ui-avatars.com/api/?name=' . urlencode($this->display_name) . '&color=DC2626&background=FEE2E2';
     }
 
