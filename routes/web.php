@@ -578,3 +578,26 @@ Route::get('/debug/user-resource', function() {
         ]);
     }
 });
+
+// Test específico para UserResource que da 502
+Route::get('/debug/test-userresource-form', function() {
+    try {
+        // Probar crear el formulario directamente
+        $user = \App\Models\User::first();
+        $resource = new \App\Filament\Resources\UserResource();
+
+        return response()->json([
+            'status' => 'success',
+            'user_id' => $user ? $user->id : 'no user found',
+            'resource_class' => get_class($resource)
+        ]);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => $e->getMessage(),
+            'line' => $e->getLine(),
+            'file' => $e->getFile(),
+            'trace' => explode("\n", $e->getTraceAsString())
+        ]);
+    }
+});
