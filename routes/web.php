@@ -509,3 +509,33 @@ Route::get('/admin/debug-simple', function() {
     return view('debug-simple', compact('systemInfo', 'logData', 'errors'));
 })->name('debug.simple');
 
+
+
+// Nueva ruta para ver logs de 502
+Route::get('/debug/502-logs', function() {
+    try {
+        $logFile = storage_path('logs/502-debug.log');
+
+        if (!file_exists($logFile)) {
+            return response()->json([
+                'error' => '502 log file not found',
+                'lines' => []
+            ]);
+        }
+
+        $lines = file($logFile);
+        $lastLines = array_slice($lines, -100); // Últimas 100 líneas
+
+        return response()->json([
+            'total_lines' => count($lines),
+            'file_size_mb' => round(filesize($logFile) / 1024 / 1024, 2),
+            'last_modified' => date('Y-m-d H:i:s', filemtime($logFile)),
+            'lines' => array_map('trim', $lastLines)
+        ]);
+    } catch (Exception $e) {
+        return response()->json([
+            'error' => $e->getMessage(),
+            'lines' => []
+        ]);
+    }
+});

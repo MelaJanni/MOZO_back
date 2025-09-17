@@ -96,49 +96,38 @@ class EditUser extends EditRecord
 
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
-        // Separar datos de perfiles del array principal
-        $adminProfileData = $data['adminProfile'] ?? [];
-        $waiterProfileData = $data['waiterProfile'] ?? [];
+        // Logging directo a archivo para capturar errores 502
+        $logFile = storage_path('logs/502-debug.log');
+        file_put_contents($logFile, "[" . now() . "] handleRecordUpdate INICIO\n", FILE_APPEND);
 
-        // Remover datos de perfiles del array principal
-        unset($data['adminProfile'], $data['waiterProfile']);
+        try {
+            file_put_contents($logFile, "[" . now() . "] Datos recibidos: " . json_encode(array_keys($data)) . "\n", FILE_APPEND);
 
-        // Actualizar datos básicos del usuario
-        $record->update($data);
+            // Separar datos de perfiles del array principal
+            $adminProfileData = $data['adminProfile'] ?? [];
+            $waiterProfileData = $data['waiterProfile'] ?? [];
+            file_put_contents($logFile, "[" . now() . "] Perfiles encontrados - Admin: " . (empty($adminProfileData) ? 'NO' : 'SI') . ", Waiter: " . (empty($waiterProfileData) ? 'NO' : 'SI') . "\n", FILE_APPEND);
 
-        // Actualizar AdminProfile si hay datos
-        if (!empty($adminProfileData) && array_filter($adminProfileData)) {
-            try {
-                $record->adminProfile()->updateOrCreate(
-                    ['user_id' => $record->id],
-                    $adminProfileData
-                );
-            } catch (\Exception $e) {
-                \Log::error('Error updating adminProfile: ' . $e->getMessage());
-                \Filament\Notifications\Notification::make()
-                    ->title('Error al guardar perfil de admin')
-                    ->danger()
-                    ->send();
-            }
+            // Remover datos de perfiles del array principal
+            unset($data['adminProfile'], $data['waiterProfile']);
+            file_put_contents($logFile, "[" . now() . "] Datos de usuario después de limpiar: " . json_encode(array_keys($data)) . "\n", FILE_APPEND);
+
+            // Actualizar datos básicos del usuario
+            file_put_contents($logFile, "[" . now() . "] Actualizando usuario ID: " . $record->id . "\n", FILE_APPEND);
+            $record->update($data);
+            file_put_contents($logFile, "[" . now() . "] Usuario actualizado correctamente\n", FILE_APPEND);
+
+            // NO actualizar perfiles para aislar el problema
+            file_put_contents($logFile, "[" . now() . "] SALTANDO actualización de perfiles\n", FILE_APPEND);
+
+            file_put_contents($logFile, "[" . now() . "] handleRecordUpdate COMPLETADO\n", FILE_APPEND);
+            return $record;
+
+        } catch (\Exception $e) {
+            file_put_contents($logFile, "[" . now() . "] ERROR CAPTURADO: " . $e->getMessage() . "\n", FILE_APPEND);
+            file_put_contents($logFile, "[" . now() . "] STACK TRACE: " . $e->getTraceAsString() . "\n", FILE_APPEND);
+            throw $e;
         }
-
-        // Actualizar WaiterProfile si hay datos
-        if (!empty($waiterProfileData) && array_filter($waiterProfileData)) {
-            try {
-                $record->waiterProfile()->updateOrCreate(
-                    ['user_id' => $record->id],
-                    $waiterProfileData
-                );
-            } catch (\Exception $e) {
-                \Log::error('Error updating waiterProfile: ' . $e->getMessage());
-                \Filament\Notifications\Notification::make()
-                    ->title('Error al guardar perfil de mozo')
-                    ->danger()
-                    ->send();
-            }
-        }
-
-        return $record;
     }
 
     protected function getRedirectUrl(): string
