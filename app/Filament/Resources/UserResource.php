@@ -133,7 +133,16 @@ class UserResource extends Resource
                                             ->label('Plan asignado')
                                             ->options(Plan::where('is_active', true)->pluck('name', 'id'))
                                             ->searchable()
-                                            ->nullable(),
+                                            ->nullable()
+                                            ->afterStateHydrated(function ($component, $record) {
+                                                if (!$record) return;
+
+                                                $activeSubscription = \App\Models\Subscription::where('user_id', $record->id)
+                                                    ->whereIn('status', ['active', 'in_trial'])
+                                                    ->first();
+
+                                                $component->state($activeSubscription?->plan_id);
+                                            }),
                                     ])->columns(2),
                             ])
                     ])
