@@ -21,7 +21,32 @@ class EditUser extends EditRecord
                 ->label('Guardar Cambios')
                 ->icon('heroicon-o-check')
                 ->color('success')
-                ->action('save'),
+                ->action(function () {
+                    // Mostrar notificación de guardado inmediatamente
+                    \Filament\Notifications\Notification::make()
+                        ->title('Guardando cambios...')
+                        ->body('Por favor espera mientras se actualizan los datos')
+                        ->info()
+                        ->duration(2000)
+                        ->send();
+
+                    try {
+                        $this->save();
+
+                        \Filament\Notifications\Notification::make()
+                            ->title('Cambios guardados exitosamente')
+                            ->body('Todos los datos han sido actualizados correctamente')
+                            ->success()
+                            ->duration(4000)
+                            ->sendAfter(1500);
+                    } catch (\Exception $e) {
+                        \Filament\Notifications\Notification::make()
+                            ->title('Error al guardar')
+                            ->body($e->getMessage())
+                            ->danger()
+                            ->send();
+                    }
+                }),
             Actions\DeleteAction::make()
                 ->label('Eliminar'),
         ];
@@ -148,7 +173,8 @@ class EditUser extends EditRecord
                     ->title('Suscripción cancelada')
                     ->body('El usuario ya no tiene plan asignado')
                     ->success()
-                    ->send();
+                    ->duration(4000)
+                    ->sendAfter(1500);
 
                 $this->refreshFormData(['auto_renew', 'applied_coupon', 'subscription_expires_at']);
                 return;
@@ -177,7 +203,8 @@ class EditUser extends EditRecord
                     ->title('Plan actualizado')
                     ->body("Suscripción cambiada a: {$planName}")
                     ->success()
-                    ->send();
+                    ->duration(4000)
+                    ->sendAfter(1500);
             } else {
                 // Crear nueva suscripción
                 \App\Models\Subscription::create([
@@ -195,7 +222,8 @@ class EditUser extends EditRecord
                     ->title('Nueva suscripción creada')
                     ->body("Usuario suscrito a: {$planName}")
                     ->success()
-                    ->send();
+                    ->duration(4000)
+                    ->sendAfter(1500);
             }
 
             // Refrescar otros campos relacionados

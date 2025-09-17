@@ -141,11 +141,21 @@ class UserResource extends Resource
                                             ->nullable()
                                             ->live()
                                             ->placeholder('Sin plan asignado')
+                                            ->helperText('Cambiar el plan actualiza la suscripción automáticamente')
                                             ->afterStateUpdated(function ($state, $record, $livewire) {
                                                 if (!$record) return;
 
+                                                // Mostrar notificación de loading inmediatamente
+                                                \Filament\Notifications\Notification::make()
+                                                    ->title('Actualizando plan...')
+                                                    ->body('Por favor espera mientras se actualiza la suscripción')
+                                                    ->info()
+                                                    ->duration(2000)
+                                                    ->send();
+
                                                 $livewire->updateSubscription($state);
-                                            }),
+                                            })
+                                            ->loadingMessage('Actualizando plan...'),
 
                                         Forms\Components\Toggle::make('auto_renew')
                                             ->label('Renovación automática')
@@ -154,15 +164,25 @@ class UserResource extends Resource
                                             ->afterStateUpdated(function ($state, $record, $livewire) {
                                                 if (!$record) return;
 
+                                                // Mostrar loading inmediatamente
+                                                \Filament\Notifications\Notification::make()
+                                                    ->title('Actualizando renovación...')
+                                                    ->body('Guardando configuración de renovación automática')
+                                                    ->info()
+                                                    ->duration(1500)
+                                                    ->send();
+
                                                 try {
                                                     \App\Models\Subscription::where('user_id', $record->id)
                                                         ->whereIn('status', ['active', 'in_trial'])
                                                         ->update(['auto_renew' => $state]);
 
+                                                    // Retrasar un poco la notificación de éxito para que se vea el loading
                                                     \Filament\Notifications\Notification::make()
                                                         ->title('Renovación automática ' . ($state ? 'activada' : 'desactivada'))
                                                         ->success()
-                                                        ->send();
+                                                        ->duration(3000)
+                                                        ->sendAfter(1000);
                                                 } catch (\Exception $e) {
                                                     \Filament\Notifications\Notification::make()
                                                         ->title('Error al actualizar renovación automática')
@@ -178,13 +198,23 @@ class UserResource extends Resource
                                             ->afterStateUpdated(function ($state, $record, $livewire) {
                                                 if (!$record) return;
 
+                                                // Loading inmediato
+                                                \Filament\Notifications\Notification::make()
+                                                    ->title('Actualizando estado permanente...')
+                                                    ->body('Modificando tipo de acceso del usuario')
+                                                    ->info()
+                                                    ->duration(1500)
+                                                    ->send();
+
                                                 try {
                                                     $record->update(['is_lifetime_paid' => $state]);
 
+                                                    // Éxito con retraso
                                                     \Filament\Notifications\Notification::make()
                                                         ->title($state ? 'Cliente permanente activado' : 'Cliente permanente desactivado')
                                                         ->success()
-                                                        ->send();
+                                                        ->duration(3000)
+                                                        ->sendAfter(1000);
                                                 } catch (\Exception $e) {
                                                     \Filament\Notifications\Notification::make()
                                                         ->title('Error al actualizar estado permanente')
@@ -213,6 +243,14 @@ class UserResource extends Resource
                                             ->afterStateUpdated(function ($state, $record, $livewire) {
                                                 if (!$record) return;
 
+                                                // Loading para cupón
+                                                \Filament\Notifications\Notification::make()
+                                                    ->title('Aplicando cupón...')
+                                                    ->body('Actualizando descuento en la suscripción')
+                                                    ->info()
+                                                    ->duration(1500)
+                                                    ->send();
+
                                                 try {
                                                     \App\Models\Subscription::where('user_id', $record->id)
                                                         ->whereIn('status', ['active', 'in_trial'])
@@ -221,7 +259,8 @@ class UserResource extends Resource
                                                     \Filament\Notifications\Notification::make()
                                                         ->title('Cupón actualizado exitosamente')
                                                         ->success()
-                                                        ->send();
+                                                        ->duration(3000)
+                                                        ->sendAfter(1000);
                                                 } catch (\Exception $e) {
                                                     \Filament\Notifications\Notification::make()
                                                         ->title('Error al actualizar cupón')
@@ -237,6 +276,14 @@ class UserResource extends Resource
                                             ->afterStateUpdated(function ($state, $record, $livewire) {
                                                 if (!$record || !$state) return;
 
+                                                // Loading para fecha
+                                                \Filament\Notifications\Notification::make()
+                                                    ->title('Actualizando fecha de vencimiento...')
+                                                    ->body('Modificando duración de la suscripción')
+                                                    ->info()
+                                                    ->duration(1500)
+                                                    ->send();
+
                                                 try {
                                                     \App\Models\Subscription::where('user_id', $record->id)
                                                         ->whereIn('status', ['active', 'in_trial'])
@@ -245,7 +292,8 @@ class UserResource extends Resource
                                                     \Filament\Notifications\Notification::make()
                                                         ->title('Fecha de vencimiento actualizada')
                                                         ->success()
-                                                        ->send();
+                                                        ->duration(3000)
+                                                        ->sendAfter(1000);
                                                 } catch (\Exception $e) {
                                                     \Filament\Notifications\Notification::make()
                                                         ->title('Error al actualizar fecha de vencimiento')
@@ -255,6 +303,11 @@ class UserResource extends Resource
                                             }),
                                     ])->columns(2),
 
+                                // Agregar componente de mejoras de loading
+                                Forms\Components\ViewField::make('loading_enhancements')
+                                    ->view('filament.components.loading-enhancement')
+                                    ->columnSpanFull()
+                                    ->hiddenLabel(),
                             ]),
 
                         Tabs\Tab::make('payments')
