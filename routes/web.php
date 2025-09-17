@@ -393,3 +393,23 @@ Route::post('/debug/clear-logs', function() {
     return response()->json(['status' => 'cleared']);
 });
 
+// Endpoint para sincronizar servidor (git pull)
+Route::get('/debug/sync-server', function() {
+    if (!app()->environment('production')) {
+        return response()->json(['error' => 'Only available in production']);
+    }
+
+    $output = [];
+    $returnVar = 0;
+
+    // Execute git pull
+    exec('cd /var/www/vhosts/mozoqr.com/httpdocs && git pull origin main 2>&1', $output, $returnVar);
+
+    return response()->json([
+        'status' => $returnVar === 0 ? 'success' : 'error',
+        'output' => $output,
+        'return_code' => $returnVar,
+        'timestamp' => now()
+    ]);
+});
+
