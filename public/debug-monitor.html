@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MOZO Debug Monitor</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1a1a1a; color: #00ff00; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #333; border-radius: 5px; background: #222; }
+        .logs { height: 400px; overflow-y: auto; background: #000; padding: 10px; border: 1px solid #444; }
+        .log-line { margin: 2px 0; padding: 2px 5px; }
+        .error { background: #330000; color: #ff6666; }
+        .info { color: #66ff66; }
+        .warning { color: #ffff66; }
+        .controls { text-align: center; margin: 20px 0; }
+        .btn { padding: 10px 20px; margin: 5px; background: #0066cc; color: white; border: none; cursor: pointer; border-radius: 3px; }
+        .btn:hover { background: #0088ff; }
+        .status { text-align: center; font-weight: bold; margin: 10px 0; }
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin: 20px 0; }
+        .stat { background: #333; padding: 10px; text-align: center; border-radius: 5px; }
+        .instructions { background: #003366; padding: 15px; margin: 20px 0; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 MOZO Debug Monitor</h1>
+
+        <div class="instructions">
+            <h3>📋 Instrucciones:</h3>
+            <p>1. Deja esta página abierta</p>
+            <p>2. En otra pestaña, ve al admin de usuarios y cambia un plan</p>
+            <p>3. Observa los logs en tiempo real aquí</p>
+            <p>4. Si aparece error 502, verás EXACTAMENTE qué está pasando</p>
+        </div>
+
+        <div class="controls">
+            <button class="btn" onclick="startMonitoring()">▶️ Iniciar Monitoreo</button>
+            <button class="btn" onclick="stopMonitoring()">⏸️ Parar</button>
+            <button class="btn" onclick="clearLogs()">🗑️ Limpiar Logs</button>
+            <button class="btn" onclick="refreshLogs()">🔄 Refrescar</button>
+        </div>
+
+        <div class="status" id="status">⏸️ Detenido</div>
+
+        <div class="stats">
+            <div class="stat">
+                <div>📊 Líneas de Log</div>
+                <div id="totalLines">-</div>
+            </div>
+            <div class="stat">
+                <div>💾 Tamaño del Log</div>
+                <div id="fileSize">-</div>
+            </div>
+            <div class="stat">
+                <div>🕒 Última Actualización</div>
+                <div id="lastModified">-</div>
+            </div>
+            <div class="stat">
+                <div>⚡ Actualizaciones</div>
+                <div id="updateCount">0</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>📝 Logs en Tiempo Real</h3>
+            <div class="logs" id="logs">
+                <div>Esperando logs...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let monitoringInterval = null;
+        let updateCount = 0;
+        let lastLogCount = 0;
+
+        function updateStatus(text, color = '#00ff00') {
+            const status = document.getElementById('status');
+            status.textContent = text;
+            status.style.color = color;
+        }
+
+        function startMonitoring() {
+            if (monitoringInterval) return;
+
+            updateStatus('🔄 Monitoreando...', '#ffff00');
+            monitoringInterval = setInterval(refreshLogs, 2000);
+            refreshLogs();
+        }
+
+        function stopMonitoring() {
+            if (monitoringInterval) {
+                clearInterval(monitoringInterval);
+                monitoringInterval = null;
+                updateStatus('⏸️ Detenido', '#ff6666');
+            }
+        }
+
+        async function refreshLogs() {
+            try {
+                const response = await fetch('/debug/live-logs');
+                const data = await response.json();
+
+                if (data.error) {
+                    updateStatus('❌ Error: ' + data.error, '#ff0000');
+                    return;
+                }
+
+                // Update stats
+                document.getElementById('totalLines').textContent = data.total_lines;
+                document.getElementById('fileSize').textContent = data.file_size_mb + ' MB';
+                document.getElementById('lastModified').textContent = data.last_modified;
+
+                updateCount++;
+                document.getElementById('updateCount').textContent = updateCount;
+
+                // Update logs
+                const logsDiv = document.getElementById('logs');
+                logsDiv.innerHTML = '';
+
+                data.lines.forEach(line => {
+                    const div = document.createElement('div');
+                    div.className = 'log-line';
+
+                    if (line.includes('ERROR') || line.includes('error') || line.includes('Exception')) {
+                        div.className += ' error';
+                    } else if (line.includes('WARNING') || line.includes('warning')) {
+                        div.className += ' warning';
+                    } else {
+                        div.className += ' info';
+                    }
+
+                    div.textContent = line;
+                    logsDiv.appendChild(div);
+                });
+
+                // Auto scroll to bottom
+                logsDiv.scrollTop = logsDiv.scrollHeight;
+
+                // Check for new logs
+                if (data.total_lines > lastLogCount) {
+                    updateStatus('✅ Monitoreando (' + (data.total_lines - lastLogCount) + ' nuevas)', '#00ff00');
+                    lastLogCount = data.total_lines;
+                } else if (monitoringInterval) {
+                    updateStatus('🔄 Monitoreando...', '#ffff00');
+                }
+
+            } catch (error) {
+                updateStatus('❌ Error de conexión: ' + error.message, '#ff0000');
+                console.error('Error fetching logs:', error);
+            }
+        }
+
+        async function clearLogs() {
+            if (confirm('¿Estás seguro que quieres limpiar los logs?')) {
+                try {
+                    await fetch('/debug/clear-logs', { method: 'POST' });
+                    updateCount = 0;
+                    lastLogCount = 0;
+                    updateStatus('🗑️ Logs limpiados', '#00ff00');
+                    setTimeout(refreshLogs, 1000);
+                } catch (error) {
+                    updateStatus('❌ Error limpiando logs', '#ff0000');
+                }
+            }
+        }
+
+        // Auto-start monitoring
+        window.onload = function() {
+            refreshLogs();
+        };
+    </script>
+</body>
+</html>

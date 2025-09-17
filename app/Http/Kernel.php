@@ -19,6 +19,7 @@ class Kernel extends HttpKernel
         \App\Http\Middleware\TrustProxies::class,
         \App\Http\Middleware\PreventRequestsDuringMaintenance::class,
         \App\Http\Middleware\HandleUploadErrors::class, // 📁 Manejo de errores de subida
+        \App\Http\Middleware\DetailedErrorLogger::class, // 🔍 Logging detallado de errores
         \App\Http\Middleware\LivewireDebugMiddleware::class, // 🐛 Debug de errores Livewire
         \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class,
         \App\Http\Middleware\TrimStrings::class,

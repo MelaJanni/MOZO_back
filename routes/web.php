@@ -367,3 +367,29 @@ Route::post('/debug-502-test', function (Request $request) {
     ]);
 });
 
+// Endpoint para ver logs en tiempo real
+Route::get('/debug/live-logs', function() {
+    $logFile = storage_path('logs/laravel.log');
+
+    if (!file_exists($logFile)) {
+        return response()->json(['error' => 'Log file not found']);
+    }
+
+    $lines = file($logFile);
+    $lastLines = array_slice($lines, -100); // Últimas 100 líneas
+
+    return response()->json([
+        'lines' => $lastLines,
+        'total_lines' => count($lines),
+        'file_size_mb' => round(filesize($logFile) / 1024 / 1024, 2),
+        'last_modified' => date('Y-m-d H:i:s', filemtime($logFile))
+    ]);
+});
+
+// Endpoint para limpiar logs
+Route::post('/debug/clear-logs', function() {
+    $logFile = storage_path('logs/laravel.log');
+    file_put_contents($logFile, "=== LOGS CLEARED AT " . now() . " ===\n");
+    return response()->json(['status' => 'cleared']);
+});
+
