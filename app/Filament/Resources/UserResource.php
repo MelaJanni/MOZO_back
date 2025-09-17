@@ -122,26 +122,204 @@ class UserResource extends Resource
                                     ])->columns(2),
 
                                 Section::make('Membresía y Pagos')
-                                    ->description('Para modificar la membresía, utiliza los botones de acción en la parte superior de la página.')
                                     ->schema([
-                                        Forms\Components\Placeholder::make('lifetime_status')
-                                            ->label('Estado de Cliente Permanente')
-                                            ->content(function ($record) {
-                                                if (!$record) return 'Cargando...';
+                                        Forms\Components\Select::make('current_plan_id')
+                                            ->label('Plan asignado')
+                                            ->options(function () {
+                                                try {
+                                                    return \App\Models\Plan::where('is_active', true)->pluck('name', 'id');
+                                                } catch (\Exception $e) {
+                                                    return [
+                                                        '' => 'Sin plan asignado',
+                                                        '1' => 'Plan Mensual - $9.99',
+                                                        '2' => 'Plan Anual - $99.99',
+                                                        '3' => 'Plan Premium - $19.99',
+                                                    ];
+                                                }
+                                            })
+                                            ->searchable()
+                                            ->nullable()
+                                            ->live()
+                                            ->placeholder('Sin plan asignado')
+                                            ->afterStateHydrated(function ($component, $record) {
+                                                if (!$record) return;
 
-                                                $status = $record->is_lifetime_paid ? 'Activado' : 'Desactivado';
-                                                $color = $record->is_lifetime_paid ? 'text-green-600' : 'text-gray-500';
-                                                $icon = $record->is_lifetime_paid ? '✅' : '❌';
+                                                try {
+                                                    $activeSubscription = \App\Models\Subscription::where('user_id', $record->id)
+                                                        ->whereIn('status', ['active', 'in_trial'])
+                                                        ->first();
 
-                                                return new \Illuminate\Support\HtmlString("
-                                                    <span class='font-medium {$color}'>
-                                                        {$icon} {$status}
-                                                    </span>
-                                                ");
+                                                    $component->state($activeSubscription?->plan_id);
+                                                } catch (\Exception $e) {
+                                                    $component->state(null);
+                                                }
+                                            })
+                                            ->afterStateUpdated(function ($state, $record, $livewire) {
+                                                if (!$record) return;
+
+                                                $livewire->updateSubscription($state);
                                             }),
 
-                                        Forms\Components\Placeholder::make('subscription_info')
-                                            ->label('Información de Suscripción Actual')
+                                        Forms\Components\Toggle::make('auto_renew')
+                                            ->label('Renovación automática')
+                                            ->helperText('La suscripción se renueva automáticamente')
+                                            ->live()
+                                            ->afterStateHydrated(function ($component, $record) {
+                                                if (!$record) return;
+
+                                                try {
+                                                    $activeSubscription = \App\Models\Subscription::where('user_id', $record->id)
+                                                        ->whereIn('status', ['active', 'in_trial'])
+                                                        ->first();
+
+                                                    $component->state($activeSubscription?->auto_renew ?? false);
+                                                } catch (\Exception $e) {
+                                                    $component->state(false);
+                                                }
+                                            })
+                                            ->afterStateUpdated(function ($state, $record, $livewire) {
+                                                if (!$record) return;
+
+                                                try {
+                                                    \App\Models\Subscription::where('user_id', $record->id)
+                                                        ->whereIn('status', ['active', 'in_trial'])
+                                                        ->update(['auto_renew' => $state]);
+
+                                                    \Filament\Notifications\Notification::make()
+                                                        ->title('Renovación automática ' . ($state ? 'activada' : 'desactivada'))
+                                                        ->success()
+                                                        ->send();
+                                                } catch (\Exception $e) {
+                                                    \Filament\Notifications\Notification::make()
+                                                        ->title('Error al actualizar renovación automática')
+                                                        ->danger()
+                                                        ->send();
+                                                }
+                                            }),
+
+                                        Forms\Components\Toggle::make('is_lifetime_paid')
+                                            ->label('Cliente pago permanente')
+                                            ->helperText('Usuario con acceso de por vida sin renovaciones')
+                                            ->live()
+                                            ->afterStateUpdated(function ($state, $record, $livewire) {
+                                                if (!$record) return;
+
+                                                try {
+                                                    $record->update(['is_lifetime_paid' => $state]);
+
+                                                    \Filament\Notifications\Notification::make()
+                                                        ->title($state ? 'Cliente permanente activado' : 'Cliente permanente desactivado')
+                                                        ->success()
+                                                        ->send();
+                                                } catch (\Exception $e) {
+                                                    \Filament\Notifications\Notification::make()
+                                                        ->title('Error al actualizar estado permanente')
+                                                        ->danger()
+                                                        ->send();
+                                                }
+                                            }),
+
+                                        Forms\Components\Select::make('applied_coupon')
+                                            ->label('Cupón aplicado')
+                                            ->options(function () {
+                                                try {
+                                                    return \App\Models\Coupon::where('is_active', true)->pluck('code', 'id');
+                                                } catch (\Exception $e) {
+                                                    return [
+                                                        '' => 'Sin cupón aplicado',
+                                                        '1' => 'DESCUENTO10',
+                                                        '2' => 'PROMO50',
+                                                        '3' => 'ANUAL25',
+                                                    ];
+                                                }
+                                            })
+                                            ->searchable()
+                                            ->nullable()
+                                            ->placeholder('Sin cupón aplicado')
+                                            ->afterStateHydrated(function ($component, $record) {
+                                                if (!$record) return;
+
+                                                try {
+                                                    $activeSubscription = \App\Models\Subscription::where('user_id', $record->id)
+                                                        ->whereIn('status', ['active', 'in_trial'])
+                                                        ->first();
+
+                                                    $component->state($activeSubscription?->coupon_id);
+                                                } catch (\Exception $e) {
+                                                    $component->state(null);
+                                                }
+                                            })
+                                            ->afterStateUpdated(function ($state, $record, $livewire) {
+                                                if (!$record) return;
+
+                                                try {
+                                                    \App\Models\Subscription::where('user_id', $record->id)
+                                                        ->whereIn('status', ['active', 'in_trial'])
+                                                        ->update(['coupon_id' => $state]);
+
+                                                    \Filament\Notifications\Notification::make()
+                                                        ->title('Cupón actualizado exitosamente')
+                                                        ->success()
+                                                        ->send();
+                                                } catch (\Exception $e) {
+                                                    \Filament\Notifications\Notification::make()
+                                                        ->title('Error al actualizar cupón')
+                                                        ->danger()
+                                                        ->send();
+                                                }
+                                            }),
+
+                                        Forms\Components\DateTimePicker::make('subscription_expires_at')
+                                            ->label('Vencimiento de membresía')
+                                            ->helperText('Fecha de vencimiento de la suscripción activa')
+                                            ->live()
+                                            ->afterStateHydrated(function ($component, $record) {
+                                                if (!$record) return;
+
+                                                try {
+                                                    $activeSubscription = \App\Models\Subscription::where('user_id', $record->id)
+                                                        ->whereIn('status', ['active', 'in_trial'])
+                                                        ->first();
+
+                                                    $endDate = $activeSubscription?->status === 'in_trial'
+                                                        ? $activeSubscription->trial_ends_at
+                                                        : $activeSubscription?->current_period_end;
+
+                                                    $component->state($endDate);
+                                                } catch (\Exception $e) {
+                                                    $component->state(null);
+                                                }
+                                            })
+                                            ->afterStateUpdated(function ($state, $record, $livewire) {
+                                                if (!$record || !$state) return;
+
+                                                try {
+                                                    \App\Models\Subscription::where('user_id', $record->id)
+                                                        ->whereIn('status', ['active', 'in_trial'])
+                                                        ->update(['current_period_end' => $state]);
+
+                                                    \Filament\Notifications\Notification::make()
+                                                        ->title('Fecha de vencimiento actualizada')
+                                                        ->success()
+                                                        ->send();
+                                                } catch (\Exception $e) {
+                                                    \Filament\Notifications\Notification::make()
+                                                        ->title('Error al actualizar fecha de vencimiento')
+                                                        ->danger()
+                                                        ->send();
+                                                }
+                                            }),
+                                    ])->columns(2),
+
+                            ]),
+
+                        Tabs\Tab::make('payments')
+                            ->label('Pagos y Suscripciones')
+                            ->schema([
+                                Section::make('Historial de Pagos')
+                                    ->schema([
+                                        Forms\Components\Placeholder::make('payments_summary')
+                                            ->label('Resumen de Pagos')
                                             ->content(function ($record) {
                                                 if (!$record) return 'Cargando...';
 
