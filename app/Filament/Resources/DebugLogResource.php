@@ -9,10 +9,18 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\File;
+use Illuminate\Database\Eloquent\Model;
+
+// Clase dummy para el resource
+class DebugLogModel extends Model
+{
+    protected $table = 'users'; // Usar tabla existente
+    public $timestamps = false;
+}
 
 class DebugLogResource extends Resource
 {
-    protected static ?string $model = null; // No necesitamos modelo
+    protected static ?string $model = DebugLogModel::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-bug-ant';
 
