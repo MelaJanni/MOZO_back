@@ -122,32 +122,22 @@ class UserResource extends Resource
                                     ])->columns(2),
 
                                 Section::make('Membresía y Pagos')
+                                    ->description('Para modificar la membresía, utiliza los botones de acción en la parte superior de la página.')
                                     ->schema([
-                                        Forms\Components\Toggle::make('is_lifetime_paid')
-                                            ->label('Cliente pago permanente')
-                                            ->helperText('Activa si el usuario tiene acceso permanente sin vencimiento')
-                                            ->live()
-                                            ->afterStateUpdated(function ($state, $record, $livewire) {
-                                                if (!$record) return;
+                                        Forms\Components\Placeholder::make('lifetime_status')
+                                            ->label('Estado de Cliente Permanente')
+                                            ->content(function ($record) {
+                                                if (!$record) return 'Cargando...';
 
-                                                try {
-                                                    $record->update(['is_lifetime_paid' => $state]);
+                                                $status = $record->is_lifetime_paid ? 'Activado' : 'Desactivado';
+                                                $color = $record->is_lifetime_paid ? 'text-green-600' : 'text-gray-500';
+                                                $icon = $record->is_lifetime_paid ? '✅' : '❌';
 
-                                                    \Filament\Notifications\Notification::make()
-                                                        ->title($state ? 'Cliente permanente activado' : 'Cliente permanente desactivado')
-                                                        ->success()
-                                                        ->duration(3000)
-                                                        ->send();
-
-                                                    // Refrescar la página para actualizar otros campos
-                                                    $livewire->refreshFormData(['subscription_info', 'subscription_expires_display']);
-                                                } catch (\Exception $e) {
-                                                    \Filament\Notifications\Notification::make()
-                                                        ->title('Error al actualizar: ' . $e->getMessage())
-                                                        ->danger()
-                                                        ->duration(5000)
-                                                        ->send();
-                                                }
+                                                return new \Illuminate\Support\HtmlString("
+                                                    <span class='font-medium {$color}'>
+                                                        {$icon} {$status}
+                                                    </span>
+                                                ");
                                             }),
 
                                         Forms\Components\Placeholder::make('subscription_info')
