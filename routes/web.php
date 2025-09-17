@@ -339,3 +339,31 @@ Route::get('/debug/pdf-style-hash', function(){
     ]);
 });
 
+// Endpoint de debug para probar si el servidor maneja POST correctamente
+Route::post('/debug-502-test', function (Request $request) {
+    \Log::info('502 Debug test endpoint hit', [
+        'method' => $request->method(),
+        'data' => $request->all(),
+        'memory' => memory_get_usage(true),
+        'time' => now(),
+        'user_agent' => $request->userAgent()
+    ]);
+
+    // Simular la carga de trabajo similar a Livewire
+    $startTime = microtime(true);
+
+    // Simular operaciones de BD
+    sleep(1);
+
+    $endTime = microtime(true);
+    $duration = $endTime - $startTime;
+
+    return response()->json([
+        'status' => 'success',
+        'message' => 'POST request handled successfully',
+        'memory_mb' => round(memory_get_usage(true) / 1024 / 1024, 2),
+        'duration_seconds' => round($duration, 2),
+        'time' => now()
+    ]);
+});
+
