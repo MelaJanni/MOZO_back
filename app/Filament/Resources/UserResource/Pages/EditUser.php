@@ -96,36 +96,18 @@ class EditUser extends EditRecord
 
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
-        // Logging directo a archivo para capturar errores 502
-        $logFile = storage_path('logs/502-debug.log');
-        file_put_contents($logFile, "[" . now() . "] handleRecordUpdate INICIO\n", FILE_APPEND);
-
+        // Versión simplificada - solo actualizar datos básicos del usuario
         try {
-            file_put_contents($logFile, "[" . now() . "] Datos recibidos: " . json_encode(array_keys($data)) . "\n", FILE_APPEND);
-
-            // Separar datos de perfiles del array principal
-            $adminProfileData = $data['adminProfile'] ?? [];
-            $waiterProfileData = $data['waiterProfile'] ?? [];
-            file_put_contents($logFile, "[" . now() . "] Perfiles encontrados - Admin: " . (empty($adminProfileData) ? 'NO' : 'SI') . ", Waiter: " . (empty($waiterProfileData) ? 'NO' : 'SI') . "\n", FILE_APPEND);
-
-            // Remover datos de perfiles del array principal
+            // Remover datos de perfiles para evitar cualquier conflicto
             unset($data['adminProfile'], $data['waiterProfile']);
-            file_put_contents($logFile, "[" . now() . "] Datos de usuario después de limpiar: " . json_encode(array_keys($data)) . "\n", FILE_APPEND);
 
-            // Actualizar datos básicos del usuario
-            file_put_contents($logFile, "[" . now() . "] Actualizando usuario ID: " . $record->id . "\n", FILE_APPEND);
+            // Actualizar solo el usuario básico
             $record->update($data);
-            file_put_contents($logFile, "[" . now() . "] Usuario actualizado correctamente\n", FILE_APPEND);
 
-            // NO actualizar perfiles para aislar el problema
-            file_put_contents($logFile, "[" . now() . "] SALTANDO actualización de perfiles\n", FILE_APPEND);
-
-            file_put_contents($logFile, "[" . now() . "] handleRecordUpdate COMPLETADO\n", FILE_APPEND);
             return $record;
 
         } catch (\Exception $e) {
-            file_put_contents($logFile, "[" . now() . "] ERROR CAPTURADO: " . $e->getMessage() . "\n", FILE_APPEND);
-            file_put_contents($logFile, "[" . now() . "] STACK TRACE: " . $e->getTraceAsString() . "\n", FILE_APPEND);
+            \Log::error('Error en handleRecordUpdate: ' . $e->getMessage());
             throw $e;
         }
     }

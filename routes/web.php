@@ -539,3 +539,42 @@ Route::get('/debug/502-logs', function() {
         ]);
     }
 });
+
+// Debug directo del UserResource
+Route::get('/debug/user-resource', function() {
+    try {
+        $logFile = storage_path('logs/user-resource-debug.log');
+        file_put_contents($logFile, "[" . now() . "] DEBUG: Accediendo a user-resource debug\n", FILE_APPEND);
+
+        // Intentar cargar la clase UserResource
+        $resourceClass = \App\Filament\Resources\UserResource::class;
+        file_put_contents($logFile, "[" . now() . "] DEBUG: UserResource class loaded: $resourceClass\n", FILE_APPEND);
+
+        // Verificar si EditUser existe
+        $editClass = \App\Filament\Resources\UserResource\Pages\EditUser::class;
+        file_put_contents($logFile, "[" . now() . "] DEBUG: EditUser class loaded: $editClass\n", FILE_APPEND);
+
+        // Intentar acceder a un usuario específico
+        $user = \App\Models\User::first();
+        if ($user) {
+            file_put_contents($logFile, "[" . now() . "] DEBUG: Usuario encontrado ID: {$user->id}\n", FILE_APPEND);
+        } else {
+            file_put_contents($logFile, "[" . now() . "] DEBUG: No se encontraron usuarios\n", FILE_APPEND);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Debug completado, revisar logs'
+        ]);
+
+    } catch (\Exception $e) {
+        $logFile = storage_path('logs/user-resource-debug.log');
+        file_put_contents($logFile, "[" . now() . "] ERROR: " . $e->getMessage() . "\n", FILE_APPEND);
+        file_put_contents($logFile, "[" . now() . "] TRACE: " . $e->getTraceAsString() . "\n", FILE_APPEND);
+
+        return response()->json([
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+    }
+});
