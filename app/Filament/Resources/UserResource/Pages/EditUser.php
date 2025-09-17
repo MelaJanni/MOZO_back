@@ -54,46 +54,30 @@ class EditUser extends EditRecord
 
     protected function mutateFormDataBeforeFill(array $data): array
     {
-        // Cargar datos de perfiles
         $user = $this->record;
 
-        if ($user->adminProfile) {
-            $data['adminProfile'] = $user->adminProfile->toArray();
+        if (!$user) {
+            return $data;
         }
 
-        if ($user->waiterProfile) {
-            $data['waiterProfile'] = $user->waiterProfile->toArray();
-        }
-
-        // Cargar datos de suscripción
         try {
-            $activeSubscription = \App\Models\Subscription::where('user_id', $user->id)
-                ->whereIn('status', ['active', 'in_trial'])
-                ->first();
-
-            if ($activeSubscription) {
-                $data['current_plan_id'] = $activeSubscription->plan_id;
-                $data['auto_renew'] = $activeSubscription->auto_renew;
-                $data['applied_coupon'] = $activeSubscription->coupon_id;
-
-                // Determinar la fecha de vencimiento
-                $endDate = $activeSubscription->status === 'in_trial'
-                    ? $activeSubscription->trial_ends_at
-                    : $activeSubscription->current_period_end;
-
-                $data['subscription_expires_at'] = $endDate;
-            } else {
-                $data['current_plan_id'] = null;
-                $data['auto_renew'] = false;
-                $data['applied_coupon'] = null;
-                $data['subscription_expires_at'] = null;
+            // Cargar perfil de admin si existe
+            if ($user->adminProfile) {
+                $adminData = $user->adminProfile->toArray();
+                $data['adminProfile'] = $adminData;
             }
         } catch (\Exception $e) {
-            // Si hay error en la BD, usar datos por defecto
-            $data['current_plan_id'] = null;
-            $data['auto_renew'] = false;
-            $data['applied_coupon'] = null;
-            $data['subscription_expires_at'] = null;
+            \Log::error('Error loading adminProfile: ' . $e->getMessage());
+        }
+
+        try {
+            // Cargar perfil de mozo si existe
+            if ($user->waiterProfile) {
+                $waiterData = $user->waiterProfile->toArray();
+                $data['waiterProfile'] = $waiterData;
+            }
+        } catch (\Exception $e) {
+            \Log::error('Error loading waiterProfile: ' . $e->getMessage());
         }
 
         return $data;
@@ -112,30 +96,46 @@ class EditUser extends EditRecord
 
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
-        // Separar datos de perfiles
+        // Separar datos de perfiles del array principal
         $adminProfileData = $data['adminProfile'] ?? [];
         $waiterProfileData = $data['waiterProfile'] ?? [];
 
         // Remover datos de perfiles del array principal
         unset($data['adminProfile'], $data['waiterProfile']);
 
-        // Actualizar el usuario
+        // Actualizar datos básicos del usuario
         $record->update($data);
 
-        // Actualizar o crear AdminProfile
+        // Actualizar AdminProfile si hay datos
         if (!empty($adminProfileData) && array_filter($adminProfileData)) {
-            $record->adminProfile()->updateOrCreate(
-                ['user_id' => $record->id],
-                $adminProfileData
-            );
+            try {
+                $record->adminProfile()->updateOrCreate(
+                    ['user_id' => $record->id],
+                    $adminProfileData
+                );
+            } catch (\Exception $e) {
+                \Log::error('Error updating adminProfile: ' . $e->getMessage());
+                \Filament\Notifications\Notification::make()
+                    ->title('Error al guardar perfil de admin')
+                    ->danger()
+                    ->send();
+            }
         }
 
-        // Actualizar o crear WaiterProfile
+        // Actualizar WaiterProfile si hay datos
         if (!empty($waiterProfileData) && array_filter($waiterProfileData)) {
-            $record->waiterProfile()->updateOrCreate(
-                ['user_id' => $record->id],
-                $waiterProfileData
-            );
+            try {
+                $record->waiterProfile()->updateOrCreate(
+                    ['user_id' => $record->id],
+                    $waiterProfileData
+                );
+            } catch (\Exception $e) {
+                \Log::error('Error updating waiterProfile: ' . $e->getMessage());
+                \Filament\Notifications\Notification::make()
+                    ->title('Error al guardar perfil de mozo')
+                    ->danger()
+                    ->send();
+            }
         }
 
         return $record;
