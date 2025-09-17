@@ -55,9 +55,11 @@ class UserResource extends Resource
                                     ->schema([
                                         Forms\Components\Toggle::make('is_system_super_admin')
                                             ->label('Super Administrador del Sistema')
+                                            ->dehydrated(false)
                                             ->helperText('Otorga acceso completo al panel administrativo'),
                                         Forms\Components\Toggle::make('is_lifetime_paid')
                                             ->label('Cliente pago permanente')
+                                            ->dehydrated(false)
                                             ->helperText('Usuario con acceso de por vida sin renovaciones'),
                                     ])->columns(2),
                             ]),

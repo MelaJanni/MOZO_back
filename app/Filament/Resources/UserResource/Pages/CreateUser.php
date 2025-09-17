@@ -8,6 +8,7 @@ use App\Models\WaiterProfile;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Schema;
 
 class CreateUser extends CreateRecord
 {
@@ -35,7 +36,14 @@ class CreateUser extends CreateRecord
         unset($data['adminProfile'], $data['waiterProfile']);
 
         // Crear el usuario
-        $user = static::getModel()::create($data);
+        // Construir datos del usuario respetando columnas existentes
+        $userData = $data;
+        foreach (['is_system_super_admin','is_lifetime_paid'] as $flag) {
+            if (!Schema::hasColumn('users', $flag)) {
+                unset($userData[$flag]);
+            }
+        }
+        $user = static::getModel()::create($userData);
 
         // Crear perfiles si tienen datos
         if (!empty($adminProfileData) && array_filter($adminProfileData)) {

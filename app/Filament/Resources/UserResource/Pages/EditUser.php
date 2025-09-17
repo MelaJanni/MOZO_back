@@ -9,6 +9,7 @@ use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Schema;
 
 class EditUser extends EditRecord
 {
@@ -43,6 +44,13 @@ class EditUser extends EditRecord
         // Versión ultra-simple para encontrar el problema
         try {
             \Log::info('Inicio de handleRecordUpdate', ['data_keys' => array_keys($data)]);
+
+            // No enviar flags si la columna no existe en este entorno
+            foreach (['is_system_super_admin','is_lifetime_paid'] as $flag) {
+                if (!Schema::hasColumn('users', $flag)) {
+                    unset($data[$flag]);
+                }
+            }
 
             $record->update($data);
 
