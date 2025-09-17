@@ -17,8 +17,11 @@ class EditUser extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\ViewAction::make()
-                ->label('Ver'),
+            Actions\Action::make('save')
+                ->label('Guardar Cambios')
+                ->icon('heroicon-o-check')
+                ->color('success')
+                ->action('save'),
             Actions\DeleteAction::make()
                 ->label('Eliminar'),
         ];
@@ -35,6 +38,37 @@ class EditUser extends EditRecord
 
         if ($user->waiterProfile) {
             $data['waiterProfile'] = $user->waiterProfile->toArray();
+        }
+
+        // Cargar datos de suscripción
+        try {
+            $activeSubscription = \App\Models\Subscription::where('user_id', $user->id)
+                ->whereIn('status', ['active', 'in_trial'])
+                ->first();
+
+            if ($activeSubscription) {
+                $data['current_plan_id'] = $activeSubscription->plan_id;
+                $data['auto_renew'] = $activeSubscription->auto_renew;
+                $data['applied_coupon'] = $activeSubscription->coupon_id;
+
+                // Determinar la fecha de vencimiento
+                $endDate = $activeSubscription->status === 'in_trial'
+                    ? $activeSubscription->trial_ends_at
+                    : $activeSubscription->current_period_end;
+
+                $data['subscription_expires_at'] = $endDate;
+            } else {
+                $data['current_plan_id'] = null;
+                $data['auto_renew'] = false;
+                $data['applied_coupon'] = null;
+                $data['subscription_expires_at'] = null;
+            }
+        } catch (\Exception $e) {
+            // Si hay error en la BD, usar datos por defecto
+            $data['current_plan_id'] = null;
+            $data['auto_renew'] = false;
+            $data['applied_coupon'] = null;
+            $data['subscription_expires_at'] = null;
         }
 
         return $data;
@@ -85,5 +119,94 @@ class EditUser extends EditRecord
     protected function getRedirectUrl(): string
     {
         return $this->getResource()::getUrl('index');
+    }
+
+    public function updateSubscription($planId)
+    {
+        if (!$this->record) return;
+
+        try {
+            // Verificar conexión a BD
+            try {
+                \Illuminate\Support\Facades\DB::connection()->getPdo();
+            } catch (\Exception $dbError) {
+                \Filament\Notifications\Notification::make()
+                    ->title('Modo demostración')
+                    ->body('Base de datos no conectada - funcionaría en producción')
+                    ->warning()
+                    ->send();
+                return;
+            }
+
+            if (!$planId) {
+                // Si no hay plan, cancelar suscripciones activas
+                $canceled = \App\Models\Subscription::where('user_id', $this->record->id)
+                    ->whereIn('status', ['active', 'in_trial'])
+                    ->update(['status' => 'canceled']);
+
+                \Filament\Notifications\Notification::make()
+                    ->title('Suscripción cancelada')
+                    ->body('El usuario ya no tiene plan asignado')
+                    ->success()
+                    ->send();
+
+                $this->refreshFormData(['auto_renew', 'applied_coupon', 'subscription_expires_at']);
+                return;
+            }
+
+            // Actualizar suscripción existente o crear nueva
+            $activeSubscription = \App\Models\Subscription::where('user_id', $this->record->id)
+                ->whereIn('status', ['active', 'in_trial'])
+                ->first();
+
+            $planNames = [
+                '1' => 'Plan Mensual',
+                '2' => 'Plan Anual',
+                '3' => 'Plan Premium'
+            ];
+
+            if ($activeSubscription) {
+                // Actualizar suscripción existente
+                $activeSubscription->update([
+                    'plan_id' => $planId,
+                ]);
+
+                $planName = $planNames[$planId] ?? 'Plan desconocido';
+
+                \Filament\Notifications\Notification::make()
+                    ->title('Plan actualizado')
+                    ->body("Suscripción cambiada a: {$planName}")
+                    ->success()
+                    ->send();
+            } else {
+                // Crear nueva suscripción
+                \App\Models\Subscription::create([
+                    'user_id' => $this->record->id,
+                    'plan_id' => $planId,
+                    'provider' => 'manual',
+                    'status' => 'active',
+                    'current_period_end' => now()->addMonth(),
+                    'auto_renew' => true,
+                ]);
+
+                $planName = $planNames[$planId] ?? 'Plan desconocido';
+
+                \Filament\Notifications\Notification::make()
+                    ->title('Nueva suscripción creada')
+                    ->body("Usuario suscrito a: {$planName}")
+                    ->success()
+                    ->send();
+            }
+
+            // Refrescar otros campos relacionados
+            $this->refreshFormData(['auto_renew', 'applied_coupon', 'subscription_expires_at']);
+
+        } catch (\Exception $e) {
+            \Filament\Notifications\Notification::make()
+                ->title('Error al actualizar suscripción')
+                ->body($e->getMessage())
+                ->danger()
+                ->send();
+        }
     }
 }

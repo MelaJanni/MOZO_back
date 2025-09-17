@@ -141,19 +141,6 @@ class UserResource extends Resource
                                             ->nullable()
                                             ->live()
                                             ->placeholder('Sin plan asignado')
-                                            ->afterStateHydrated(function ($component, $record) {
-                                                if (!$record) return;
-
-                                                try {
-                                                    $activeSubscription = \App\Models\Subscription::where('user_id', $record->id)
-                                                        ->whereIn('status', ['active', 'in_trial'])
-                                                        ->first();
-
-                                                    $component->state($activeSubscription?->plan_id);
-                                                } catch (\Exception $e) {
-                                                    $component->state(null);
-                                                }
-                                            })
                                             ->afterStateUpdated(function ($state, $record, $livewire) {
                                                 if (!$record) return;
 
@@ -164,19 +151,6 @@ class UserResource extends Resource
                                             ->label('Renovación automática')
                                             ->helperText('La suscripción se renueva automáticamente')
                                             ->live()
-                                            ->afterStateHydrated(function ($component, $record) {
-                                                if (!$record) return;
-
-                                                try {
-                                                    $activeSubscription = \App\Models\Subscription::where('user_id', $record->id)
-                                                        ->whereIn('status', ['active', 'in_trial'])
-                                                        ->first();
-
-                                                    $component->state($activeSubscription?->auto_renew ?? false);
-                                                } catch (\Exception $e) {
-                                                    $component->state(false);
-                                                }
-                                            })
                                             ->afterStateUpdated(function ($state, $record, $livewire) {
                                                 if (!$record) return;
 
@@ -236,19 +210,6 @@ class UserResource extends Resource
                                             ->searchable()
                                             ->nullable()
                                             ->placeholder('Sin cupón aplicado')
-                                            ->afterStateHydrated(function ($component, $record) {
-                                                if (!$record) return;
-
-                                                try {
-                                                    $activeSubscription = \App\Models\Subscription::where('user_id', $record->id)
-                                                        ->whereIn('status', ['active', 'in_trial'])
-                                                        ->first();
-
-                                                    $component->state($activeSubscription?->coupon_id);
-                                                } catch (\Exception $e) {
-                                                    $component->state(null);
-                                                }
-                                            })
                                             ->afterStateUpdated(function ($state, $record, $livewire) {
                                                 if (!$record) return;
 
@@ -273,23 +234,6 @@ class UserResource extends Resource
                                             ->label('Vencimiento de membresía')
                                             ->helperText('Fecha de vencimiento de la suscripción activa')
                                             ->live()
-                                            ->afterStateHydrated(function ($component, $record) {
-                                                if (!$record) return;
-
-                                                try {
-                                                    $activeSubscription = \App\Models\Subscription::where('user_id', $record->id)
-                                                        ->whereIn('status', ['active', 'in_trial'])
-                                                        ->first();
-
-                                                    $endDate = $activeSubscription?->status === 'in_trial'
-                                                        ? $activeSubscription->trial_ends_at
-                                                        : $activeSubscription?->current_period_end;
-
-                                                    $component->state($endDate);
-                                                } catch (\Exception $e) {
-                                                    $component->state(null);
-                                                }
-                                            })
                                             ->afterStateUpdated(function ($state, $record, $livewire) {
                                                 if (!$record || !$state) return;
 
@@ -1454,8 +1398,8 @@ class UserResource extends Resource
         return [
             'index' => Pages\ListUsers::route('/'),
             'create' => Pages\CreateUser::route('/create'),
-            'view' => Pages\ViewUser::route('/{record}'),
             'edit' => Pages\EditUser::route('/{record}/edit'),
+            'view' => Pages\EditUser::route('/{record}'),
         ];
     }
 }
