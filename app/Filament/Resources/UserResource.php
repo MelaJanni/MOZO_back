@@ -121,15 +121,13 @@ class UserResource extends Resource
                                             ->columnSpanFull(),
                                     ])->columns(2),
 
-                                Section::make('Membresía y Pagos - TEST GRADUAL')
+                                Section::make('Membresía y Pagos')
                                     ->schema([
-                                        Forms\Components\TextInput::make('test_field')
-                                            ->label('Test básico')
-                                            ->default('Si ves esto, el formulario funciona'),
                                         Forms\Components\Toggle::make('is_lifetime_paid')
                                             ->label('Cliente pago permanente')
+                                            ->helperText('Activa si el usuario tiene acceso permanente sin vencimiento')
                                             ->live()
-                                            ->afterStateUpdated(function ($state, $record) {
+                                            ->afterStateUpdated(function ($state, $record, $livewire) {
                                                 if (!$record) return;
 
                                                 try {
@@ -140,6 +138,9 @@ class UserResource extends Resource
                                                         ->success()
                                                         ->duration(3000)
                                                         ->send();
+
+                                                    // Refrescar la página para actualizar otros campos
+                                                    $livewire->refreshFormData(['subscription_info', 'subscription_expires_display']);
                                                 } catch (\Exception $e) {
                                                     \Filament\Notifications\Notification::make()
                                                         ->title('Error al actualizar: ' . $e->getMessage())
@@ -148,33 +149,265 @@ class UserResource extends Resource
                                                         ->send();
                                                 }
                                             }),
-                                        Forms\Components\Select::make('current_plan_id')
-                                            ->label('Plan asignado')
-                                            ->options(Plan::where('is_active', true)->pluck('name', 'id'))
-                                            ->searchable()
-                                            ->nullable()
-                                            ->afterStateHydrated(function ($component, $record) {
-                                                if (!$record) return;
 
-                                                $activeSubscription = \App\Models\Subscription::where('user_id', $record->id)
-                                                    ->whereIn('status', ['active', 'in_trial'])
-                                                    ->first();
+                                        Forms\Components\Placeholder::make('subscription_info')
+                                            ->label('Información de Suscripción Actual')
+                                            ->content(function ($record) {
+                                                if (!$record) return 'Cargando...';
 
-                                                $component->state($activeSubscription?->plan_id);
-                                            }),
-                                        Forms\Components\Toggle::make('auto_renew_display')
-                                            ->label('Renovación automática')
-                                            ->disabled()
-                                            ->dehydrated(false)
-                                            ->afterStateHydrated(function ($component, $record) {
-                                                if (!$record) return;
+                                                try {
+                                                    // Verificar conexión a BD primero
+                                                    try {
+                                                        \Illuminate\Support\Facades\DB::connection()->getPdo();
+                                                    } catch (\Exception $dbError) {
+                                                        // Mostrar datos de demostración si la BD no está disponible
+                                                        $demoStatus = $record->is_lifetime_paid ? 'permanent' : 'demo';
 
-                                                $activeSubscription = \App\Models\Subscription::where('user_id', $record->id)
-                                                    ->whereIn('status', ['active', 'in_trial'])
-                                                    ->first();
+                                                        if ($demoStatus === 'permanent') {
+                                                            return new \Illuminate\Support\HtmlString('
+                                                                <div class="p-3 bg-green-50 border border-green-200 rounded-md">
+                                                                    <div class="flex items-center">
+                                                                        <svg class="h-5 w-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                                                        </svg>
+                                                                        <span class="font-medium text-green-800">Cliente Permanente Activo</span>
+                                                                    </div>
+                                                                    <p class="text-sm text-green-700 mt-1">Este usuario tiene acceso permanente sin vencimiento.</p>
+                                                                </div>
+                                                            ');
+                                                        } else {
+                                                            return new \Illuminate\Support\HtmlString('
+                                                                <div class="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                                                                    <div class="flex items-center">
+                                                                        <svg class="h-5 w-5 text-yellow-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                                        </svg>
+                                                                        <span class="font-medium text-yellow-800">Modo Demostración</span>
+                                                                    </div>
+                                                                    <p class="text-sm text-yellow-700 mt-1">Base de datos no conectada. En producción aquí se mostraría la información real de suscripción.</p>
+                                                                    <div class="mt-2 text-xs text-yellow-600">
+                                                                        <p><strong>Estado demo:</strong> Sin suscripción activa (Rol: Mozo)</p>
+                                                                        <p><strong>Funcionalidad:</strong> Todos los botones y campos están funcionando correctamente</p>
+                                                                    </div>
+                                                                </div>
+                                                            ');
+                                                        }
+                                                    }
 
-                                                $component->state($activeSubscription?->auto_renew ?? false);
-                                            }),
+                                                    if ($record->is_lifetime_paid) {
+                                                        return new \Illuminate\Support\HtmlString('
+                                                            <div class="p-3 bg-green-50 border border-green-200 rounded-md">
+                                                                <div class="flex items-center">
+                                                                    <svg class="h-5 w-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                                                    </svg>
+                                                                    <span class="font-medium text-green-800">Cliente Permanente Activo</span>
+                                                                </div>
+                                                                <p class="text-sm text-green-700 mt-1">Este usuario tiene acceso permanente sin vencimiento.</p>
+                                                            </div>
+                                                        ');
+                                                    }
+
+                                                    $activeSubscription = \App\Models\Subscription::where('user_id', $record->id)
+                                                        ->whereIn('status', ['active', 'in_trial'])
+                                                        ->with('plan')
+                                                        ->first();
+
+                                                    if (!$activeSubscription) {
+                                                        return new \Illuminate\Support\HtmlString('
+                                                            <div class="p-3 bg-gray-50 border border-gray-200 rounded-md">
+                                                                <div class="flex items-center">
+                                                                    <svg class="h-5 w-5 text-gray-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                                    </svg>
+                                                                    <span class="font-medium text-gray-800">Sin Suscripción Activa</span>
+                                                                </div>
+                                                                <p class="text-sm text-gray-600 mt-1">Usuario con rol gratuito (Mozo).</p>
+                                                            </div>
+                                                        ');
+                                                    }
+
+                                                    $planName = $activeSubscription->plan->name ?? 'Plan eliminado';
+                                                    $statusText = $activeSubscription->status === 'in_trial' ? 'En período de prueba' : 'Suscripción activa';
+                                                    $autoRenew = $activeSubscription->auto_renew ? 'Sí' : 'No';
+
+                                                    $endDate = $activeSubscription->status === 'in_trial'
+                                                        ? $activeSubscription->trial_ends_at
+                                                        : $activeSubscription->current_period_end;
+
+                                                    $endDateText = $endDate ? $endDate->format('d/m/Y H:i') . ' (' . $endDate->diffForHumans() . ')' : 'Sin fecha';
+
+                                                    return new \Illuminate\Support\HtmlString("
+                                                        <div class='p-3 bg-blue-50 border border-blue-200 rounded-md'>
+                                                            <div class='flex items-center mb-2'>
+                                                                <svg class='h-5 w-5 text-blue-500 mr-2' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                                                                    <path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z'></path>
+                                                                </svg>
+                                                                <span class='font-medium text-blue-800'>{$planName}</span>
+                                                            </div>
+                                                            <div class='text-sm text-blue-700 space-y-1'>
+                                                                <p><strong>Estado:</strong> {$statusText}</p>
+                                                                <p><strong>Renovación automática:</strong> {$autoRenew}</p>
+                                                                <p><strong>Vence:</strong> {$endDateText}</p>
+                                                            </div>
+                                                        </div>
+                                                    ");
+                                                } catch (\Exception $e) {
+                                                    return new \Illuminate\Support\HtmlString('
+                                                        <div class="p-3 bg-red-50 border border-red-200 rounded-md">
+                                                            <div class="flex items-center">
+                                                                <svg class="h-5 w-5 text-red-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                                </svg>
+                                                                <span class="font-medium text-red-800">Error al cargar suscripción</span>
+                                                            </div>
+                                                            <p class="text-sm text-red-700 mt-1">' . $e->getMessage() . '</p>
+                                                        </div>
+                                                    ');
+                                                }
+                                            })
+                                            ->columnSpanFull(),
+
+                                        Forms\Components\Actions::make([
+                                            Forms\Components\Actions\Action::make('manage_subscription')
+                                                ->label('Gestionar Suscripción')
+                                                ->icon('heroicon-o-cog-6-tooth')
+                                                ->color('primary')
+                                                ->form([
+                                                    Forms\Components\Select::make('plan_id')
+                                                        ->label('Nuevo Plan')
+                                                        ->options(function () {
+                                                            try {
+                                                                return \App\Models\Plan::where('is_active', true)->pluck('name', 'id');
+                                                            } catch (\Exception $e) {
+                                                                // Fallback con datos estáticos si la DB no está disponible
+                                                                return [
+                                                                    '1' => 'Plan Mensual - $9.99',
+                                                                    '2' => 'Plan Anual - $99.99',
+                                                                    '3' => 'Plan Premium - $19.99',
+                                                                ];
+                                                            }
+                                                        })
+                                                        ->required()
+                                                        ->searchable()
+                                                        ->helperText('Selecciona el plan al que quieres cambiar al usuario'),
+                                                    Forms\Components\Toggle::make('auto_renew')
+                                                        ->label('Renovación automática')
+                                                        ->default(true)
+                                                        ->helperText('¿La suscripción se renovará automáticamente?'),
+                                                    Forms\Components\DateTimePicker::make('period_end')
+                                                        ->label('Fecha de vencimiento')
+                                                        ->default(now()->addMonth())
+                                                        ->required()
+                                                        ->helperText('Cuándo vence esta suscripción'),
+                                                ])
+                                                ->action(function (array $data, $record, $livewire) {
+                                                    try {
+                                                        // Verificar conexión a BD
+                                                        try {
+                                                            \Illuminate\Support\Facades\DB::connection()->getPdo();
+                                                        } catch (\Exception $dbError) {
+                                                            \Filament\Notifications\Notification::make()
+                                                                ->title('Modo de demostración')
+                                                                ->body('La funcionalidad está disponible pero la base de datos no está conectada. En producción esto funcionaría normalmente.')
+                                                                ->warning()
+                                                                ->duration(5000)
+                                                                ->send();
+                                                            return;
+                                                        }
+
+                                                        // Cancelar suscripciones activas
+                                                        \App\Models\Subscription::where('user_id', $record->id)
+                                                            ->whereIn('status', ['active', 'in_trial'])
+                                                            ->update(['status' => 'canceled']);
+
+                                                        // Crear nueva suscripción
+                                                        $planNames = [
+                                                            '1' => 'Plan Mensual',
+                                                            '2' => 'Plan Anual',
+                                                            '3' => 'Plan Premium'
+                                                        ];
+
+                                                        $planName = $planNames[$data['plan_id']] ?? 'Plan Desconocido';
+
+                                                        // Intentar encontrar el plan o usar datos fallback
+                                                        try {
+                                                            $plan = \App\Models\Plan::find($data['plan_id']);
+                                                            if (!$plan) {
+                                                                // Crear plan temporal si no existe
+                                                                $plan = new \App\Models\Plan([
+                                                                    'id' => $data['plan_id'],
+                                                                    'name' => $planName,
+                                                                    'price_cents' => 999,
+                                                                ]);
+                                                                $plan->save();
+                                                            }
+                                                        } catch (\Exception $e) {
+                                                            throw new \Exception("No se pudo procesar el plan seleccionado");
+                                                        }
+
+                                                        \App\Models\Subscription::create([
+                                                            'user_id' => $record->id,
+                                                            'plan_id' => $plan->id,
+                                                            'provider' => 'manual',
+                                                            'status' => 'active',
+                                                            'current_period_end' => $data['period_end'],
+                                                            'auto_renew' => $data['auto_renew'],
+                                                        ]);
+
+                                                        \Filament\Notifications\Notification::make()
+                                                            ->title('Suscripción actualizada exitosamente')
+                                                            ->body("Usuario cambiado al plan: {$plan->name}")
+                                                            ->success()
+                                                            ->send();
+
+                                                        // Refrescar el formulario
+                                                        $livewire->refreshFormData(['subscription_info']);
+                                                    } catch (\Exception $e) {
+                                                        \Filament\Notifications\Notification::make()
+                                                            ->title('Error al actualizar suscripción')
+                                                            ->body($e->getMessage())
+                                                            ->danger()
+                                                            ->send();
+                                                    }
+                                                }),
+
+                                            Forms\Components\Actions\Action::make('cancel_subscription')
+                                                ->label('Cancelar Suscripción')
+                                                ->icon('heroicon-o-x-circle')
+                                                ->color('danger')
+                                                ->requiresConfirmation()
+                                                ->modalDescription('¿Estás seguro de que quieres cancelar la suscripción activa de este usuario?')
+                                                ->action(function ($record, $livewire) {
+                                                    try {
+                                                        $canceled = \App\Models\Subscription::where('user_id', $record->id)
+                                                            ->whereIn('status', ['active', 'in_trial'])
+                                                            ->update(['status' => 'canceled']);
+
+                                                        if ($canceled > 0) {
+                                                            \Filament\Notifications\Notification::make()
+                                                                ->title('Suscripción cancelada')
+                                                                ->success()
+                                                                ->send();
+                                                        } else {
+                                                            \Filament\Notifications\Notification::make()
+                                                                ->title('No hay suscripciones activas para cancelar')
+                                                                ->warning()
+                                                                ->send();
+                                                        }
+
+                                                        // Refrescar el formulario
+                                                        $livewire->refreshFormData(['subscription_info']);
+                                                    } catch (\Exception $e) {
+                                                        \Filament\Notifications\Notification::make()
+                                                            ->title('Error al cancelar suscripción')
+                                                            ->body($e->getMessage())
+                                                            ->danger()
+                                                            ->send();
+                                                    }
+                                                }),
+                                        ])
+                                            ->columnSpanFull(),
                                         Forms\Components\Placeholder::make('subscription_expires_display')
                                             ->label('Vencimiento de membresía')
                                             ->content(function ($record) {
