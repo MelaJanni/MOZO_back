@@ -35,7 +35,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->brandName('Panel Administrativo MOZO')
             ->favicon(asset('favicon.ico'))
-            ->darkMode(false)
+            ->darkMode(true)
             ->sidebarCollapsibleOnDesktop()
             ->globalSearchKeyBindings(['command+k', 'ctrl+k'])
             ->spa()
