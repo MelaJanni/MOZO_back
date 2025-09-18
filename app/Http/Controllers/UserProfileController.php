@@ -65,7 +65,41 @@ class UserProfileController extends Controller
             // Detectar tipo según el perfil activo (no solo por rol del usuario)
             $activeType = $profile instanceof WaiterProfile ? 'waiter' : 'admin';
 
-            // Estructura limpia solicitada: data { user, type, profile_data }
+            // Obtener información de membresía
+            $membershipData = [
+                'has_active_membership' => $user->hasActiveMembership(),
+                'membership_expired' => !$user->hasActiveMembership(),
+                'days_remaining' => $user->membershipDaysRemaining(),
+                'is_lifetime_paid' => $user->is_lifetime_paid,
+                'auto_renew' => false,
+                'expires_at' => null,
+                'time_remaining' => $user->membershipTimeRemaining(),
+                'current_plan' => null,
+                'status' => 'free'
+            ];
+
+            // Si tiene suscripción activa, obtener detalles adicionales
+            $activeSubscription = $user->activeSubscription();
+            if ($activeSubscription) {
+                $membershipData['current_plan'] = $activeSubscription->plan ? [
+                    'id' => $activeSubscription->plan->id,
+                    'name' => $activeSubscription->plan->name,
+                    'price' => $activeSubscription->plan->price,
+                    'duration_days' => $activeSubscription->plan->duration_days,
+                    'features' => $activeSubscription->plan->features ?? [],
+                    'limits' => $activeSubscription->plan->limits ?? []
+                ] : null;
+                $membershipData['auto_renew'] = $activeSubscription->auto_renew;
+                $membershipData['status'] = $activeSubscription->status;
+
+                $expirationDate = $activeSubscription->status === 'in_trial'
+                    ? $activeSubscription->trial_ends_at
+                    : $activeSubscription->current_period_end;
+
+                $membershipData['expires_at'] = $expirationDate ? $expirationDate->toISOString() : null;
+            }
+
+            // Estructura limpia solicitada: data { user, type, profile_data, membership }
             return response()->json([
                 'success' => true,
                 'data' => [
@@ -78,6 +112,7 @@ class UserProfileController extends Controller
                         'google_avatar' => $user->google_avatar,
                     ],
                     'profile_data' => $profileArray,
+                    'membership' => $membershipData,
                 ]
             ]);
 
