@@ -139,6 +139,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/membership/checkout', [\App\Http\Controllers\MembershipController::class, 'checkout']);
     Route::get('/user', fn (Request $request) => $request->user());
     Route::post('/logout', [AuthController::class, 'logout']);
+    Route::post('/finish-shift', [AuthController::class, 'finishShift']);
     Route::post('/role/select', [RoleController::class, 'selectRole']);
 
     // Cambiar negocio activo (aplica para admin o waiter)

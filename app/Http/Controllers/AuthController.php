@@ -456,6 +456,81 @@ class AuthController extends Controller
         ]);
     }
 
+    /**
+     * Finalizar turno del mozo - desactiva todas las mesas sin hacer logout
+     * POST /api/finish-shift
+     */
+    public function finishShift(Request $request)
+    {
+        $user = $request->user();
+
+        // Verificar que el usuario sea un mozo
+        if (!$user->isWaiter()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Solo los mozos pueden finalizar turno'
+            ], 403);
+        }
+
+        $deactivatedTablesCount = 0;
+        $deactivatedTableNumbers = [];
+
+        try {
+            // Obtener todas las mesas asignadas al mozo
+            $activeTables = \App\Models\Table::where('active_waiter_id', $user->id)
+                ->whereNotNull('active_waiter_id')
+                ->get();
+
+            foreach ($activeTables as $table) {
+                try {
+                    // Cancelar llamadas pendientes de la mesa
+                    if (method_exists($table, 'pendingCalls')) {
+                        $table->pendingCalls()->update(['status' => 'cancelled']);
+                    }
+
+                    // Desasignar mozo de la mesa
+                    if (method_exists($table, 'unassignWaiter')) {
+                        $table->unassignWaiter();
+                    } else {
+                        $table->active_waiter_id = null;
+                        $table->save();
+                    }
+
+                    $deactivatedTableNumbers[] = $table->number;
+                } catch (\Exception $e) {
+                    error_log('Error deactivating table ' . $table->id . ' for waiter ' . $user->id . ': ' . $e->getMessage());
+                }
+            }
+
+            $deactivatedTablesCount = count($deactivatedTableNumbers);
+
+            // Preparar mensaje de respuesta
+            $message = 'Turno finalizado exitosamente';
+            if ($deactivatedTablesCount > 0) {
+                $tableList = implode(', ', $deactivatedTableNumbers);
+                $message .= ". Se desactivaron {$deactivatedTablesCount} mesa(s): {$tableList}";
+            } else {
+                $message .= '. No tenías mesas activas asignadas';
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'deactivated_tables_count' => $deactivatedTablesCount,
+                'deactivated_table_numbers' => $deactivatedTableNumbers,
+                'waiter_name' => $user->name
+            ]);
+
+        } catch (\Exception $e) {
+            error_log('Error finishing shift for waiter ' . $user->id . ': ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al finalizar el turno. Por favor intenta nuevamente.'
+            ], 500);
+        }
+    }
+
     public function forgotPassword(Request $request)
     {
         $request->validate([
