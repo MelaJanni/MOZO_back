@@ -29,23 +29,7 @@ class EditUser extends EditRecord
     {
         $record = $this->getRecord();
 
-        // Prefill Admin Profile
-        $admin = $record->adminProfile;
-        if ($admin) {
-            $data['adminProfile'] = array_intersect_key($admin->toArray(), array_flip([
-                'display_name','business_name','position','corporate_email','corporate_phone','office_extension','business_description','business_website','social_media','permissions','notify_new_orders','notify_staff_requests','notify_reviews','notify_payments','avatar',
-            ]));
-        }
-
-        // Prefill Waiter Profile
-        $waiter = $record->waiterProfile;
-        if ($waiter) {
-            $data['waiterProfile'] = array_intersect_key($waiter->toArray(), array_flip([
-                'display_name','bio','phone','birth_date','height','weight','gender','experience_years','employment_type','current_schedule','current_location','latitude','longitude','availability_hours','skills','is_available','avatar',
-            ]));
-        }
-
-        // Prefill Membership
+        // Prefill Membership only (simplified)
         $activeSub = $record->activeSubscription();
         if ($activeSub) {
             $data['membership'] = [
@@ -59,12 +43,9 @@ class EditUser extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        // Extraer estructuras anidadas y remover del payload principal
-        $this->adminProfileData = $data['adminProfile'] ?? [];
-        $this->waiterProfileData = $data['waiterProfile'] ?? [];
+        // Solo extraer membership (simplificado)
         $this->membershipData = $data['membership'] ?? [];
-
-        unset($data['adminProfile'], $data['waiterProfile'], $data['membership']);
+        unset($data['membership']);
 
         if (isset($data['password']) && !empty($data['password'])) {
             $data['password'] = Hash::make($data['password']);
@@ -94,11 +75,7 @@ class EditUser extends EditRecord
             $changed = $data;
             $record->update($data);
 
-            // Guardar/Actualizar perfiles
-            $this->saveAdminProfile($record, $this->adminProfileData ?? []);
-            $this->saveWaiterProfile($record, $this->waiterProfileData ?? []);
-
-            // Guardar/Actualizar membresía
+            // Solo guardar membresía (simplificado)
             $this->updateSubscription($record, $this->membershipData ?? []);
 
             \Log::channel('livewire')->info('EditUser: updated', [
@@ -124,60 +101,6 @@ class EditUser extends EditRecord
         return $this->getResource()::getUrl('index');
     }
 
-    protected function saveAdminProfile(Model $record, array $data): void
-    {
-        if (empty(array_filter($data, fn($v) => $v !== null && $v !== ''))) {
-            return;
-        }
-        $payload = array_intersect_key($data, array_flip([
-            'display_name','business_name','position','corporate_email','corporate_phone','office_extension','business_description','business_website','social_media','permissions','notify_new_orders','notify_staff_requests','notify_reviews','notify_payments','avatar',
-        ]));
-        // Filtrar por columnas existentes en la tabla
-        $payload = array_filter($payload, function ($v, $k) {
-            return Schema::hasColumn('admin_profiles', $k);
-        }, ARRAY_FILTER_USE_BOTH);
-        if (empty($payload)) {
-            return;
-        }
-        $record->adminProfile()->updateOrCreate([], $payload);
-        \Log::channel('livewire')->info('EditUser: adminProfile saved', ['id' => $record->getKey(), 'keys' => array_keys($payload)]);
-    }
-
-    protected function saveWaiterProfile(Model $record, array $data): void
-    {
-        if (empty(array_filter($data, fn($v) => $v !== null && $v !== ''))) {
-            return;
-        }
-        $payload = array_intersect_key($data, array_flip([
-            'display_name','bio','phone','birth_date','height','weight','gender','experience_years','employment_type','current_schedule','current_location','latitude','longitude','availability_hours','skills','is_available','avatar',
-        ]));
-        // Normalización básica (asegurar EN para enums si vienen en ES)
-        $mapEmployment = [
-            'empleado' => 'employee', 'freelancer' => 'freelancer', 'contratista' => 'contractor',
-            'tiempo completo' => 'employee', 'tiempo_parcial' => 'contractor',
-        ];
-        $mapSchedule = [
-            'mañana' => 'morning', 'tarde' => 'afternoon', 'noche' => 'night', 'mixto' => 'mixed',
-        ];
-        if (isset($payload['employment_type'])) {
-            $e = strtolower((string)$payload['employment_type']);
-            $payload['employment_type'] = $mapEmployment[$e] ?? $payload['employment_type'];
-        }
-        if (isset($payload['current_schedule'])) {
-            $s = strtolower((string)$payload['current_schedule']);
-            $payload['current_schedule'] = $mapSchedule[$s] ?? $payload['current_schedule'];
-        }
-
-        // Filtrar por columnas existentes en la tabla
-        $payload = array_filter($payload, function ($v, $k) {
-            return Schema::hasColumn('waiter_profiles', $k);
-        }, ARRAY_FILTER_USE_BOTH);
-        if (empty($payload)) {
-            return;
-        }
-        $record->waiterProfile()->updateOrCreate([], $payload);
-        \Log::channel('livewire')->info('EditUser: waiterProfile saved', ['id' => $record->getKey(), 'keys' => array_keys($payload)]);
-    }
 
     protected function updateSubscription(Model $record, array $membership): void
     {
