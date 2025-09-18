@@ -146,6 +146,7 @@ class AuthController extends Controller
                 $normalizedEmail = strtolower(trim($googleUser['email']));
                 $user = User::whereRaw('LOWER(TRIM(email)) = ?', [$normalizedEmail])
                            ->orWhere('google_id', $googleUser['sub'])
+                           ->orWhere('email', $googleUser['email']) // Búsqueda exacta adicional
                            ->first();
 
                 if ($user) {
@@ -164,8 +165,6 @@ class AuthController extends Controller
                         \Log::info('Google login: Updated user Google info', ['user_id' => $user->id]);
                     }
                 } else {
-                    \Log::info('Google login: Creating new user', ['email' => $googleUser['email']]);
-
                     // Crear nuevo usuario dentro de la transacción con manejo de duplicados
                     try {
                         $user = User::create([
@@ -177,55 +176,36 @@ class AuthController extends Controller
                             'password' => Hash::make(Str::random(32)), // Contraseña aleatoria
                         ]);
 
-                        \Log::info('Google login: User created successfully', ['user_id' => $user->id]);
+                        // User created successfully
                     } catch (\Illuminate\Database\QueryException $e) {
                         // Si hay error de duplicado, buscar el usuario existente
                         if ($e->errorInfo[1] == 1062) { // Duplicate entry error
-                            \Log::warning('Google login: Duplicate user detected, searching existing user', [
-                                'email' => $googleUser['email'],
-                                'google_id' => $googleUser['sub']
-                            ]);
+                            // Duplicate user detected, searching existing user
 
-                            // Buscar con normalización de email y Google ID
-                            $user = User::whereRaw('LOWER(TRIM(email)) = ?', [$normalizedEmail])
+                            // Buscar con normalización de email y Google ID (incluyendo soft deletes)
+                            $user = User::withTrashed()
+                                       ->whereRaw('LOWER(TRIM(email)) = ?', [$normalizedEmail])
                                        ->orWhere('google_id', $googleUser['sub'])
                                        ->first();
 
                             // Si aún no lo encuentra, buscar de forma más amplia
                             if (!$user) {
-                                \Log::warning('Google login: Trying broader search for duplicate user', [
-                                    'original_email' => $googleUser['email'],
-                                    'normalized_email' => $normalizedEmail,
-                                    'google_id' => $googleUser['sub']
-                                ]);
+                                $user = User::withTrashed()
+                                          ->where(function ($query) use ($googleUser, $normalizedEmail) {
+                                              $query->whereRaw('LOWER(TRIM(email)) LIKE ?', ['%' . $normalizedEmail . '%'])
+                                                    ->orWhere('google_id', $googleUser['sub'])
+                                                    ->orWhereRaw('REPLACE(LOWER(TRIM(email)), " ", "") = ?', [str_replace(' ', '', $normalizedEmail)])
+                                                    ->orWhere('email', $googleUser['email']); // Búsqueda exacta original
+                                          })->first();
+                            }
 
-                                $user = User::where(function ($query) use ($googleUser, $normalizedEmail) {
-                                    $query->whereRaw('LOWER(TRIM(email)) LIKE ?', ['%' . $normalizedEmail . '%'])
-                                          ->orWhere('google_id', $googleUser['sub'])
-                                          ->orWhereRaw('REPLACE(LOWER(TRIM(email)), " ", "") = ?', [str_replace(' ', '', $normalizedEmail)]);
-                                })->first();
+                            // Si lo encontramos pero está soft deleted, restaurarlo
+                            if ($user && $user->trashed()) {
+                                $user->restore();
                             }
 
                             if (!$user) {
-                                \Log::error('Google login: Could not find duplicate user after constraint violation', [
-                                    'search_email' => $normalizedEmail,
-                                    'search_google_id' => $googleUser['sub'],
-                                    'error_message' => $e->getMessage()
-                                ]);
-
-                                // Como último recurso, buscar todos los usuarios y loggear para debug
-                                $allUsers = User::select('id', 'email', 'google_id')->get();
-                                \Log::error('Google login: All users in database for debugging', [
-                                    'total_users' => $allUsers->count(),
-                                    'users' => $allUsers->map(function($u) {
-                                        return [
-                                            'id' => $u->id,
-                                            'email' => $u->email,
-                                            'google_id' => $u->google_id
-                                        ];
-                                    })->toArray()
-                                ]);
-
+                                // Could not find duplicate user, create with different approach
                                 throw $e; // Re-throw if we can't find the user
                             }
 
@@ -237,7 +217,7 @@ class AuthController extends Controller
                                 ]);
                             }
 
-                            \Log::info('Google login: Using existing user after duplicate detection', ['user_id' => $user->id]);
+                            // Using existing user after duplicate detection
                         } else {
                             throw $e; // Re-throw other database errors
                         }
@@ -249,7 +229,7 @@ class AuthController extends Controller
                         $user->role = 'waiter';
                         $user->save();
 
-                        \Log::info('Google login: Role set successfully', ['user_id' => $user->id, 'role' => 'waiter']);
+                        // Role set successfully
 
                         // Crear perfil básico de mozo
                         if (method_exists($user, 'waiterProfile')) {
@@ -257,17 +237,13 @@ class AuthController extends Controller
                                 $user->waiterProfile()->create([
                                     'display_name' => $user->name,
                                 ]);
-                                \Log::info('Google login: Waiter profile created successfully', ['user_id' => $user->id]);
+                                // Waiter profile created successfully
                             } catch (\Exception $e) {
-                                \Log::warning('Google login: Failed to create waiter profile', [
-                                    'user_id' => $user->id,
-                                    'error' => $e->getMessage()
-                                ]);
-                                // No re-throw, continue with login
+                                // Failed to create waiter profile, continue with login
                             }
                         }
                     } else {
-                        \Log::info('Google login: Skipping profile creation for existing user', ['user_id' => $user->id]);
+                        // Skipping profile creation for existing user
                     }
 
                     $staffRequestCreated = false;
@@ -299,11 +275,7 @@ class AuthController extends Controller
                             $user->businesses()->attach($business->id);
 
                             // TODO: Re-enable Firebase notification when websockets issue is resolved
-                            \Log::info('Google login: Staff request created successfully', [
-                                'staff_request_id' => $staffRequest->id,
-                                'business_id' => $business->id,
-                                'user_id' => $user->id
-                            ]);
+                            // Staff request created successfully
                         }
                     }
                 }
@@ -328,17 +300,7 @@ class AuthController extends Controller
                     }
                 });
 
-                \Log::info('Google login: About to create token for user', ['user_id' => $user->id, 'email' => $user->email]);
-
                 $token = $user->createToken('auth_token')->plainTextToken;
-
-                \Log::info('Google login: Token created successfully', ['user_id' => $user->id]);
-
-                \Log::info('Google login: About to return response', [
-                    'user_id' => $user->id,
-                    'staff_request_created' => $staffRequestCreated ?? false,
-                    'business_name' => $businessName ?? null
-                ]);
 
                 // Return minimal user data to avoid serialization issues
                 $userData = [
@@ -366,7 +328,8 @@ class AuthController extends Controller
                 ]);
 
             } catch (\Exception $e) {
-                \Log::error('Google login error: ' . $e->getMessage() . ' | Line: ' . $e->getLine() . ' | File: ' . $e->getFile());
+                // Log only critical errors to avoid permission issues
+                error_log('Google login error: ' . $e->getMessage());
 
                 return response()->json([
                     'success' => false,
@@ -416,15 +379,12 @@ class AuthController extends Controller
                 return null;
             }
 
-            \Log::info('Google token verified successfully', [
-                'email' => $data['email'],
-                'sub' => $data['sub']
-            ]);
+            // Google token verified successfully
 
             return $data;
 
         } catch (\Exception $e) {
-            \Log::error('Error verifying Google token: ' . $e->getMessage() . ' | Line: ' . $e->getLine());
+            error_log('Error verifying Google token: ' . $e->getMessage());
             return null;
         }
     }
