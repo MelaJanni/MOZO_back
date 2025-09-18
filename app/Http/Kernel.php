@@ -16,6 +16,7 @@ class Kernel extends HttpKernel
     protected $middleware = [
         // CORS definitivo debe ser lo PRIMERO para manejar preflight requests
         \App\Http\Middleware\DefinitiveCors::class,
+        \App\Http\Middleware\FilamentRequestLogger::class,
         \App\Http\Middleware\TrustProxies::class,
         \App\Http\Middleware\PreventRequestsDuringMaintenance::class,
         \App\Http\Middleware\HandleUploadErrors::class, // 📁 Manejo de errores de subida

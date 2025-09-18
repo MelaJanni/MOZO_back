@@ -43,7 +43,10 @@ class EditUser extends EditRecord
     {
         // Versión ultra-simple para encontrar el problema
         try {
-            \Log::info('Inicio de handleRecordUpdate', ['data_keys' => array_keys($data)]);
+            \Log::channel('livewire')->info('EditUser: start update', [
+                'id' => $record->getKey(),
+                'data_keys' => array_keys($data),
+            ]);
 
             // No enviar flags si la columna no existe en este entorno
             foreach (['is_system_super_admin','is_lifetime_paid'] as $flag) {
@@ -52,13 +55,19 @@ class EditUser extends EditRecord
                 }
             }
 
+            $changed = $data;
             $record->update($data);
+
+            \Log::channel('livewire')->info('EditUser: updated', [
+                'id' => $record->getKey(),
+                'dirty' => array_keys($changed),
+            ]);
 
             \Log::info('handleRecordUpdate exitoso');
             return $record;
 
         } catch (\Exception $e) {
-            \Log::error('Error específico en handleRecordUpdate', [
+            \Log::channel('livewire')->error('EditUser: failed', [
                 'message' => $e->getMessage(),
                 'line' => $e->getLine(),
                 'file' => $e->getFile()
