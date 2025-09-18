@@ -142,8 +142,9 @@ class AuthController extends Controller
                     ], 401);
                 }
 
-                // Buscar usuario existente por email o Google ID
-                $user = User::where('email', $googleUser['email'])
+                // Normalizar email y buscar usuario existente por email o Google ID
+                $normalizedEmail = strtolower(trim($googleUser['email']));
+                $user = User::whereRaw('LOWER(TRIM(email)) = ?', [$normalizedEmail])
                            ->orWhere('google_id', $googleUser['sub'])
                            ->first();
 
@@ -169,7 +170,7 @@ class AuthController extends Controller
                     try {
                         $user = User::create([
                             'name' => $googleUser['name'],
-                            'email' => $googleUser['email'],
+                            'email' => $normalizedEmail, // Usar email normalizado
                             'google_id' => $googleUser['sub'],
                             'google_avatar' => $googleUser['picture'] ?? null,
                             'email_verified_at' => now(),
@@ -185,12 +186,46 @@ class AuthController extends Controller
                                 'google_id' => $googleUser['sub']
                             ]);
 
-                            $user = User::where('email', $googleUser['email'])
+                            // Buscar con normalización de email y Google ID
+                            $user = User::whereRaw('LOWER(TRIM(email)) = ?', [$normalizedEmail])
                                        ->orWhere('google_id', $googleUser['sub'])
                                        ->first();
 
+                            // Si aún no lo encuentra, buscar de forma más amplia
                             if (!$user) {
-                                \Log::error('Google login: Could not find duplicate user after constraint violation');
+                                \Log::warning('Google login: Trying broader search for duplicate user', [
+                                    'original_email' => $googleUser['email'],
+                                    'normalized_email' => $normalizedEmail,
+                                    'google_id' => $googleUser['sub']
+                                ]);
+
+                                $user = User::where(function ($query) use ($googleUser, $normalizedEmail) {
+                                    $query->whereRaw('LOWER(TRIM(email)) LIKE ?', ['%' . $normalizedEmail . '%'])
+                                          ->orWhere('google_id', $googleUser['sub'])
+                                          ->orWhereRaw('REPLACE(LOWER(TRIM(email)), " ", "") = ?', [str_replace(' ', '', $normalizedEmail)]);
+                                })->first();
+                            }
+
+                            if (!$user) {
+                                \Log::error('Google login: Could not find duplicate user after constraint violation', [
+                                    'search_email' => $normalizedEmail,
+                                    'search_google_id' => $googleUser['sub'],
+                                    'error_message' => $e->getMessage()
+                                ]);
+
+                                // Como último recurso, buscar todos los usuarios y loggear para debug
+                                $allUsers = User::select('id', 'email', 'google_id')->get();
+                                \Log::error('Google login: All users in database for debugging', [
+                                    'total_users' => $allUsers->count(),
+                                    'users' => $allUsers->map(function($u) {
+                                        return [
+                                            'id' => $u->id,
+                                            'email' => $u->email,
+                                            'google_id' => $u->google_id
+                                        ];
+                                    })->toArray()
+                                ]);
+
                                 throw $e; // Re-throw if we can't find the user
                             }
 

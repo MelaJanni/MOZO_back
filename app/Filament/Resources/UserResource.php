@@ -221,10 +221,12 @@ class UserResource extends Resource
                 Tables\Columns\TextColumn::make('name')
                     ->label('Nombre')
                     ->searchable()
+                    ->sortable()
                     ->description(fn ($record) => $record->google_id ? 'Cuenta Google' : 'Cuenta local'),
                 Tables\Columns\TextColumn::make('email')
                     ->label('Email')
                     ->searchable()
+                    ->sortable()
                     ->copyable()
                     ->icon(fn ($record) => $record->google_id ? 'heroicon-o-globe-alt' : 'heroicon-o-envelope'),
                 Tables\Columns\TextColumn::make('google_data')
@@ -241,16 +243,41 @@ class UserResource extends Resource
                     ->dateTime()
                     ->sortable(),
             ])
+            ->filters([
+                Tables\Filters\SelectFilter::make('role')
+                    ->label('Rol')
+                    ->options([
+                        'waiter' => 'Mozo',
+                        'admin' => 'Administrador',
+                    ])
+                    ->placeholder('Todos los roles'),
+                Tables\Filters\TernaryFilter::make('google_id')
+                    ->label('Tipo de cuenta')
+                    ->trueLabel('Cuentas Google')
+                    ->falseLabel('Cuentas locales')
+                    ->nullable(),
+                Tables\Filters\TernaryFilter::make('is_system_super_admin')
+                    ->label('Super Admin')
+                    ->trueLabel('Super Administradores')
+                    ->falseLabel('Usuarios normales'),
+            ])
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->label('')
+                    ->tooltip('Editar'),
+                Tables\Actions\DeleteAction::make()
+                    ->label('')
+                    ->tooltip('Eliminar'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make()
                         ->label('Eliminar seleccionados'),
                 ]),
-            ]);
+            ])
+            ->striped()
+            ->paginated([10, 25, 50, 100])
+            ->defaultPaginationPageOption(25);
     }
 
     public static function getPages(): array

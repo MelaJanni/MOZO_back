@@ -140,12 +140,15 @@ class BusinessResource extends Resource
             ])
             ->actions([
                 Tables\Actions\ViewAction::make()
-                    ->label('Ver'),
+                    ->label('')
+                    ->tooltip('Ver'),
                 Tables\Actions\EditAction::make()
-                    ->label('Editar'),
+                    ->label('')
+                    ->tooltip('Editar'),
                 Tables\Actions\Action::make('view_staff')
-                    ->label('Ver Personal')
+                    ->label('')
                     ->icon('heroicon-o-users')
+                    ->tooltip('Ver Personal')
                     ->modalHeading(fn ($record) => "Personal de {$record->name}")
                     ->modalDescription('Administradores y mozos del negocio')
                     ->modalContent(function ($record) {
@@ -205,7 +208,8 @@ class BusinessResource extends Resource
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('Cerrar'),
                 Tables\Actions\DeleteAction::make()
-                    ->label('Eliminar'),
+                    ->label('')
+                    ->tooltip('Eliminar'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -213,7 +217,10 @@ class BusinessResource extends Resource
                         ->label('Eliminar seleccionados'),
                 ]),
             ])
-            ->defaultSort('created_at', 'desc');
+            ->defaultSort('created_at', 'desc')
+            ->striped()
+            ->paginated([10, 25, 50, 100])
+            ->defaultPaginationPageOption(25);
     }
 
     public static function getPages(): array
