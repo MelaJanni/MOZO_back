@@ -64,6 +64,127 @@ class UserResource extends Resource
                                     ])->columns(2),
                             ]),
 
+                        Forms\Components\Tabs\Tab::make('mozo')
+                            ->label('Información del Mozo')
+                            ->schema([
+                                Forms\Components\Section::make('Perfil de Mozo')
+                                    ->schema([
+                                        Forms\Components\TextInput::make('waiterProfile.display_name')
+                                            ->label('Nombre a mostrar')
+                                            ->maxLength(255),
+                                        Forms\Components\Textarea::make('waiterProfile.bio')
+                                            ->label('Bio')
+                                            ->rows(3),
+                                        Forms\Components\TextInput::make('waiterProfile.phone')
+                                            ->label('Teléfono')
+                                            ->maxLength(50),
+                                        Forms\Components\DatePicker::make('waiterProfile.birth_date')
+                                            ->label('Fecha de nacimiento')
+                                            ->native(false)
+                                            ->displayFormat('Y-m-d'),
+                                        Forms\Components\TextInput::make('waiterProfile.height')
+                                            ->label('Altura (m)')
+                                            ->numeric()
+                                            ->minValue(1.0)
+                                            ->maxValue(2.5)
+                                            ->step(0.01),
+                                        Forms\Components\TextInput::make('waiterProfile.weight')
+                                            ->label('Peso (kg)')
+                                            ->numeric()
+                                            ->minValue(30)
+                                            ->maxValue(200)
+                                            ->step(1),
+                                        Forms\Components\Select::make('waiterProfile.gender')
+                                            ->label('Género')
+                                            ->options([
+                                                'masculino' => 'Masculino',
+                                                'femenino' => 'Femenino',
+                                                'otro' => 'Otro',
+                                            ])
+                                            ->native(false),
+                                        Forms\Components\TextInput::make('waiterProfile.experience_years')
+                                            ->label('Años de experiencia')
+                                            ->numeric()
+                                            ->minValue(0)
+                                            ->maxValue(50)
+                                            ->step(1),
+                                        Forms\Components\Select::make('waiterProfile.employment_type')
+                                            ->label('Tipo de empleo')
+                                            ->options([
+                                                'employee' => 'Employee',
+                                                'freelancer' => 'Freelancer',
+                                                'contractor' => 'Contractor',
+                                            ])
+                                            ->native(false)
+                                            ->helperText('Enviar en inglés'),
+                                        Forms\Components\Select::make('waiterProfile.current_schedule')
+                                            ->label('Horario actual')
+                                            ->options([
+                                                'morning' => 'Morning',
+                                                'afternoon' => 'Afternoon',
+                                                'night' => 'Night',
+                                                'mixed' => 'Mixed',
+                                            ])
+                                            ->native(false)
+                                            ->helperText('Enviar en inglés'),
+                                        Forms\Components\TextInput::make('waiterProfile.current_location')
+                                            ->label('Ubicación actual')
+                                            ->maxLength(255),
+                                        Forms\Components\TextInput::make('waiterProfile.latitude')
+                                            ->label('Latitud')
+                                            ->numeric()
+                                            ->minValue(-90)
+                                            ->maxValue(90)
+                                            ->step(0.000001),
+                                        Forms\Components\TextInput::make('waiterProfile.longitude')
+                                            ->label('Longitud')
+                                            ->numeric()
+                                            ->minValue(-180)
+                                            ->maxValue(180)
+                                            ->step(0.000001),
+                                        Forms\Components\TagsInput::make('waiterProfile.availability_hours')
+                                            ->label('Horas disponibles'),
+                                        Forms\Components\TagsInput::make('waiterProfile.skills')
+                                            ->label('Habilidades'),
+                                        Forms\Components\Toggle::make('waiterProfile.is_available')
+                                            ->label('Disponible'),
+                                        Forms\Components\FileUpload::make('waiterProfile.avatar')
+                                            ->label('Avatar')
+                                            ->image()
+                                            ->directory('avatars/waiters')
+                                            ->downloadable(),
+                                    ])->columns(2),
+                            ]),
+
+                        Forms\Components\Tabs\Tab::make('admin')
+                            ->label('Información del Admin')
+                            ->schema([
+                                Forms\Components\Section::make('Perfil de Administrador')
+                                    ->schema([
+                                        Forms\Components\TextInput::make('adminProfile.display_name')
+                                            ->label('Nombre a mostrar')
+                                            ->maxLength(255),
+                                        Forms\Components\TextInput::make('adminProfile.business_name')
+                                            ->label('Nombre del negocio')
+                                            ->maxLength(255),
+                                        Forms\Components\TextInput::make('adminProfile.position')
+                                            ->label('Cargo')
+                                            ->maxLength(255),
+                                        Forms\Components\TextInput::make('adminProfile.corporate_email')
+                                            ->label('Email corporativo')
+                                            ->email()
+                                            ->maxLength(255),
+                                        Forms\Components\TextInput::make('adminProfile.corporate_phone')
+                                            ->label('Teléfono corporativo')
+                                            ->maxLength(50),
+                                        Forms\Components\FileUpload::make('adminProfile.avatar')
+                                            ->label('Avatar')
+                                            ->image()
+                                            ->directory('avatars/admins')
+                                            ->downloadable(),
+                                    ])->columns(2),
+                            ]),
+
                         Forms\Components\Tabs\Tab::make('membresía')
                             ->label('Membresía y Pagos')
                             ->schema([

@@ -29,7 +29,23 @@ class EditUser extends EditRecord
     {
         $record = $this->getRecord();
 
-        // Prefill Membership only (simplified)
+        // Prefill Admin Profile (only essential fields)
+        $admin = $record->adminProfile;
+        if ($admin) {
+            $data['adminProfile'] = array_intersect_key($admin->toArray(), array_flip([
+                'display_name','business_name','position','corporate_email','corporate_phone','avatar',
+            ]));
+        }
+
+        // Prefill Waiter Profile (only essential fields)
+        $waiter = $record->waiterProfile;
+        if ($waiter) {
+            $data['waiterProfile'] = array_intersect_key($waiter->toArray(), array_flip([
+                'display_name','bio','phone','birth_date','height','weight','gender','experience_years','employment_type','current_schedule','current_location','latitude','longitude','availability_hours','skills','is_available','avatar',
+            ]));
+        }
+
+        // Prefill Membership
         $activeSub = $record->activeSubscription();
         if ($activeSub) {
             $data['membership'] = [
@@ -43,9 +59,12 @@ class EditUser extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        // Solo extraer membership (simplificado)
+        // Extraer datos de perfiles y membership
+        $this->adminProfileData = $data['adminProfile'] ?? [];
+        $this->waiterProfileData = $data['waiterProfile'] ?? [];
         $this->membershipData = $data['membership'] ?? [];
-        unset($data['membership']);
+
+        unset($data['adminProfile'], $data['waiterProfile'], $data['membership']);
 
         if (isset($data['password']) && !empty($data['password'])) {
             $data['password'] = Hash::make($data['password']);
@@ -75,7 +94,9 @@ class EditUser extends EditRecord
             $changed = $data;
             $record->update($data);
 
-            // Solo guardar membresía (simplificado)
+            // Guardar perfiles y membresía
+            $this->saveAdminProfile($record, $this->adminProfileData ?? []);
+            $this->saveWaiterProfile($record, $this->waiterProfileData ?? []);
             $this->updateSubscription($record, $this->membershipData ?? []);
 
             \Log::channel('livewire')->info('EditUser: updated', [
@@ -148,6 +169,54 @@ class EditUser extends EditRecord
         ]);
 
         \Log::channel('livewire')->info('EditUser: subscription updated', ['id' => $record->getKey(), 'sub_id' => $sub->id, 'plan_id' => $plan->id, 'auto_renew' => $autoRenew]);
+    }
+
+    protected function saveAdminProfile(Model $record, array $adminData): void
+    {
+        if (empty($adminData)) {
+            return;
+        }
+
+        // Solo campos esenciales del API
+        $allowedFields = [
+            'display_name', 'business_name', 'position',
+            'corporate_email', 'corporate_phone', 'avatar'
+        ];
+
+        $filteredData = array_intersect_key($adminData, array_flip($allowedFields));
+
+        if (!empty($filteredData)) {
+            $record->adminProfile()->updateOrCreate(
+                ['user_id' => $record->getKey()],
+                $filteredData
+            );
+            \Log::channel('livewire')->info('EditUser: admin profile updated', ['id' => $record->getKey(), 'fields' => array_keys($filteredData)]);
+        }
+    }
+
+    protected function saveWaiterProfile(Model $record, array $waiterData): void
+    {
+        if (empty($waiterData)) {
+            return;
+        }
+
+        // Solo campos esenciales del API
+        $allowedFields = [
+            'display_name', 'bio', 'phone', 'birth_date', 'height', 'weight',
+            'gender', 'experience_years', 'employment_type', 'current_schedule',
+            'current_location', 'latitude', 'longitude', 'availability_hours',
+            'skills', 'is_available', 'avatar'
+        ];
+
+        $filteredData = array_intersect_key($waiterData, array_flip($allowedFields));
+
+        if (!empty($filteredData)) {
+            $record->waiterProfile()->updateOrCreate(
+                ['user_id' => $record->getKey()],
+                $filteredData
+            );
+            \Log::channel('livewire')->info('EditUser: waiter profile updated', ['id' => $record->getKey(), 'fields' => array_keys($filteredData)]);
+        }
     }
 
 }
