@@ -55,12 +55,73 @@ class UserResource extends Resource
                                     ->schema([
                                         Forms\Components\Toggle::make('is_system_super_admin')
                                             ->label('Super Administrador del Sistema')
-                                            ->dehydrated(false)
+                                            ->dehydrated(true)
                                             ->helperText('Otorga acceso completo al panel administrativo'),
                                         Forms\Components\Toggle::make('is_lifetime_paid')
                                             ->label('Cliente pago permanente')
-                                            ->dehydrated(false)
+                                            ->dehydrated(true)
                                             ->helperText('Usuario con acceso de por vida sin renovaciones'),
+                                    ])->columns(2),
+                            ]),
+
+                        Forms\Components\Tabs\Tab::make('admin')
+                            ->label('Información del Admin')
+                            ->schema([
+                                Forms\Components\Section::make('Perfil de Administrador')
+                                    ->schema([
+                                        Forms\Components\TextInput::make('adminProfile.display_name')->label('Nombre a mostrar')->maxLength(255),
+                                        Forms\Components\TextInput::make('adminProfile.business_name')->label('Nombre del negocio')->maxLength(255),
+                                        Forms\Components\TextInput::make('adminProfile.position')->label('Cargo')->maxLength(255),
+                                        Forms\Components\TextInput::make('adminProfile.corporate_email')->label('Email corporativo')->email()->maxLength(255),
+                                        Forms\Components\TextInput::make('adminProfile.corporate_phone')->label('Teléfono corporativo')->maxLength(50),
+                                        Forms\Components\TextInput::make('adminProfile.office_extension')->label('Anexo')->maxLength(50),
+                                        Forms\Components\Textarea::make('adminProfile.business_description')->label('Descripción del negocio')->rows(3),
+                                        Forms\Components\TextInput::make('adminProfile.business_website')->label('Sitio web')->maxLength(255),
+                                        Forms\Components\KeyValue::make('adminProfile.social_media')->label('Redes sociales')->addButtonLabel('Agregar red')->keyLabel('Red')->valueLabel('URL'),
+                                        Forms\Components\KeyValue::make('adminProfile.permissions')->label('Permisos')->addButtonLabel('Agregar permiso')->keyLabel('Clave')->valueLabel('Valor'),
+                                        Forms\Components\Toggle::make('adminProfile.notify_new_orders')->label('Notificar nuevos pedidos'),
+                                        Forms\Components\Toggle::make('adminProfile.notify_staff_requests')->label('Notificar solicitudes de staff'),
+                                        Forms\Components\Toggle::make('adminProfile.notify_reviews')->label('Notificar reseñas'),
+                                        Forms\Components\Toggle::make('adminProfile.notify_payments')->label('Notificar pagos'),
+                                        Forms\Components\FileUpload::make('adminProfile.avatar')->label('Avatar')->image()->directory('avatars/admins')->downloadable(),
+                                    ])->columns(2),
+                            ]),
+
+                        Forms\Components\Tabs\Tab::make('mozo')
+                            ->label('Información del Mozo')
+                            ->schema([
+                                Forms\Components\Section::make('Perfil de Mozo')
+                                    ->schema([
+                                        Forms\Components\TextInput::make('waiterProfile.display_name')->label('Nombre a mostrar')->maxLength(255),
+                                        Forms\Components\Textarea::make('waiterProfile.bio')->label('Bio')->rows(3),
+                                        Forms\Components\TextInput::make('waiterProfile.phone')->label('Teléfono')->maxLength(50),
+                                        Forms\Components\DatePicker::make('waiterProfile.birth_date')->label('Fecha de nacimiento')->native(false)->displayFormat('Y-m-d'),
+                                        Forms\Components\TextInput::make('waiterProfile.height')->label('Altura (m)')->numeric()->minValue(1.0)->maxValue(2.5)->step(0.01),
+                                        Forms\Components\TextInput::make('waiterProfile.weight')->label('Peso (kg)')->numeric()->minValue(30)->maxValue(200)->step(1),
+                                        Forms\Components\Select::make('waiterProfile.gender')->label('Género')->options([
+                                            'masculino' => 'Masculino',
+                                            'femenino' => 'Femenino',
+                                            'otro' => 'Otro',
+                                        ])->native(false),
+                                        Forms\Components\TextInput::make('waiterProfile.experience_years')->label('Años de experiencia')->numeric()->minValue(0)->maxValue(50)->step(1),
+                                        Forms\Components\Select::make('waiterProfile.employment_type')->label('Tipo de empleo')->options([
+                                            'employee' => 'Employee',
+                                            'freelancer' => 'Freelancer',
+                                            'contractor' => 'Contractor',
+                                        ])->native(false)->helperText('Enviar en inglés'),
+                                        Forms\Components\Select::make('waiterProfile.current_schedule')->label('Horario actual')->options([
+                                            'morning' => 'Morning',
+                                            'afternoon' => 'Afternoon',
+                                            'night' => 'Night',
+                                            'mixed' => 'Mixed',
+                                        ])->native(false)->helperText('Enviar en inglés'),
+                                        Forms\Components\TextInput::make('waiterProfile.current_location')->label('Ubicación actual')->maxLength(255),
+                                        Forms\Components\TextInput::make('waiterProfile.latitude')->label('Latitud')->numeric()->minValue(-90)->maxValue(90)->step(0.000001),
+                                        Forms\Components\TextInput::make('waiterProfile.longitude')->label('Longitud')->numeric()->minValue(-180)->maxValue(180)->step(0.000001),
+                                        Forms\Components\TagsInput::make('waiterProfile.availability_hours')->label('Horas disponibles'),
+                                        Forms\Components\TagsInput::make('waiterProfile.skills')->label('Habilidades'),
+                                        Forms\Components\Toggle::make('waiterProfile.is_available')->label('Disponible'),
+                                        Forms\Components\FileUpload::make('waiterProfile.avatar')->label('Avatar')->image()->directory('avatars/waiters')->downloadable(),
                                     ])->columns(2),
                             ]),
 
@@ -69,23 +130,35 @@ class UserResource extends Resource
                             ->schema([
                                 Forms\Components\Section::make('Plan Actual')
                                     ->schema([
-                                        Forms\Components\Select::make('current_plan_id')
+                                        Forms\Components\Select::make('membership.plan_id')
                                             ->label('Plan asignado')
-                                            ->options([
-                                                '' => 'Sin plan asignado',
-                                                '1' => 'Plan Mensual - $9.99',
-                                                '2' => 'Plan Anual - $99.99',
-                                                '3' => 'Plan Premium - $19.99',
-                                            ])
-                                            ->nullable()
-                                            ->dehydrated(false)
-                                            ->placeholder('Sin plan asignado')
-                                            ->helperText('Cambiar el plan actualiza la suscripción'),
-                                        Forms\Components\Toggle::make('auto_renew')
-                                            ->label('Renovación automática')
-                                            ->dehydrated(false)
-                                            ->helperText('La suscripción se renueva automáticamente'),
+                                            ->options(fn () => \App\Models\Plan::query()->where('is_active', true)->get()->mapWithKeys(fn($p) => [$p->id => $p->name . ' - ' . $p->formatted_price])->toArray())
+                                            ->searchable()
+                                            ->preload()
+                                            ->placeholder('Sin plan asignado'),
+                                        Forms\Components\Toggle::make('membership.auto_renew')
+                                            ->label('Renovación automática'),
+                                        Forms\Components\Placeholder::make('membership_status')
+                                            ->label('Estado de membresía')
+                                            ->content(fn (?\App\Models\User $record) => $record ? ((($record->hasActiveMembership()) ? 'Activa' : 'Inactiva') . (is_null($record->membershipDaysRemaining()) ? '' : ' • Días restantes: ' . $record->membershipDaysRemaining())) : '-'),
                                     ])->columns(2),
+                            ]),
+
+                        Forms\Components\Tabs\Tab::make('actividad')
+                            ->label('Actividad')
+                            ->schema([
+                                Forms\Components\Section::make('Resumen')
+                                    ->schema([
+                                        Forms\Components\Placeholder::make('created_at')
+                                            ->label('Creado')
+                                            ->content(fn (?\App\Models\User $record) => optional($record?->created_at)?->toDayDateTimeString() ?? '-'),
+                                        Forms\Components\Placeholder::make('updated_at')
+                                            ->label('Actualizado')
+                                            ->content(fn (?\App\Models\User $record) => optional($record?->updated_at)?->toDayDateTimeString() ?? '-'),
+                                        Forms\Components\Placeholder::make('subs_count')
+                                            ->label('Suscripciones')
+                                            ->content(fn (?\App\Models\User $record) => $record ? $record->subscriptions()->count() . ' total' : '0'),
+                                    ])->columns(3),
                             ]),
                     ])
                     ->columnSpanFull(),
