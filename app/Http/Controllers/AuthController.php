@@ -142,52 +142,97 @@ class AuthController extends Controller
                     ], 401);
                 }
 
-                // Buscar usuario existente por email
-                $user = User::where('email', $googleUser['email'])->first();
+                // Buscar usuario existente por email o Google ID
+                $user = User::where('email', $googleUser['email'])
+                           ->orWhere('google_id', $googleUser['sub'])
+                           ->first();
 
                 if ($user) {
+                    \Log::info('Google login: Found existing user', [
+                        'user_id' => $user->id,
+                        'email' => $user->email,
+                        'has_google_id' => !empty($user->google_id)
+                    ]);
+
                     // Usuario existente - actualizar información de Google si es necesario
-                    if (!$user->google_id) {
+                    if (!$user->google_id || $user->google_id !== $googleUser['sub']) {
                         $user->update([
                             'google_id' => $googleUser['sub'],
                             'google_avatar' => $googleUser['picture'] ?? null
                         ]);
+                        \Log::info('Google login: Updated user Google info', ['user_id' => $user->id]);
                     }
                 } else {
                     \Log::info('Google login: Creating new user', ['email' => $googleUser['email']]);
 
-                    // Crear nuevo usuario dentro de la transacción
-                    $user = User::create([
-                        'name' => $googleUser['name'],
-                        'email' => $googleUser['email'],
-                        'google_id' => $googleUser['sub'],
-                        'google_avatar' => $googleUser['picture'] ?? null,
-                        'email_verified_at' => now(),
-                        'password' => Hash::make(Str::random(32)), // Contraseña aleatoria
-                    ]);
+                    // Crear nuevo usuario dentro de la transacción con manejo de duplicados
+                    try {
+                        $user = User::create([
+                            'name' => $googleUser['name'],
+                            'email' => $googleUser['email'],
+                            'google_id' => $googleUser['sub'],
+                            'google_avatar' => $googleUser['picture'] ?? null,
+                            'email_verified_at' => now(),
+                            'password' => Hash::make(Str::random(32)), // Contraseña aleatoria
+                        ]);
 
-                    \Log::info('Google login: User created successfully', ['user_id' => $user->id]);
-
-                    // Establecer rol por fuera del fillable
-                    $user->role = 'waiter';
-                    $user->save();
-
-                    \Log::info('Google login: Role set successfully', ['user_id' => $user->id, 'role' => 'waiter']);
-
-                    // Crear perfil básico de mozo
-                    if (method_exists($user, 'waiterProfile')) {
-                        try {
-                            $user->waiterProfile()->create([
-                                'display_name' => $user->name,
+                        \Log::info('Google login: User created successfully', ['user_id' => $user->id]);
+                    } catch (\Illuminate\Database\QueryException $e) {
+                        // Si hay error de duplicado, buscar el usuario existente
+                        if ($e->errorInfo[1] == 1062) { // Duplicate entry error
+                            \Log::warning('Google login: Duplicate user detected, searching existing user', [
+                                'email' => $googleUser['email'],
+                                'google_id' => $googleUser['sub']
                             ]);
-                            \Log::info('Google login: Waiter profile created successfully', ['user_id' => $user->id]);
-                        } catch (\Exception $e) {
-                            \Log::warning('Google login: Failed to create waiter profile', [
-                                'user_id' => $user->id,
-                                'error' => $e->getMessage()
-                            ]);
-                            // No re-throw, continue with login
+
+                            $user = User::where('email', $googleUser['email'])
+                                       ->orWhere('google_id', $googleUser['sub'])
+                                       ->first();
+
+                            if (!$user) {
+                                \Log::error('Google login: Could not find duplicate user after constraint violation');
+                                throw $e; // Re-throw if we can't find the user
+                            }
+
+                            // Actualizar información de Google si es necesario
+                            if (!$user->google_id || $user->google_id !== $googleUser['sub']) {
+                                $user->update([
+                                    'google_id' => $googleUser['sub'],
+                                    'google_avatar' => $googleUser['picture'] ?? null
+                                ]);
+                            }
+
+                            \Log::info('Google login: Using existing user after duplicate detection', ['user_id' => $user->id]);
+                        } else {
+                            throw $e; // Re-throw other database errors
                         }
+                    }
+
+                    // Solo para usuarios realmente nuevos (no duplicados encontrados)
+                    if (isset($user) && $user->wasRecentlyCreated) {
+                        // Establecer rol por fuera del fillable
+                        $user->role = 'waiter';
+                        $user->save();
+
+                        \Log::info('Google login: Role set successfully', ['user_id' => $user->id, 'role' => 'waiter']);
+
+                        // Crear perfil básico de mozo
+                        if (method_exists($user, 'waiterProfile')) {
+                            try {
+                                $user->waiterProfile()->create([
+                                    'display_name' => $user->name,
+                                ]);
+                                \Log::info('Google login: Waiter profile created successfully', ['user_id' => $user->id]);
+                            } catch (\Exception $e) {
+                                \Log::warning('Google login: Failed to create waiter profile', [
+                                    'user_id' => $user->id,
+                                    'error' => $e->getMessage()
+                                ]);
+                                // No re-throw, continue with login
+                            }
+                        }
+                    } else {
+                        \Log::info('Google login: Skipping profile creation for existing user', ['user_id' => $user->id]);
                     }
 
                     $staffRequestCreated = false;
