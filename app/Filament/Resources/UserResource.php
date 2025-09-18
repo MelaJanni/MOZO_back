@@ -64,6 +64,25 @@ class UserResource extends Resource
                                     ])->columns(2),
                             ]),
 
+                        Forms\Components\Tabs\Tab::make('membresía')
+                            ->label('Membresía y Pagos')
+                            ->schema([
+                                Forms\Components\Section::make('Plan Actual')
+                                    ->schema([
+                                        Forms\Components\Select::make('membership.plan_id')
+                                            ->label('Plan asignado')
+                                            ->options(fn () => \App\Models\Plan::query()->where('is_active', true)->get()->mapWithKeys(fn($p) => [$p->id => $p->name . ' - ' . $p->formatted_price])->toArray())
+                                            ->searchable()
+                                            ->preload()
+                                            ->placeholder('Sin plan asignado'),
+                                        Forms\Components\Toggle::make('membership.auto_renew')
+                                            ->label('Renovación automática'),
+                                        Forms\Components\Placeholder::make('membership_status')
+                                            ->label('Estado de membresía')
+                                            ->content(fn (?\App\Models\User $record) => $record ? (($record->hasActiveMembership() ? 'Activa' : 'Inactiva') . ($record->membershipTimeRemaining() ? ' • Tiempo restante: ' . $record->membershipTimeRemaining() : '')) : '-'),
+                                    ])->columns(2),
+                            ]),
+
                         Forms\Components\Tabs\Tab::make('admin')
                             ->label('Información del Admin')
                             ->schema([
@@ -122,25 +141,6 @@ class UserResource extends Resource
                                         Forms\Components\TagsInput::make('waiterProfile.skills')->label('Habilidades'),
                                         Forms\Components\Toggle::make('waiterProfile.is_available')->label('Disponible'),
                                         Forms\Components\FileUpload::make('waiterProfile.avatar')->label('Avatar')->image()->directory('avatars/waiters')->downloadable(),
-                                    ])->columns(2),
-                            ]),
-
-                        Forms\Components\Tabs\Tab::make('membresía')
-                            ->label('Membresía y Pagos')
-                            ->schema([
-                                Forms\Components\Section::make('Plan Actual')
-                                    ->schema([
-                                        Forms\Components\Select::make('membership.plan_id')
-                                            ->label('Plan asignado')
-                                            ->options(fn () => \App\Models\Plan::query()->where('is_active', true)->get()->mapWithKeys(fn($p) => [$p->id => $p->name . ' - ' . $p->formatted_price])->toArray())
-                                            ->searchable()
-                                            ->preload()
-                                            ->placeholder('Sin plan asignado'),
-                                        Forms\Components\Toggle::make('membership.auto_renew')
-                                            ->label('Renovación automática'),
-                                        Forms\Components\Placeholder::make('membership_status')
-                                            ->label('Estado de membresía')
-                                            ->content(fn (?\App\Models\User $record) => $record ? ((($record->hasActiveMembership()) ? 'Activa' : 'Inactiva') . (is_null($record->membershipDaysRemaining()) ? '' : ' • Días restantes: ' . $record->membershipDaysRemaining())) : '-'),
                                     ])->columns(2),
                             ]),
 

@@ -202,9 +202,9 @@ class EditUser extends EditRecord
 
         $now = now();
         $periodEnd = match ($plan->interval) {
-            'monthly' => $now->copy()->addMonth(),
-            'yearly' => $now->copy()->addYear(),
-            default => $now->copy()->addMonth(),
+            'monthly' => $now->copy()->addDays(30),
+            'yearly' => $now->copy()->addDays(365),
+            default => $now->copy()->addDays(30),
         };
 
         // Cerrar suscripciones activas previas

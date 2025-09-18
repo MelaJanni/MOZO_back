@@ -286,6 +286,31 @@ class User extends Authenticatable implements FilamentUser
         return now()->diffInDays($limit, false);
     }
 
+    public function membershipTimeRemaining(): ?string
+    {
+        if ($this->is_lifetime_paid ?? false) {
+            return 'Permanente';
+        }
+        $sub = $this->subscriptions()
+            ->whereIn('status', ['active', 'in_trial'])
+            ->orderByDesc('id')
+            ->first();
+        if (!$sub) return null;
+
+        $target = $sub->status === 'in_trial' ? $sub->trial_ends_at : $sub->current_period_end;
+        if (!$target) return null;
+
+        $now = now();
+        $diffInDays = $now->diffInDays($target, false);
+        $diffInHours = $now->diffInHours($target, false);
+
+        if ($diffInDays > 0) {
+            return $diffInDays . ' días y ' . ($diffInHours % 24) . ' horas';
+        } else {
+            return $diffInHours . ' horas restantes';
+        }
+    }
+
     // ========================================
     // BILLING
     // ========================================
