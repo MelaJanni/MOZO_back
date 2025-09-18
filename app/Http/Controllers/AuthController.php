@@ -130,125 +130,137 @@ class AuthController extends Controller
             'business_invitation_code' => 'sometimes|string'
         ]);
 
-        try {
-            // Verificar token de Google
-            $googleUser = $this->verifyGoogleToken($request->google_token);
-            
-            if (!$googleUser) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Token de Google inválido'
-                ], 401);
-            }
+        return \DB::transaction(function () use ($request) {
+            try {
+                // Verificar token de Google
+                $googleUser = $this->verifyGoogleToken($request->google_token);
 
-            // Buscar usuario existente por email
-            $user = User::where('email', $googleUser['email'])->first();
-            
-            if ($user) {
-                // Usuario existente - actualizar información de Google si es necesario
-                if (!$user->google_id) {
-                    $user->update([
-                        'google_id' => $googleUser['sub'],
-                        'google_avatar' => $googleUser['picture'] ?? null
-                    ]);
-                }
-            } else {
-                // Crear nuevo usuario
-                $user = User::create([
-                    'name' => $googleUser['name'],
-                    'email' => $googleUser['email'],
-                    'google_id' => $googleUser['sub'],
-                    'google_avatar' => $googleUser['picture'] ?? null,
-                    'email_verified_at' => now(),
-                    'password' => Hash::make(Str::random(32)), // Contraseña aleatoria
-                ]);
-                // Establecer rol por fuera del fillable
-                try { $user->role = 'waiter'; $user->save(); } catch (\Throwable $e) { /* noop */ }
-
-                // Crear perfil básico de mozo
-                if (method_exists($user, 'waiterProfile')) {
-                    $user->waiterProfile()->create([
-                        'display_name' => $user->name,
-                    ]);
+                if (!$googleUser) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Token de Google inválido'
+                    ], 401);
                 }
 
-                $staffRequestCreated = false;
-                $businessName = null;
+                // Buscar usuario existente por email
+                $user = User::where('email', $googleUser['email'])->first();
 
-                // Si se proporciona código de invitación, crear Staff request
-                if ($request->has('business_invitation_code') && $request->business_invitation_code) {
-                    $business = Business::where('invitation_code', $request->business_invitation_code)->first();
-                    
-                    if ($business) {
-                        // Crear solicitud de staff automáticamente
-                        $staffRequest = Staff::create([
-                            'business_id' => $business->id,
-                            'user_id' => $user->id,
-                            'name' => $user->name,
-                            'email' => $user->email,
-                            'status' => 'pending',
-                            'position' => 'Mozo',
+                if ($user) {
+                    // Usuario existente - actualizar información de Google si es necesario
+                    if (!$user->google_id) {
+                        $user->update([
+                            'google_id' => $googleUser['sub'],
+                            'google_avatar' => $googleUser['picture'] ?? null
                         ]);
-                        
-                        // Notificar a Firebase sobre la nueva solicitud
-                        if (app()->bound(\App\Services\StaffNotificationService::class)) {
-                            app(\App\Services\StaffNotificationService::class)
-                                ->writeStaffRequest($staffRequest, 'created');
+                    }
+                } else {
+                    // Crear nuevo usuario dentro de la transacción
+                    $user = User::create([
+                        'name' => $googleUser['name'],
+                        'email' => $googleUser['email'],
+                        'google_id' => $googleUser['sub'],
+                        'google_avatar' => $googleUser['picture'] ?? null,
+                        'email_verified_at' => now(),
+                        'password' => Hash::make(Str::random(32)), // Contraseña aleatoria
+                    ]);
+
+                    // Establecer rol por fuera del fillable
+                    $user->role = 'waiter';
+                    $user->save();
+
+                    // Crear perfil básico de mozo
+                    if (method_exists($user, 'waiterProfile')) {
+                        $user->waiterProfile()->create([
+                            'display_name' => $user->name,
+                        ]);
+                    }
+
+                    $staffRequestCreated = false;
+                    $businessName = null;
+
+                    // Si se proporciona código de invitación, crear Staff request
+                    if ($request->has('business_invitation_code') && $request->business_invitation_code) {
+                        $business = Business::where('invitation_code', $request->business_invitation_code)->first();
+
+                        if ($business) {
+                            // Crear solicitud de staff automáticamente
+                            $staffRequest = Staff::create([
+                                'business_id' => $business->id,
+                                'user_id' => $user->id,
+                                'name' => $user->name,
+                                'email' => $user->email,
+                                'status' => 'pending',
+                                'position' => 'Mozo',
+                            ]);
+
+                            $staffRequestCreated = true;
+                            $businessName = $business->name;
+
+                            // Asignar business activo
+                            $user->active_business_id = $business->id;
+                            $user->save();
+
+                            // Agregar usuario al business
+                            $user->businesses()->attach($business->id);
+
+                            // Notificar a Firebase después de la transacción (no crítico para el login)
+                            \DB::afterCommit(function () use ($staffRequest) {
+                                try {
+                                    if (app()->bound(\App\Services\StaffNotificationService::class)) {
+                                        app(\App\Services\StaffNotificationService::class)
+                                            ->writeStaffRequest($staffRequest, 'created');
+                                    }
+                                } catch (\Exception $e) {
+                                    \Log::warning('Failed to notify Firebase about staff request: ' . $e->getMessage());
+                                }
+                            });
                         }
-                        
-                        $staffRequestCreated = true;
-                        $businessName = $business->name;
-                        
-                        // Asignar business activo
-                        $user->active_business_id = $business->id;
-                        $user->save();
-                        
-                        // Agregar usuario al business
-                        $user->businesses()->attach($business->id);
                     }
                 }
+
+                // Registrar token FCM si se proporciona (no crítico para el login)
+                \DB::afterCommit(function () use ($user, $request) {
+                    if ($request->has('fcm_token') && $request->fcm_token) {
+                        try {
+                            $user->deviceTokens()->updateOrCreate(
+                                [
+                                    'user_id' => $user->id,
+                                    'token' => $request->fcm_token,
+                                ],
+                                [
+                                    'platform' => $request->platform ?? 'web',
+                                    'expires_at' => now()->addMonths(6),
+                                ]
+                            );
+                        } catch (\Exception $e) {
+                            \Log::warning('Error storing FCM token for Google user ' . $user->id . ': ' . $e->getMessage());
+                        }
+                    }
+                });
+
+                $token = $user->createToken('auth_token')->plainTextToken;
+
+                return response()->json([
+                    'success' => true,
+                    'user' => $user,
+                    'access_token' => $token,
+                    'token_type' => 'Bearer',
+                    'staff_request_created' => $staffRequestCreated ?? false,
+                    'business_name' => $businessName ?? null,
+                    'message' => ($staffRequestCreated ?? false)
+                        ? "Bienvenido {$user->name}. Tu solicitud para trabajar en {$businessName} ha sido enviada."
+                        : "Bienvenido {$user->name}. Puedes unirte a un negocio usando un código de invitación."
+                ]);
+
+            } catch (\Exception $e) {
+                \Log::error('Google login error: ' . $e->getMessage() . ' | Line: ' . $e->getLine() . ' | File: ' . $e->getFile());
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error al autenticar con Google'
+                ], 500);
             }
-
-            // Registrar token FCM si se proporciona
-            if ($request->has('fcm_token') && $request->fcm_token) {
-                try {
-                    $user->deviceTokens()->updateOrCreate(
-                        [
-                            'user_id' => $user->id,
-                            'token' => $request->fcm_token,
-                        ],
-                        [
-                            'platform' => $request->platform ?? 'web',
-                            'expires_at' => now()->addMonths(6),
-                        ]
-                    );
-                } catch (\Exception $e) {
-                    \Log::error('Error storing FCM token for Google user ' . $user->id . ': ' . $e->getMessage());
-                }
-            }
-
-            $token = $user->createToken('auth_token')->plainTextToken;
-
-            return response()->json([
-                'success' => true,
-                'user' => $user,
-                'access_token' => $token,
-                'token_type' => 'Bearer',
-                'staff_request_created' => $staffRequestCreated ?? false,
-                'business_name' => $businessName ?? null,
-                'message' => ($staffRequestCreated ?? false) 
-                    ? "Bienvenido {$user->name}. Tu solicitud para trabajar en {$businessName} ha sido enviada."
-                    : "Bienvenido {$user->name}. Puedes unirte a un negocio usando un código de invitación."
-            ]);
-
-        } catch (\Exception $e) {
-            \Log::error('Google login error: ' . $e->getMessage());
-            
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al autenticar con Google'
-            ], 500);
-        }
+        });
     }
 
     /**
@@ -257,8 +269,9 @@ class AuthController extends Controller
     private function verifyGoogleToken(string $token): ?array
     {
         try {
-            // Verificar el token con Google
-            $response = \Illuminate\Support\Facades\Http::timeout(10)
+            // Verificar el token con Google con reintentos
+            $response = \Illuminate\Support\Facades\Http::retry(2, 1000)
+                ->timeout(15)
                 ->get('https://oauth2.googleapis.com/tokeninfo', [
                     'id_token' => $token
                 ]);
@@ -266,7 +279,8 @@ class AuthController extends Controller
             if (!$response->successful()) {
                 \Log::warning('Google token verification failed', [
                     'status' => $response->status(),
-                    'body' => $response->body()
+                    'body' => $response->body(),
+                    'attempt' => 'with_retry'
                 ]);
                 return null;
             }
@@ -289,10 +303,15 @@ class AuthController extends Controller
                 return null;
             }
 
+            \Log::info('Google token verified successfully', [
+                'email' => $data['email'],
+                'sub' => $data['sub']
+            ]);
+
             return $data;
 
         } catch (\Exception $e) {
-            \Log::error('Error verifying Google token: ' . $e->getMessage());
+            \Log::error('Error verifying Google token: ' . $e->getMessage() . ' | Line: ' . $e->getLine());
             return null;
         }
     }
