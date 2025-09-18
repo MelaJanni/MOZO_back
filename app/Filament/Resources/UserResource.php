@@ -212,12 +212,27 @@ class UserResource extends Resource
     {
         return $table
             ->columns([
+                Tables\Columns\ImageColumn::make('avatar')
+                    ->label('Avatar')
+                    ->circular()
+                    ->getStateUsing(fn ($record) => $record->google_avatar ?: null)
+                    ->defaultImageUrl(fn ($record) => 'https://ui-avatars.com/api/?name=' . urlencode($record->name) . '&color=7F9CF5&background=EBF4FF')
+                    ->size(40),
                 Tables\Columns\TextColumn::make('name')
                     ->label('Nombre')
-                    ->searchable(),
+                    ->searchable()
+                    ->description(fn ($record) => $record->google_id ? 'Cuenta Google' : 'Cuenta local'),
                 Tables\Columns\TextColumn::make('email')
                     ->label('Email')
-                    ->searchable(),
+                    ->searchable()
+                    ->copyable()
+                    ->icon(fn ($record) => $record->google_id ? 'heroicon-o-globe-alt' : 'heroicon-o-envelope'),
+                Tables\Columns\TextColumn::make('google_data')
+                    ->label('Datos Google')
+                    ->getStateUsing(fn ($record) => $record->google_id ? 'ID: ' . substr($record->google_id, 0, 15) . '...' : '-')
+                    ->tooltip(fn ($record) => $record->google_id ? 'Google ID: ' . $record->google_id : 'No es cuenta Google')
+                    ->badge()
+                    ->color(fn ($record) => $record->google_id ? 'success' : 'gray'),
                 Tables\Columns\IconColumn::make('is_system_super_admin')
                     ->label('Admin')
                     ->boolean(),
