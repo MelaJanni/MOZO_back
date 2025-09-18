@@ -13,7 +13,7 @@ class BillingSeeder extends Seeder
             [
                 'code' => 'monthly',
                 'name' => 'Mensual',
-                'interval' => 'month',
+                'interval' => 'monthly',
                 'price_cents' => 999,
                 'currency' => 'USD',
                 'trial_days' => 0,
@@ -26,7 +26,7 @@ class BillingSeeder extends Seeder
             [
                 'code' => 'annual',
                 'name' => 'Anual',
-                'interval' => 'year',
+                'interval' => 'yearly',
                 'price_cents' => 9999,
                 'currency' => 'USD',
                 'trial_days' => 0,

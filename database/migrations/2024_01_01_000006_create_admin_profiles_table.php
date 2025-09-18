@@ -18,9 +18,16 @@ return new class extends Migration
             // Datos del perfil de admin (GLOBALES - no por negocio)
             $table->string('avatar')->nullable();
             $table->string('display_name')->nullable();
+            $table->string('business_name')->nullable();
             $table->string('position')->nullable(); // Cargo general
             $table->string('corporate_email')->nullable();
             $table->string('corporate_phone')->nullable();
+            $table->string('office_extension')->nullable();
+            $table->text('business_description')->nullable();
+            $table->string('business_website')->nullable();
+            $table->json('social_media')->nullable();
+            $table->json('permissions')->nullable();
+            $table->boolean('is_primary_admin')->default(false);
             $table->text('bio')->nullable();
             $table->timestamp('last_active_at')->nullable();
             

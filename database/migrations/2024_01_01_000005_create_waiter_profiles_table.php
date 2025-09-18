@@ -38,7 +38,7 @@ return new class extends Migration
             // Configuración del perfil
             $table->boolean('is_available_for_hire')->default(true);
             $table->boolean('is_available')->default(true);
-            // current_schedule será string libre; la migración posterior lo convierte en VARCHAR en instalaciones existentes
+            // current_schedule string libre (migraciones posteriores pueden ajustarla)
             $table->string('current_schedule')->nullable();
             $table->enum('employment_type', ['employee', 'freelancer', 'contractor'])->default('freelancer');
             $table->decimal('rating', 3, 2)->nullable();

@@ -50,8 +50,13 @@ class CreateUser extends CreateRecord
             $payload = array_intersect_key($adminProfileData, array_flip([
                 'display_name','business_name','position','corporate_email','corporate_phone','office_extension','business_description','business_website','social_media','permissions','notify_new_orders','notify_staff_requests','notify_reviews','notify_payments','avatar',
             ]));
+            $payload = array_filter($payload, function ($v, $k) {
+                return Schema::hasColumn('admin_profiles', $k);
+            }, ARRAY_FILTER_USE_BOTH);
             $payload['user_id'] = $user->id;
-            AdminProfile::create($payload);
+            if (!empty($payload)) {
+                AdminProfile::create($payload);
+            }
         }
 
         $waiterProfileData = $this->waiterProfileData ?? [];
@@ -76,8 +81,13 @@ class CreateUser extends CreateRecord
                 $payload['current_schedule'] = $mapSchedule[$s] ?? $payload['current_schedule'];
             }
 
+            $payload = array_filter($payload, function ($v, $k) {
+                return Schema::hasColumn('waiter_profiles', $k);
+            }, ARRAY_FILTER_USE_BOTH);
             $payload['user_id'] = $user->id;
-            WaiterProfile::create($payload);
+            if (!empty($payload)) {
+                WaiterProfile::create($payload);
+            }
         }
 
         // Crear suscripción si viene membresía
@@ -90,7 +100,7 @@ class CreateUser extends CreateRecord
                 $now = now();
                 $periodEnd = match ($plan->interval) {
                     'monthly' => $now->copy()->addMonth(),
-                    'yearly', 'annual' => $now->copy()->addYear(),
+                    'yearly' => $now->copy()->addYear(),
                     default => $now->copy()->addMonth(),
                 };
                 Subscription::create([

@@ -132,6 +132,13 @@ class EditUser extends EditRecord
         $payload = array_intersect_key($data, array_flip([
             'display_name','business_name','position','corporate_email','corporate_phone','office_extension','business_description','business_website','social_media','permissions','notify_new_orders','notify_staff_requests','notify_reviews','notify_payments','avatar',
         ]));
+        // Filtrar por columnas existentes en la tabla
+        $payload = array_filter($payload, function ($v, $k) {
+            return Schema::hasColumn('admin_profiles', $k);
+        }, ARRAY_FILTER_USE_BOTH);
+        if (empty($payload)) {
+            return;
+        }
         $record->adminProfile()->updateOrCreate([], $payload);
         \Log::channel('livewire')->info('EditUser: adminProfile saved', ['id' => $record->getKey(), 'keys' => array_keys($payload)]);
     }
@@ -161,6 +168,13 @@ class EditUser extends EditRecord
             $payload['current_schedule'] = $mapSchedule[$s] ?? $payload['current_schedule'];
         }
 
+        // Filtrar por columnas existentes en la tabla
+        $payload = array_filter($payload, function ($v, $k) {
+            return Schema::hasColumn('waiter_profiles', $k);
+        }, ARRAY_FILTER_USE_BOTH);
+        if (empty($payload)) {
+            return;
+        }
         $record->waiterProfile()->updateOrCreate([], $payload);
         \Log::channel('livewire')->info('EditUser: waiterProfile saved', ['id' => $record->getKey(), 'keys' => array_keys($payload)]);
     }
@@ -189,7 +203,7 @@ class EditUser extends EditRecord
         $now = now();
         $periodEnd = match ($plan->interval) {
             'monthly' => $now->copy()->addMonth(),
-            'yearly', 'annual' => $now->copy()->addYear(),
+            'yearly' => $now->copy()->addYear(),
             default => $now->copy()->addMonth(),
         };
 

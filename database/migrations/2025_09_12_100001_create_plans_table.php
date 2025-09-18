@@ -11,7 +11,7 @@ return new class extends Migration {
             $table->id();
             $table->string('code')->unique();
             $table->string('name');
-            $table->enum('interval', ['month', 'year']);
+            $table->enum('interval', ['monthly', 'yearly']);
             $table->unsignedInteger('price_cents');
             $table->string('currency', 3)->default('USD');
             $table->unsignedInteger('trial_days')->default(0);
