@@ -18,11 +18,39 @@ class MenuResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Forms\Components\Select::make('business_id')->relationship('business','name')->required(),
-            Forms\Components\TextInput::make('name')->required(),
-            Forms\Components\TextInput::make('file_path')->label('Ruta PDF')->required(),
-            Forms\Components\Toggle::make('is_default'),
-            Forms\Components\TextInput::make('display_order')->numeric()->default(1),
+            Forms\Components\Select::make('business_id')
+                ->relationship('business','name')
+                ->required()
+                ->label('Negocio'),
+            Forms\Components\TextInput::make('name')
+                ->required()
+                ->label('Nombre del menú'),
+            Forms\Components\TextInput::make('file_path')
+                ->label('Ruta PDF')
+                ->required()
+                ->hint(fn ($record) => $record && $record->file_path ? 'Archivo: ' . basename($record->file_path) : 'No hay archivo subido')
+                ->suffixAction(
+                    Forms\Components\Actions\Action::make('download')
+                        ->icon('heroicon-o-arrow-down-tray')
+                        ->tooltip('Descargar PDF')
+                        ->url(fn ($record) => $record && $record->id ? url('/api/menus/' . $record->id . '/download') : null)
+                        ->openUrlInNewTab()
+                        ->visible(fn ($record) => $record && $record->id && $record->file_path)
+                )
+                ->suffixAction(
+                    Forms\Components\Actions\Action::make('preview')
+                        ->icon('heroicon-o-eye')
+                        ->tooltip('Ver PDF')
+                        ->url(fn ($record) => $record && $record->id ? url('/api/menus/' . $record->id . '/preview') : null)
+                        ->openUrlInNewTab()
+                        ->visible(fn ($record) => $record && $record->id && $record->file_path)
+                ),
+            Forms\Components\Toggle::make('is_default')
+                ->label('Menú por defecto'),
+            Forms\Components\TextInput::make('display_order')
+                ->numeric()
+                ->default(1)
+                ->label('Orden de visualización'),
         ]);
     }
 
@@ -37,9 +65,36 @@ class MenuResource extends Resource
                 Tables\Columns\TextColumn::make('display_order')->sortable(),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
-            ]);
+                Tables\Actions\Action::make('preview')
+                    ->icon('heroicon-o-eye')
+                    ->label('')
+                    ->tooltip('Ver PDF')
+                    ->url(fn ($record) => url('/api/menus/' . $record->id . '/preview'))
+                    ->openUrlInNewTab()
+                    ->visible(fn ($record) => $record->file_path),
+                Tables\Actions\Action::make('download')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->label('')
+                    ->tooltip('Descargar PDF')
+                    ->url(fn ($record) => url('/api/menus/' . $record->id . '/download'))
+                    ->openUrlInNewTab()
+                    ->visible(fn ($record) => $record->file_path),
+                Tables\Actions\EditAction::make()
+                    ->label('')
+                    ->tooltip('Editar'),
+                Tables\Actions\DeleteAction::make()
+                    ->label('')
+                    ->tooltip('Eliminar'),
+            ])
+            ->bulkActions([
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->label('Eliminar seleccionados'),
+                ]),
+            ])
+            ->striped()
+            ->paginated([10, 25, 50, 100])
+            ->defaultPaginationPageOption(25);
     }
 
     public static function getPages(): array

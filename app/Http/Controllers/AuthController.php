@@ -298,17 +298,12 @@ class AuthController extends Controller
                             // Agregar usuario al business
                             $user->businesses()->attach($business->id);
 
-                            // Notificar a Firebase después de la transacción (no crítico para el login)
-                            \DB::afterCommit(function () use ($staffRequest) {
-                                try {
-                                    if (app()->bound(\App\Services\StaffNotificationService::class)) {
-                                        app(\App\Services\StaffNotificationService::class)
-                                            ->writeStaffRequest($staffRequest, 'created');
-                                    }
-                                } catch (\Exception $e) {
-                                    \Log::warning('Failed to notify Firebase about staff request: ' . $e->getMessage());
-                                }
-                            });
+                            // TODO: Re-enable Firebase notification when websockets issue is resolved
+                            \Log::info('Google login: Staff request created successfully', [
+                                'staff_request_id' => $staffRequest->id,
+                                'business_id' => $business->id,
+                                'user_id' => $user->id
+                            ]);
                         }
                     }
                 }
