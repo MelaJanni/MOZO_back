@@ -154,6 +154,8 @@ class AuthController extends Controller
                         ]);
                     }
                 } else {
+                    \Log::info('Google login: Creating new user', ['email' => $googleUser['email']]);
+
                     // Crear nuevo usuario dentro de la transacción
                     $user = User::create([
                         'name' => $googleUser['name'],
@@ -164,15 +166,28 @@ class AuthController extends Controller
                         'password' => Hash::make(Str::random(32)), // Contraseña aleatoria
                     ]);
 
+                    \Log::info('Google login: User created successfully', ['user_id' => $user->id]);
+
                     // Establecer rol por fuera del fillable
                     $user->role = 'waiter';
                     $user->save();
 
+                    \Log::info('Google login: Role set successfully', ['user_id' => $user->id, 'role' => 'waiter']);
+
                     // Crear perfil básico de mozo
                     if (method_exists($user, 'waiterProfile')) {
-                        $user->waiterProfile()->create([
-                            'display_name' => $user->name,
-                        ]);
+                        try {
+                            $user->waiterProfile()->create([
+                                'display_name' => $user->name,
+                            ]);
+                            \Log::info('Google login: Waiter profile created successfully', ['user_id' => $user->id]);
+                        } catch (\Exception $e) {
+                            \Log::warning('Google login: Failed to create waiter profile', [
+                                'user_id' => $user->id,
+                                'error' => $e->getMessage()
+                            ]);
+                            // No re-throw, continue with login
+                        }
                     }
 
                     $staffRequestCreated = false;
@@ -238,11 +253,34 @@ class AuthController extends Controller
                     }
                 });
 
+                \Log::info('Google login: About to create token for user', ['user_id' => $user->id, 'email' => $user->email]);
+
                 $token = $user->createToken('auth_token')->plainTextToken;
+
+                \Log::info('Google login: Token created successfully', ['user_id' => $user->id]);
+
+                \Log::info('Google login: About to return response', [
+                    'user_id' => $user->id,
+                    'staff_request_created' => $staffRequestCreated ?? false,
+                    'business_name' => $businessName ?? null
+                ]);
+
+                // Return minimal user data to avoid serialization issues
+                $userData = [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'google_id' => $user->google_id,
+                    'google_avatar' => $user->google_avatar,
+                    'is_system_super_admin' => $user->is_system_super_admin,
+                    'is_lifetime_paid' => $user->is_lifetime_paid,
+                    'created_at' => $user->created_at,
+                    'updated_at' => $user->updated_at,
+                ];
 
                 return response()->json([
                     'success' => true,
-                    'user' => $user,
+                    'user' => $userData,
                     'access_token' => $token,
                     'token_type' => 'Bearer',
                     'staff_request_created' => $staffRequestCreated ?? false,
