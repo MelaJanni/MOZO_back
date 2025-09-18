@@ -34,17 +34,9 @@ class BusinessResource extends Resource
                             ->label('Nombre del negocio')
                             ->required()
                             ->maxLength(255),
-                        Forms\Components\TextInput::make('slug')
-                            ->label('Slug (URL amigable)')
-                            ->unique(ignoreRecord: true)
-                            ->maxLength(255),
                         Forms\Components\Textarea::make('description')
                             ->label('Descripción')
                             ->rows(3),
-                        Forms\Components\FileUpload::make('logo')
-                            ->label('Logo')
-                            ->image()
-                            ->directory('business-logos'),
                     ])->columns(2),
 
                 Section::make('Información de Contacto')
@@ -58,9 +50,6 @@ class BusinessResource extends Resource
                         Forms\Components\TextInput::make('email')
                             ->label('Email')
                             ->email(),
-                        Forms\Components\TextInput::make('website')
-                            ->label('Sitio web')
-                            ->url(),
                     ])->columns(2),
 
                 Section::make('Configuración')
@@ -68,20 +57,7 @@ class BusinessResource extends Resource
                         Forms\Components\Toggle::make('is_active')
                             ->label('Negocio activo')
                             ->default(true),
-                        Forms\Components\Select::make('business_type')
-                            ->label('Tipo de negocio')
-                            ->options([
-                                'restaurant' => 'Restaurante',
-                                'cafe' => 'Café',
-                                'bar' => 'Bar',
-                                'fast_food' => 'Comida rápida',
-                                'other' => 'Otro',
-                            ]),
-                        Forms\Components\TimePicker::make('opening_time')
-                            ->label('Hora de apertura'),
-                        Forms\Components\TimePicker::make('closing_time')
-                            ->label('Hora de cierre'),
-                    ])->columns(2),
+                    ])->columns(1),
 
                 Section::make('Información Adicional')
                     ->schema([
@@ -97,19 +73,10 @@ class BusinessResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\ImageColumn::make('logo')
-                    ->label('Logo')
-                    ->circular()
-                    ->defaultImageUrl(fn ($record) => 'https://ui-avatars.com/api/?name=' . urlencode($record->name) . '&color=7F9CF5&background=EBF4FF'),
                 Tables\Columns\TextColumn::make('name')
                     ->label('Nombre')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('slug')
-                    ->label('Slug')
-                    ->searchable()
-                    ->copyable()
-                    ->hidden(),
                 Tables\Columns\TextColumn::make('address')
                     ->label('Dirección')
                     ->limit(30),
