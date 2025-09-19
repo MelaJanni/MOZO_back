@@ -46,43 +46,6 @@ class PlanResource extends Resource
                                 'yearly' => 'Anual',
                             ])
                             ->required(),
-                        Forms\Components\TextInput::make('price_ars')
-                            ->label('Precio ARS')
-                            ->required()
-                            ->numeric()
-                            ->prefix('$')
-                            ->helperText('Ingrese el precio en pesos argentinos (ej: 15.000)')
-                            ->formatStateUsing(fn ($state) => $state ? number_format($state, 0, ',', '.') : '')
-                            ->dehydrateStateUsing(fn ($state) => $state ? (int) str_replace(['.', ','], '', $state) : null)
-                            ->live()
-                            ->afterStateUpdated(function ($state, $set) {
-                                if ($state) {
-                                    $cleanValue = (int) str_replace(['.', ','], '', $state);
-                                    $set('price_ars', number_format($cleanValue, 0, ',', '.'));
-                                }
-                            }),
-                        Forms\Components\TextInput::make('price_usd')
-                            ->label('Precio USD')
-                            ->numeric()
-                            ->prefix('$')
-                            ->helperText('Precio en dólares (opcional)')
-                            ->formatStateUsing(fn ($state) => $state ? number_format($state, 0, ',', '.') : '')
-                            ->dehydrateStateUsing(fn ($state) => $state ? (int) str_replace(['.', ','], '', $state) : null)
-                            ->live()
-                            ->afterStateUpdated(function ($state, $set) {
-                                if ($state) {
-                                    $cleanValue = (int) str_replace(['.', ','], '', $state);
-                                    $set('price_usd', number_format($cleanValue, 0, ',', '.'));
-                                }
-                            }),
-                        Forms\Components\Select::make('currency')
-                            ->label('Moneda')
-                            ->options([
-                                'ARS' => 'Peso Argentino (ARS)',
-                                'USD' => 'Dólar Estadounidense (USD)',
-                            ])
-                            ->default('ARS')
-                            ->required(),
                         Forms\Components\TextInput::make('trial_days')
                             ->label('Días de prueba')
                             ->numeric()
@@ -90,6 +53,53 @@ class PlanResource extends Resource
                         Forms\Components\Toggle::make('is_active')
                             ->label('Plan activo')
                             ->default(true),
+                    ])->columns(2),
+
+                Section::make('Precios por Moneda')
+                    ->description('Configure los precios del plan en diferentes monedas')
+                    ->schema([
+                        Forms\Components\TextInput::make('price_ars')
+                            ->label('Precio ARS')
+                            ->required()
+                            ->numeric()
+                            ->prefix('$')
+                            ->helperText('Ingrese el precio en pesos argentinos (ej: 15.000)')
+                            ->live()
+                            ->afterStateUpdated(function ($state, $set) {
+                                if ($state) {
+                                    $cleanValue = str_replace(['.', ','], '', $state);
+                                    if (is_numeric($cleanValue)) {
+                                        $formatted = number_format((float)$cleanValue, 0, ',', '.');
+                                        $set('price_ars', $formatted);
+                                    }
+                                }
+                            })
+                            ->dehydrateStateUsing(fn ($state) => $state ? (int) str_replace(['.', ','], '', $state) : null),
+                        Forms\Components\TextInput::make('price_usd')
+                            ->label('Precio USD')
+                            ->numeric()
+                            ->prefix('$')
+                            ->helperText('Precio en dólares (opcional)')
+                            ->live()
+                            ->afterStateUpdated(function ($state, $set) {
+                                if ($state) {
+                                    $cleanValue = str_replace(['.', ','], '', $state);
+                                    if (is_numeric($cleanValue)) {
+                                        $formatted = number_format((float)$cleanValue, 0, ',', '.');
+                                        $set('price_usd', $formatted);
+                                    }
+                                }
+                            })
+                            ->dehydrateStateUsing(fn ($state) => $state ? (int) str_replace(['.', ','], '', $state) : null),
+                        Forms\Components\Select::make('currency')
+                            ->label('Moneda Principal')
+                            ->options([
+                                'ARS' => 'Peso Argentino (ARS)',
+                                'USD' => 'Dólar Estadounidense (USD)',
+                            ])
+                            ->default('ARS')
+                            ->required()
+                            ->helperText('Moneda que se usará por defecto para mostrar en listas'),
                     ])->columns(2),
 
                 Section::make('Información Adicional')
