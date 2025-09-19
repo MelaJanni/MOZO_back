@@ -201,4 +201,34 @@ class Plan extends Model
     {
         return $query->orderBy('sort_order')->orderBy('id');
     }
+
+    // Métodos para gestión de eliminación segura
+    public function hasActiveSubscriptions(): bool
+    {
+        return $this->subscriptions()
+            ->whereIn('status', ['active', 'trialing', 'past_due'])
+            ->exists();
+    }
+
+    public function getActiveSubscriptionsCount(): int
+    {
+        return $this->subscriptions()
+            ->whereIn('status', ['active', 'trialing', 'past_due'])
+            ->count();
+    }
+
+    public function canBeDeleted(): bool
+    {
+        return !$this->hasActiveSubscriptions();
+    }
+
+    public function getDeletionRestrictionReason(): ?string
+    {
+        if ($this->hasActiveSubscriptions()) {
+            $count = $this->getActiveSubscriptionsCount();
+            return "Este plan tiene {$count} suscripciones activas y no puede ser eliminado.";
+        }
+
+        return null;
+    }
 }
