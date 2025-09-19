@@ -156,50 +156,14 @@ class PlanResource extends Resource
                             ->helperText('Moneda que se mostrará por defecto en las listas'),
                     ])->columns(1),
 
-                Section::make('Límites y Características')
-                    ->description('Configure los límites del plan y características incluidas')
+                Section::make('Características del Plan')
+                    ->description('Configure las características incluidas en este plan')
                     ->schema([
-                        Forms\Components\KeyValue::make('limits')
-                            ->label('Items incluidos (límites)')
-                            ->keyLabel('Tipo de límite')
-                            ->valueLabel('Cantidad')
-                            ->keyPlaceholder('max_tables')
-                            ->valuePlaceholder('10')
-                            ->helperText('Ejemplo: max_tables = 10, max_staff = 5, max_businesses = 1')
-                            ->afterStateHydrated(function ($state, $set, $record) {
-                                // Si estamos editando un registro existente y hay datos, usarlos
-                                if ($record && !empty($record->limits)) {
-                                    $set('limits', $record->limits);
-                                } elseif (empty($state)) {
-                                    // Si no hay datos, usar valores por defecto solo para nuevos registros
-                                    $set('limits', [
-                                        'max_businesses' => 1,
-                                        'max_tables' => 10,
-                                        'max_staff' => 5,
-                                    ]);
-                                }
-                            })
-                            ->addActionLabel('Agregar límite')
-                            ->live()
-                            ->dehydrateStateUsing(function ($state) {
-                                if (is_array($state)) {
-                                    $cleaned = [];
-                                    foreach ($state as $key => $value) {
-                                        if ($value && is_numeric($value)) {
-                                            $cleaned[$key] = (int) $value;
-                                        } else {
-                                            $cleaned[$key] = $value;
-                                        }
-                                    }
-                                    return $cleaned;
-                                }
-                                return $state;
-                            }),
-
                         Forms\Components\TagsInput::make('features')
                             ->label('Características incluidas')
                             ->placeholder('Agregar característica...')
                             ->helperText('Presiona Enter después de cada característica para agregarla')
+                            ->required()
                             ->afterStateHydrated(function ($state, $set, $record) {
                                 // Si estamos editando un registro existente y hay datos, usarlos
                                 if ($record && !empty($record->features)) {
@@ -210,15 +174,13 @@ class PlanResource extends Resource
                                         'Códigos QR personalizados',
                                         'Menú digital',
                                         'Notificaciones móviles',
+                                        'Dashboard básico',
+                                        'Soporte por email',
                                     ]);
                                 }
                             })
                             ->separator(',')
                             ->splitKeys(['Enter', ',', 'Tab']),
-
-                        Forms\Components\KeyValue::make('metadata')
-                            ->label('Metadatos adicionales')
-                            ->helperText('Información técnica adicional del plan (opcional)'),
                     ])->columns(1),
             ]);
     }

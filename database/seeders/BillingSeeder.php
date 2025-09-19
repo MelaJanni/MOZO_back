@@ -22,11 +22,6 @@ class BillingSeeder extends Seeder
                 'trial_days' => 14,
                 'trial_enabled' => true,
                 'trial_requires_payment_method' => false,
-                'limits' => [
-                    'max_businesses' => 1,
-                    'max_tables' => 10,
-                    'max_staff' => 3,
-                ],
                 'features' => [
                     'Códigos QR personalizados',
                     'Menú digital',
@@ -56,11 +51,6 @@ class BillingSeeder extends Seeder
                 'trial_days' => 14,
                 'trial_enabled' => true,
                 'trial_requires_payment_method' => false,
-                'limits' => [
-                    'max_businesses' => 2,
-                    'max_tables' => 25,
-                    'max_staff' => 8,
-                ],
                 'features' => [
                     'Todo lo del Plan Básico',
                     'Analytics avanzados',
@@ -91,11 +81,6 @@ class BillingSeeder extends Seeder
                 'trial_days' => 30,
                 'trial_enabled' => true,
                 'trial_requires_payment_method' => true,
-                'limits' => [
-                    'max_businesses' => 10,
-                    'max_tables' => 100,
-                    'max_staff' => 50,
-                ],
                 'features' => [
                     'Todo lo del Plan Profesional',
                     'API personalizada',

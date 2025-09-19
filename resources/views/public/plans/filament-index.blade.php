@@ -138,49 +138,23 @@
                 <div class="space-y-4">
                     <h4 class="font-bold text-gray-900 text-lg border-b border-gray-200 pb-2">Lo que incluye:</h4>
 
-                    <!-- Limits -->
-                    <div class="space-y-3">
-                        <div class="flex items-center">
-                            <div class="w-6 h-6 bg-mozo-100 rounded-full flex items-center justify-center mr-3">
-                                <svg class="w-4 h-4 text-mozo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                </svg>
-                            </div>
-                            <span class="text-gray-700 font-medium">Hasta {{ $plan->getMaxTables() }} mesas</span>
-                        </div>
-                        <div class="flex items-center">
-                            <div class="w-6 h-6 bg-mozo-100 rounded-full flex items-center justify-center mr-3">
-                                <svg class="w-4 h-4 text-mozo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                </svg>
-                            </div>
-                            <span class="text-gray-700 font-medium">{{ $plan->getMaxStaff() }} usuarios mozos</span>
-                        </div>
-                        <div class="flex items-center">
-                            <div class="w-6 h-6 bg-mozo-100 rounded-full flex items-center justify-center mr-3">
-                                <svg class="w-4 h-4 text-mozo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                </svg>
-                            </div>
-                            <span class="text-gray-700 font-medium">{{ $plan->getMaxBusinesses() }} {{ $plan->getMaxBusinesses() == 1 ? 'restaurante' : 'restaurantes' }}</span>
-                        </div>
-                    </div>
-
                     <!-- Features -->
                     @if($plan->features && count($plan->features) > 0)
-                    <div class="pt-4 border-t border-gray-100">
-                        <div class="space-y-3">
-                            @foreach($plan->features as $feature)
-                            <div class="flex items-center">
-                                <div class="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center mr-3">
-                                    <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                    </svg>
-                                </div>
-                                <span class="text-gray-700">{{ $feature }}</span>
+                    <div class="space-y-3">
+                        @foreach($plan->features as $feature)
+                        <div class="flex items-center">
+                            <div class="w-6 h-6 bg-mozo-100 rounded-full flex items-center justify-center mr-3">
+                                <svg class="w-4 h-4 text-mozo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
                             </div>
-                            @endforeach
+                            <span class="text-gray-700">{{ $feature }}</span>
                         </div>
+                        @endforeach
+                    </div>
+                    @else
+                    <div class="text-center py-4">
+                        <span class="text-gray-500 italic">No hay características definidas para este plan</span>
                     </div>
                     @endif
                 </div>

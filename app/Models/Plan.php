@@ -22,7 +22,6 @@ class Plan extends Model
         'trial_days',
         'trial_enabled',
         'trial_requires_payment_method',
-        'limits',
         'features',
         'sort_order',
         'is_featured',
@@ -30,7 +29,6 @@ class Plan extends Model
         'is_active',
         'tax_percentage',
         'tax_inclusive',
-        'metadata',
         'provider_plan_ids',
     ];
 
@@ -40,14 +38,12 @@ class Plan extends Model
         'quarterly_discount_percentage' => 'decimal:2',
         'trial_enabled' => 'boolean',
         'trial_requires_payment_method' => 'boolean',
-        'limits' => 'array',
         'features' => 'array',
         'is_featured' => 'boolean',
         'is_popular' => 'boolean',
         'is_active' => 'boolean',
         'tax_percentage' => 'decimal:2',
         'tax_inclusive' => 'boolean',
-        'metadata' => 'array',
         'provider_plan_ids' => 'array',
     ];
 
