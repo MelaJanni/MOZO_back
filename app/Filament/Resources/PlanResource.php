@@ -179,8 +179,7 @@ class PlanResource extends Resource
                                     ]);
                                 }
                             })
-                            ->separator(',')
-                            ->splitKeys(['Enter', ',', 'Tab']),
+                            ->splitKeys(['Enter', 'Tab']),
                     ])->columns(1),
             ]);
     }
