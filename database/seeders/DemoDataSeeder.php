@@ -11,157 +11,226 @@ class DemoDataSeeder extends Seeder
 {
     public function run(): void
     {
-        // Negocios demo
-        $biz = [
-            ['code' => 'PLAZA1','name' => 'Restaurante La Plaza','email' => 'info@laplaza.com','address' => 'Av. Corrientes 1234, Buenos Aires','phone' => '+54 11 4567-8901','description' => 'Restaurante gourmet en el corazón de Buenos Aires'],
-            ['code' => 'CAFE01','name' => 'Café Central','email' => 'contacto@cafecentral.com','address' => 'San Martín 567, Córdoba','phone' => '+54 351 123-4567','description' => 'Café boutique con ambiente acogedor'],
-            ['code' => 'PIZZA3','name' => 'Pizza Express','email' => 'pedidos@pizzaexpress.com','address' => 'Rivadavia 890, Rosario','phone' => '+54 341 999-8888','description' => 'Pizzería de entrega rápida'],
+        echo "🔄 Siguiendo flujo correcto: Usuario → Plan → Negocio → Admin → Staff\n\n";
+
+        // PASO 1: Crear usuarios demo (se registran primero)
+        $userData = [
+            [
+                'email' => 'maria@example.com',
+                'name' => 'María González',
+                'plan_code' => 'PROFESSIONAL', // Plan profesional
+                'business' => ['name' => 'Restaurante La Plaza','email' => 'info@laplaza.com','address' => 'Av. Corrientes 1234, Buenos Aires','phone' => '+54 11 4567-8901','description' => 'Restaurante gourmet en el corazón de Buenos Aires'],
+                'roles' => ['super_admin']
+            ],
+            [
+                'email' => 'carlos@example.com',
+                'name' => 'Carlos Rodríguez',
+                'plan_code' => 'STARTER', // Plan inicial
+                'business' => ['name' => 'Café Central','email' => 'contacto@cafecentral.com','address' => 'San Martín 567, Córdoba','phone' => '+54 351 123-4567','description' => 'Café boutique con ambiente acogedor'],
+                'roles' => []
+            ],
+            [
+                'email' => 'ana@example.com',
+                'name' => 'Ana Martínez',
+                'plan_code' => 'ENTERPRISE', // Plan empresarial
+                'business' => ['name' => 'Pizza Express','email' => 'pedidos@pizzaexpress.com','address' => 'Rivadavia 890, Rosario','phone' => '+54 341 999-8888','description' => 'Pizzería de entrega rápida'],
+                'roles' => []
+            ],
         ];
-        $business = [];
-        foreach ($biz as $b) {
-        $business[$b['code']] = Business::updateOrCreate(
-                ['invitation_code' => $b['code']],
+
+        $createdBusinesses = [];
+
+        foreach ($userData as $data) {
+            echo "👤 Creando usuario: {$data['name']}\n";
+
+            // PASO 1: Crear usuario
+            $user = User::firstOrCreate(
+                ['email' => $data['email']],
                 [
-            'name' => $b['name'],
-            'address' => $b['address'],
-            'phone' => $b['phone'],
-            'email' => $b['email'],
-            'description' => $b['description'],
-                    'is_active' => true,
+                    'name' => $data['name'],
+                    'password' => Hash::make('password'),
+                    'email_verified_at' => now(),
                 ]
             );
-        }
 
-        // Usuarios demo
-        $users = [
-            ['email' => 'maria@example.com','name' => 'María González','roles' => ['super_admin']],
-            ['email' => 'carlos@example.com','name' => 'Carlos Rodríguez','roles' => []],
-            ['email' => 'ana@example.com','name' => 'Ana Martínez','roles' => []],
-            ['email' => 'luis@example.com','name' => 'Luis García','roles' => []],
-        ];
-
-        foreach ($users as $u) {
-            $user = User::firstOrCreate(
-                ['email' => $u['email']],
-                ['name' => $u['name'],'password' => Hash::make('password')]
-            );
-            foreach ($u['roles'] as $role) {
-                try { $user->assignRole($role); } catch (\Throwable $e) {}
+            // Asignar roles de sistema
+            foreach ($data['roles'] as $role) {
+                try {
+                    $user->assignRole($role);
+                    echo "  ✅ Rol asignado: {$role}\n";
+                } catch (\Throwable $e) {}
             }
 
+            // PASO 2: Contratar plan (suscripción)
+            $plan = Plan::where('code', $data['plan_code'])->first();
+            if ($plan) {
+                echo "  💳 Contratando plan: {$plan->name}\n";
+
+                $subscription = Subscription::updateOrCreate(
+                    ['user_id' => $user->id],
+                    [
+                        'plan_id' => $plan->id,
+                        'status' => 'active',
+                        'billing_period' => 'monthly',
+                        'price_at_creation' => $plan->price_ars,
+                        'currency' => $plan->currency,
+                        'trial_ends_at' => null,
+                        'next_billing_date' => now()->addMonth(),
+                        'provider' => 'demo',
+                        'metadata' => ['seeded' => true, 'demo_user' => true],
+                    ]
+                );
+
+                // Crear pago demo
+                Payment::create([
+                    'subscription_id' => $subscription->id,
+                    'user_id' => $user->id,
+                    'amount' => $plan->price_ars,
+                    'currency' => $plan->currency,
+                    'status' => 'completed',
+                    'provider' => 'demo',
+                    'provider_payment_id' => 'DEMO-' . uniqid(),
+                    'paid_at' => now(),
+                    'metadata' => ['seeded' => true],
+                ]);
+
+                echo "  ✅ Suscripción creada y pagada\n";
+            }
+
+            // PASO 3: Usuario crea su negocio (ahora que tiene plan activo)
+            echo "  🏢 Creando negocio: {$data['business']['name']}\n";
+
+            $business = Business::create([
+                'name' => $data['business']['name'],
+                'email' => $data['business']['email'],
+                'address' => $data['business']['address'],
+                'phone' => $data['business']['phone'],
+                'description' => $data['business']['description'],
+                'owner_id' => $user->id, // El usuario es el dueño
+                'invitation_code' => strtoupper(substr($data['business']['name'], 0, 6)),
+                'is_active' => true,
+            ]);
+
+            $createdBusinesses[] = $business;
+
+            // PASO 4: Usuario se convierte en admin del negocio
+            echo "  👨‍💼 Convirtiendo usuario en admin del negocio\n";
+
+            $business->addAdmin($user, 'owner');
+
+            // Crear perfil de admin
             AdminProfile::updateOrCreate(
                 ['user_id' => $user->id],
                 [
                     'display_name' => $user->name,
-                    'position' => 'Administrador',
-                    'corporate_phone' => '+54 11 0000-0000',
+                    'position' => 'Dueño/Administrador',
+                    'corporate_phone' => $data['business']['phone'],
                 ]
             );
-            WaiterProfile::updateOrCreate(['user_id' => $user->id], ['display_name' => explode(' ', $user->name)[0]]);
-        }
 
-        // Roles en negocios
-        $maria = User::where('email','maria@example.com')->first();
-        $carlos = User::where('email','carlos@example.com')->first();
-        $ana   = User::where('email','ana@example.com')->first();
-        $luis  = User::where('email','luis@example.com')->first();
+            // Establecer rol activo
+            UserActiveRole::updateOrCreate(
+                ['user_id' => $user->id, 'business_id' => $business->id],
+                ['active_role' => 'admin']
+            );
 
-        $business['PLAZA1']->addAdmin($maria, 'owner');
-        $business['CAFE01']->addAdmin($maria, 'manager');
-    $business['PLAZA1']->addWaiter($maria, 'tiempo parcial', 25);
+            echo "  ✅ Usuario es ahora admin del negocio\n";
 
-        $business['PIZZA3']->addAdmin($carlos, 'owner');
-    $business['CAFE01']->addWaiter($carlos, 'por horas', 22);
+            // PASO 5: Crear menú por defecto y mesas
+            echo "  📋 Creando menú por defecto\n";
 
-    $business['PLAZA1']->addWaiter($ana, 'tiempo completo', 20);
-    $business['PIZZA3']->addWaiter($ana, 'tiempo parcial', 18);
-
-    $business['CAFE01']->addWaiter($luis, 'tiempo completo', 19);
-
-        UserActiveRole::updateOrCreate(['user_id'=>$maria->id,'business_id'=>$business['PLAZA1']->id],['active_role'=>'admin']);
-        UserActiveRole::updateOrCreate(['user_id'=>$maria->id,'business_id'=>$business['CAFE01']->id],['active_role'=>'admin']);
-        UserActiveRole::updateOrCreate(['user_id'=>$carlos->id,'business_id'=>$business['PIZZA3']->id],['active_role'=>'admin']);
-        UserActiveRole::updateOrCreate(['user_id'=>$carlos->id,'business_id'=>$business['CAFE01']->id],['active_role'=>'waiter']);
-        UserActiveRole::updateOrCreate(['user_id'=>$ana->id,'business_id'=>$business['PLAZA1']->id],['active_role'=>'waiter']);
-        UserActiveRole::updateOrCreate(['user_id'=>$ana->id,'business_id'=>$business['PIZZA3']->id],['active_role'=>'waiter']);
-        UserActiveRole::updateOrCreate(['user_id'=>$luis->id,'business_id'=>$business['CAFE01']->id],['active_role'=>'waiter']);
-
-        // Menú por defecto y luego Mesas y QR demo (regla: no crear mesas sin menú)
-        $qrService = app(QrCodeService::class);
-        $tablesSpec = [
-            ['code'=>'PLAZA1','n'=>5],
-            ['code'=>'CAFE01','n'=>3],
-            ['code'=>'PIZZA3','n'=>4],
-        ];
-
-        foreach ($tablesSpec as $spec) {
-            $bizModel = $business[$spec['code']];
-            // Asegurar al menos un menú por negocio
             Menu::updateOrCreate(
-                ['business_id' => $bizModel->id, 'is_default' => true],
+                ['business_id' => $business->id, 'is_default' => true],
                 [
                     'name' => 'Menú Principal',
-                    'file_path' => 'menus/demo-'.$spec['code'].'.pdf', // placeholder
+                    'file_path' => 'menus/demo-' . $business->id . '.pdf',
                     'is_default' => true,
                     'display_order' => 1,
                 ]
             );
-            // Ahora sí, crear mesas
-            for ($i=1; $i<=$spec['n']; $i++) {
-                $table = Table::firstOrCreate(
-                    ['business_id'=>$bizModel->id,'number'=>$i],
-                    ['name'=>"Mesa $i",'capacity'=>4,'location'=>null,'status'=>'available','notifications_enabled'=>true]
-                );
-                try { $qrService->generateForTable($table); } catch (\Exception $e) {}
+
+            // Crear mesas según el plan
+            $maxTables = $plan ? $plan->getMaxTables() : 5;
+            $tablesToCreate = min($maxTables, 5); // Máximo 5 para demo
+
+            echo "  🪑 Creando {$tablesToCreate} mesas\n";
+
+            $qrService = app(QrCodeService::class);
+            for ($i = 1; $i <= $tablesToCreate; $i++) {
+                $table = Table::create([
+                    'business_id' => $business->id,
+                    'number' => $i,
+                    'name' => "Mesa {$i}",
+                    'capacity' => rand(2, 8),
+                    'location' => null,
+                    'status' => 'available',
+                    'notifications_enabled' => true,
+                ]);
+
+                try {
+                    $qrService->generateForTable($table);
+                } catch (\Exception $e) {
+                    echo "    ⚠️  Error generando QR para mesa {$i}: {$e->getMessage()}\n";
+                }
             }
+
+            echo "  ✅ Negocio completo configurado\n\n";
         }
 
-        // Suscripciones demo (fuente de verdad)
-        $monthly = Plan::where('code','monthly')->first();
-        $annual = Plan::where('code','annual')->first();
+        // PASO 6: Crear algunos mozos demo (empleados contratados por los admins)
+        echo "👥 Creando mozos de ejemplo...\n";
 
-        $subscriptionData = [
-            $maria->id => ['plan' => $annual, 'auto_renew' => true, 'period_end' => now()->addYear()],
-            $carlos->id => ['plan' => $monthly, 'auto_renew' => false, 'period_end' => now()->addMonth()],
-            $ana->id => ['plan' => $monthly, 'auto_renew' => true, 'period_end' => now()->addDays(15)],
-            $luis->id => ['plan' => $annual, 'auto_renew' => false, 'period_end' => now()->addMonths(8)],
+        $waiterData = [
+            ['email' => 'mozo1@example.com', 'name' => 'Juan Pérez', 'business_index' => 0], // Para María (Restaurante La Plaza)
+            ['email' => 'mozo2@example.com', 'name' => 'Lucia Fernández', 'business_index' => 1], // Para Carlos (Café Central)
+            ['email' => 'mozo3@example.com', 'name' => 'Pedro Martín', 'business_index' => 2], // Para Ana (Pizza Express)
         ];
 
-        foreach ($subscriptionData as $userId => $data) {
-            if (!$data['plan']) continue;
+        foreach ($waiterData as $index => $waiterInfo) {
+            $business = $createdBusinesses[$waiterInfo['business_index']];
+            $admin = User::find($business->owner_id);
 
-            $has = Subscription::where('user_id', $userId)->whereIn('status',['active','in_trial'])->exists();
-            if (!$has) {
-                $sub = Subscription::create([
-                    'user_id' => $userId,
-                    'plan_id' => $data['plan']->id,
-                    'provider' => 'offline',
-                    'status' => 'active',
-                    'auto_renew' => $data['auto_renew'],
-                    'current_period_end' => $data['period_end'],
-                    'metadata' => ['seeded' => true],
-                ]);
+            echo "  👨‍🍳 Creando mozo: {$waiterInfo['name']} para {$business->name}\n";
 
-                // Pago de cortesía (paid)
-                Payment::create([
-                    'subscription_id' => $sub->id,
-                    'user_id' => $userId,
-                    'provider' => 'offline',
-                    'provider_payment_id' => 'SEED-'.uniqid(),
-                    'amount_cents' => $data['plan']->price_cents,
-                    'currency' => $data['plan']->currency,
-                    'status' => 'paid',
-                    'paid_at' => now(),
-                    'raw_payload' => ['seeded'=>true],
-                ]);
-            }
+            // Crear usuario mozo
+            $waiter = User::firstOrCreate(
+                ['email' => $waiterInfo['email']],
+                [
+                    'name' => $waiterInfo['name'],
+                    'password' => Hash::make('password'),
+                    'email_verified_at' => now(),
+                ]
+            );
+
+            // Admin contrata al mozo
+            $business->addWaiter($waiter, 'tiempo completo', rand(18, 25));
+
+            // Crear perfil de mozo
+            WaiterProfile::updateOrCreate(
+                ['user_id' => $waiter->id],
+                ['display_name' => explode(' ', $waiter->name)[0]]
+            );
+
+            // Establecer rol activo
+            UserActiveRole::updateOrCreate(
+                ['user_id' => $waiter->id, 'business_id' => $business->id],
+                ['active_role' => 'waiter']
+            );
+
+            echo "  ✅ Mozo contratado por {$admin->name}\n";
         }
 
-    // Mostrar credenciales de usuarios demo
-    echo "\nUsuarios de prueba creados:\n";
-    echo " - María González: maria@example.com / password (super_admin)\n";
-    echo " - Carlos Rodríguez: carlos@example.com / password\n";
-    echo " - Ana Martínez: ana@example.com / password\n";
-    echo " - Luis García: luis@example.com / password\n\n";
+        echo "\n🎉 SEEDER COMPLETADO - Flujo correcto aplicado\n\n";
+
+        // Mostrar credenciales de usuarios demo
+        echo "👤 Usuarios de prueba creados:\n";
+        echo "ADMINS (con negocios):\n";
+        echo " - María González: maria@example.com / password (super_admin + Restaurante La Plaza)\n";
+        echo " - Carlos Rodríguez: carlos@example.com / password (Café Central)\n";
+        echo " - Ana Martínez: ana@example.com / password (Pizza Express)\n\n";
+        echo "MOZOS (empleados):\n";
+        echo " - Juan Pérez: mozo1@example.com / password (Mozo en La Plaza)\n";
+        echo " - Lucia Fernández: mozo2@example.com / password (Mozo en Café Central)\n";
+        echo " - Pedro Martín: mozo3@example.com / password (Mozo en Pizza Express)\n\n";
     }
 }
