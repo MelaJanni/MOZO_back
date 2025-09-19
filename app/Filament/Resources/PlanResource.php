@@ -39,10 +39,11 @@ class PlanResource extends Resource
                             ->label('Nombre del plan')
                             ->required()
                             ->maxLength(255),
-                        Forms\Components\Select::make('interval')
-                            ->label('Intervalo de facturación')
+                        Forms\Components\Select::make('billing_period')
+                            ->label('Periodo de facturación')
                             ->options([
                                 'monthly' => 'Mensual',
+                                'quarterly' => 'Trimestral',
                                 'yearly' => 'Anual',
                             ])
                             ->required(),
@@ -89,14 +90,16 @@ class PlanResource extends Resource
                     ->label('Nombre')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\BadgeColumn::make('interval')
-                    ->label('Intervalo')
+                Tables\Columns\BadgeColumn::make('billing_period')
+                    ->label('Periodo')
                     ->colors([
                         'primary' => 'monthly',
+                        'warning' => 'quarterly',
                         'success' => 'yearly',
                     ])
                     ->formatStateUsing(fn (string $state): string => match ($state) {
                         'monthly' => 'Mensual',
+                        'quarterly' => 'Trimestral',
                         'yearly' => 'Anual',
                         default => $state,
                     }),
@@ -128,10 +131,11 @@ class PlanResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                SelectFilter::make('interval')
-                    ->label('Intervalo')
+                SelectFilter::make('billing_period')
+                    ->label('Periodo')
                     ->options([
                         'monthly' => 'Mensual',
+                        'quarterly' => 'Trimestral',
                         'yearly' => 'Anual',
                     ]),
                 Tables\Filters\TernaryFilter::make('is_active')

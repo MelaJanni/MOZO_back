@@ -327,6 +327,21 @@ class User extends Authenticatable implements FilamentUser
             ->first();
     }
 
+    public function transactions()
+    {
+        return $this->hasMany(Transaction::class);
+    }
+
+    public function invoices()
+    {
+        return $this->hasMany(Invoice::class);
+    }
+
+    public function payments()
+    {
+        return $this->hasMany(Payment::class);
+    }
+
     // ========================================
     // FILAMENT ACCESS
     // ========================================

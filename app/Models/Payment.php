@@ -40,4 +40,41 @@ class Payment extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    public function invoice()
+    {
+        return $this->belongsTo(Invoice::class);
+    }
+
+    public function transactions()
+    {
+        return $this->hasMany(Transaction::class);
+    }
+
+    // Métodos de utilidad
+    public function getAmount(): float
+    {
+        return $this->amount_cents / 100;
+    }
+
+    public function getFormattedAmount(): string
+    {
+        $symbol = $this->currency === 'USD' ? 'USD $' : '$';
+        return $symbol . number_format($this->getAmount(), 2);
+    }
+
+    public function isPaid(): bool
+    {
+        return $this->status === 'paid';
+    }
+
+    public function isPending(): bool
+    {
+        return $this->status === 'pending';
+    }
+
+    public function isFailed(): bool
+    {
+        return $this->status === 'failed';
+    }
 }

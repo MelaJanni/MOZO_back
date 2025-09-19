@@ -857,6 +857,127 @@ Route::middleware('auth:sanctum')->post('/debug/upload-test', function(Illuminat
     }
 });
 
+// =====================================================
+// 💳 SISTEMA DE MEMBRESÍAS Y PLANES DE PAGO
+// =====================================================
+
+// 📋 PLANES PÚBLICOS (sin autenticación)
+Route::prefix('plans')->group(function () {
+    Route::get('/', [App\Http\Controllers\Api\PlansController::class, 'index']);
+    Route::get('/{plan}', [App\Http\Controllers\Api\PlansController::class, 'show']);
+    Route::post('/{plan}/calculate-price', [App\Http\Controllers\Api\PlansController::class, 'calculatePrice']);
+    Route::post('/validate-coupon', [App\Http\Controllers\Api\PlansController::class, 'validateCoupon']);
+});
+
+// 🛒 CHECKOUT (requiere autenticación)
+Route::middleware('auth:sanctum')->prefix('checkout')->group(function () {
+    Route::post('/initialize', [App\Http\Controllers\Api\CheckoutController::class, 'initialize']);
+    Route::post('/create', [App\Http\Controllers\Api\CheckoutController::class, 'create']);
+    Route::get('/status/{sessionId}', [App\Http\Controllers\Api\CheckoutController::class, 'status']);
+    Route::post('/confirm', [App\Http\Controllers\Api\CheckoutController::class, 'confirm']);
+});
+
+// 🪝 WEBHOOKS (sin autenticación - validación interna)
+Route::prefix('webhooks')->group(function () {
+    Route::post('/mercadopago', [App\Http\Controllers\Api\WebhooksController::class, 'mercadoPago']);
+    Route::post('/paypal', [App\Http\Controllers\Api\WebhooksController::class, 'paypal']);
+    Route::post('/stripe', [App\Http\Controllers\Api\WebhooksController::class, 'stripe']);
+});
+
+// 💼 SUSCRIPCIONES DEL USUARIO (requiere autenticación)
+Route::middleware('auth:sanctum')->prefix('subscriptions')->group(function () {
+    Route::get('/', function(Illuminate\Http\Request $request) {
+        $user = $request->user();
+        $subscriptions = $user->subscriptions()
+            ->with(['plan', 'coupon'])
+            ->latest()
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $subscriptions->map(function ($subscription) {
+                return [
+                    'id' => $subscription->id,
+                    'plan' => [
+                        'id' => $subscription->plan->id,
+                        'name' => $subscription->plan->name,
+                        'description' => $subscription->plan->description,
+                    ],
+                    'status' => $subscription->status,
+                    'current_period_end' => $subscription->current_period_end,
+                    'trial_ends_at' => $subscription->trial_ends_at,
+                    'auto_renew' => $subscription->auto_renew,
+                    'is_active' => $subscription->isActive(),
+                    'is_in_trial' => $subscription->isInTrial(),
+                    'days_remaining' => $subscription->getDaysRemaining(),
+                    'coupon' => $subscription->coupon ? [
+                        'code' => $subscription->coupon->code,
+                        'description' => $subscription->coupon->getDiscountDescription(),
+                    ] : null,
+                    'created_at' => $subscription->created_at,
+                ];
+            }),
+        ]);
+    });
+
+    Route::get('/{subscription}', function(Illuminate\Http\Request $request, $subscriptionId) {
+        $user = $request->user();
+        $subscription = $user->subscriptions()
+            ->with(['plan', 'coupon', 'transactions'])
+            ->findOrFail($subscriptionId);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'id' => $subscription->id,
+                'plan' => $subscription->plan,
+                'status' => $subscription->status,
+                'current_period_end' => $subscription->current_period_end,
+                'trial_ends_at' => $subscription->trial_ends_at,
+                'auto_renew' => $subscription->auto_renew,
+                'is_active' => $subscription->isActive(),
+                'is_in_trial' => $subscription->isInTrial(),
+                'days_remaining' => $subscription->getDaysRemaining(),
+                'coupon' => $subscription->coupon,
+                'transactions' => $subscription->transactions->map(function ($transaction) {
+                    return [
+                        'id' => $transaction->id,
+                        'amount' => $transaction->getFormattedAmount(),
+                        'status' => $transaction->status,
+                        'type' => $transaction->type,
+                        'processed_at' => $transaction->processed_at,
+                        'created_at' => $transaction->created_at,
+                    ];
+                }),
+                'created_at' => $subscription->created_at,
+            ],
+        ]);
+    });
+
+    Route::post('/{subscription}/cancel', function(Illuminate\Http\Request $request, $subscriptionId) {
+        $user = $request->user();
+        $subscription = $user->subscriptions()->findOrFail($subscriptionId);
+
+        if ($subscription->isCanceled()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'La suscripción ya está cancelada',
+            ], 400);
+        }
+
+        $subscription->update([
+            'status' => 'canceled',
+            'auto_renew' => false,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Suscripción cancelada exitosamente',
+            'data' => ['subscription_id' => $subscription->id],
+        ]);
+    });
+});
+
 // 🔧 DIAGNÓSTICO: Endpoint para arreglar límites PHP
 Route::middleware('auth:sanctum')->post('/debug/fix-php-limits', function(Illuminate\Http\Request $request) {
     try {
@@ -956,3 +1077,125 @@ Route::middleware('auth:sanctum')->post('/debug/fix-php-limits', function(Illumi
         ], 500);
     }
 });
+
+// =====================================================
+// 💳 SISTEMA DE MEMBRESÍAS Y PLANES DE PAGO
+// =====================================================
+
+// 📋 PLANES PÚBLICOS (sin autenticación)
+Route::prefix('plans')->group(function () {
+    Route::get('/', [App\Http\Controllers\Api\PlansController::class, 'index']);
+    Route::get('/{plan}', [App\Http\Controllers\Api\PlansController::class, 'show']);
+    Route::post('/{plan}/calculate-price', [App\Http\Controllers\Api\PlansController::class, 'calculatePrice']);
+    Route::post('/validate-coupon', [App\Http\Controllers\Api\PlansController::class, 'validateCoupon']);
+});
+
+// 🛒 CHECKOUT (requiere autenticación)
+Route::middleware('auth:sanctum')->prefix('checkout')->group(function () {
+    Route::post('/initialize', [App\Http\Controllers\Api\CheckoutController::class, 'initialize']);
+    Route::post('/create', [App\Http\Controllers\Api\CheckoutController::class, 'create']);
+    Route::get('/status/{sessionId}', [App\Http\Controllers\Api\CheckoutController::class, 'status']);
+    Route::post('/confirm', [App\Http\Controllers\Api\CheckoutController::class, 'confirm']);
+});
+
+// 🪝 WEBHOOKS (sin autenticación - validación interna)
+Route::prefix('webhooks')->group(function () {
+    Route::post('/mercadopago', [App\Http\Controllers\Api\WebhooksController::class, 'mercadoPago']);
+    Route::post('/paypal', [App\Http\Controllers\Api\WebhooksController::class, 'paypal']);
+    Route::post('/stripe', [App\Http\Controllers\Api\WebhooksController::class, 'stripe']);
+});
+
+// 💼 SUSCRIPCIONES DEL USUARIO (requiere autenticación)
+Route::middleware('auth:sanctum')->prefix('subscriptions')->group(function () {
+    Route::get('/', function(Illuminate\Http\Request $request) {
+        $user = $request->user();
+        $subscriptions = $user->subscriptions()
+            ->with(['plan', 'coupon'])
+            ->latest()
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $subscriptions->map(function ($subscription) {
+                return [
+                    'id' => $subscription->id,
+                    'plan' => [
+                        'id' => $subscription->plan->id,
+                        'name' => $subscription->plan->name,
+                        'description' => $subscription->plan->description,
+                    ],
+                    'status' => $subscription->status,
+                    'current_period_end' => $subscription->current_period_end,
+                    'trial_ends_at' => $subscription->trial_ends_at,
+                    'auto_renew' => $subscription->auto_renew,
+                    'is_active' => $subscription->isActive(),
+                    'is_in_trial' => $subscription->isInTrial(),
+                    'days_remaining' => $subscription->getDaysRemaining(),
+                    'coupon' => $subscription->coupon ? [
+                        'code' => $subscription->coupon->code,
+                        'description' => $subscription->coupon->getDiscountDescription(),
+                    ] : null,
+                    'created_at' => $subscription->created_at,
+                ];
+            }),
+        ]);
+    });
+
+    Route::get('/{subscription}', function(Illuminate\Http\Request $request, $subscriptionId) {
+        $user = $request->user();
+        $subscription = $user->subscriptions()
+            ->with(['plan', 'coupon', 'transactions'])
+            ->findOrFail($subscriptionId);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'id' => $subscription->id,
+                'plan' => $subscription->plan,
+                'status' => $subscription->status,
+                'current_period_end' => $subscription->current_period_end,
+                'trial_ends_at' => $subscription->trial_ends_at,
+                'auto_renew' => $subscription->auto_renew,
+                'is_active' => $subscription->isActive(),
+                'is_in_trial' => $subscription->isInTrial(),
+                'days_remaining' => $subscription->getDaysRemaining(),
+                'coupon' => $subscription->coupon,
+                'transactions' => $subscription->transactions->map(function ($transaction) {
+                    return [
+                        'id' => $transaction->id,
+                        'amount' => $transaction->getFormattedAmount(),
+                        'status' => $transaction->status,
+                        'type' => $transaction->type,
+                        'processed_at' => $transaction->processed_at,
+                        'created_at' => $transaction->created_at,
+                    ];
+                }),
+                'created_at' => $subscription->created_at,
+            ],
+        ]);
+    });
+
+    Route::post('/{subscription}/cancel', function(Illuminate\Http\Request $request, $subscriptionId) {
+        $user = $request->user();
+        $subscription = $user->subscriptions()->findOrFail($subscriptionId);
+
+        if ($subscription->isCanceled()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'La suscripción ya está cancelada',
+            ], 400);
+        }
+
+        $subscription->update([
+            'status' => 'canceled',
+            'auto_renew' => false,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Suscripción cancelada exitosamente',
+            'data' => ['subscription_id' => $subscription->id],
+        ]);
+    });
+});
+
