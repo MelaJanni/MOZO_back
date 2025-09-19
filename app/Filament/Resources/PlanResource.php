@@ -63,11 +63,55 @@ class PlanResource extends Resource
                             ->keyLabel('Moneda (código de 3 letras)')
                             ->valueLabel('Precio')
                             ->keyPlaceholder('ARS')
-                            ->valuePlaceholder('15000')
-                            ->helperText('Ejemplo: ARS = 15000, USD = 50')
+                            ->valuePlaceholder('15.000')
+                            ->helperText('Ejemplo: ARS = 15.000, USD = 50')
                             ->default(['ARS' => 0])
                             ->required()
-                            ->addActionLabel('Agregar precio'),
+                            ->addActionLabel('Agregar precio')
+                            ->live()
+                            ->afterStateUpdated(function ($state, $set) {
+                                if (is_array($state)) {
+                                    $formatted = [];
+                                    foreach ($state as $currency => $price) {
+                                        if ($price && is_numeric(str_replace(['.', ','], '', $price))) {
+                                            $cleanValue = str_replace(['.', ','], '', $price);
+                                            $formatted[$currency] = number_format((float)$cleanValue, 0, ',', '.');
+                                        } else {
+                                            $formatted[$currency] = $price;
+                                        }
+                                    }
+                                    $set('prices', $formatted);
+                                }
+                            })
+                            ->dehydrateStateUsing(function ($state) {
+                                if (is_array($state)) {
+                                    $cleaned = [];
+                                    foreach ($state as $currency => $price) {
+                                        if ($price) {
+                                            $cleanValue = str_replace(['.', ','], '', $price);
+                                            $cleaned[$currency] = is_numeric($cleanValue) ? (int) $cleanValue : $price;
+                                        } else {
+                                            $cleaned[$currency] = $price;
+                                        }
+                                    }
+                                    return $cleaned;
+                                }
+                                return $state;
+                            })
+                            ->formatStateUsing(function ($state) {
+                                if (is_array($state)) {
+                                    $formatted = [];
+                                    foreach ($state as $currency => $price) {
+                                        if ($price && is_numeric($price)) {
+                                            $formatted[$currency] = number_format((float)$price, 0, ',', '.');
+                                        } else {
+                                            $formatted[$currency] = $price;
+                                        }
+                                    }
+                                    return $formatted;
+                                }
+                                return $state;
+                            }),
                         Forms\Components\Select::make('default_currency')
                             ->label('Moneda por defecto')
                             ->options([
