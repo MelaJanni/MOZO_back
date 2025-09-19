@@ -139,7 +139,7 @@
                     <h4 class="font-bold text-gray-900 text-lg border-b border-gray-200 pb-2">Lo que incluye:</h4>
 
                     <!-- Features -->
-                    @if($plan->features && count($plan->features) > 0)
+                    @if($plan->features && is_array($plan->features) && count($plan->features) > 0)
                     <div class="space-y-3">
                         @foreach($plan->features as $feature)
                         <div class="flex items-center">

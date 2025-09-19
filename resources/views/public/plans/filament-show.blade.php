@@ -41,8 +41,8 @@
                         <p class="text-lg text-gray-600 dark:text-gray-300 mb-6">{{ $plan->description }}</p>
 
                         <div class="mb-8">
-                            <span class="text-4xl font-bold text-gray-900 dark:text-white">${{ number_format($plan->price_ars, 0) }}</span>
-                            <span class="text-gray-600 dark:text-gray-300">/mes</span>
+                            <span class="text-4xl font-bold text-gray-900 dark:text-white">{{ $plan->getFormattedPrice() }}</span>
+                            <span class="text-gray-600 dark:text-gray-300">/{{ $plan->billing_period === 'monthly' ? 'mes' : 'año' }}</span>
                         </div>
 
                         @if($plan->hasTrialEnabled())
@@ -106,7 +106,7 @@
                         </div>
 
                         <!-- Características especiales -->
-                        @if($plan->features && count($plan->features) > 0)
+                        @if($plan->features && is_array($plan->features) && count($plan->features) > 0)
                         <div>
                             <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">Características Especiales</h3>
                             <ul class="space-y-3">

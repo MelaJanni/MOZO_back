@@ -130,30 +130,26 @@ class Plan extends Model
         return $this->billing_period === 'yearly';
     }
 
-    // Métodos de límites y features
-    public function getLimit($key, $default = null)
-    {
-        return $this->limits[$key] ?? $default;
-    }
-
+    // Métodos de features
     public function hasFeature($feature): bool
     {
         return in_array($feature, $this->features ?? []);
     }
 
+    // Métodos de límites simplificados (sin restricciones para admin)
     public function getMaxBusinesses(): int
     {
-        return $this->getLimit('max_businesses', 1);
+        return 999; // Sin límites para admin
     }
 
     public function getMaxTables(): int
     {
-        return $this->getLimit('max_tables', 10);
+        return 999; // Sin límites para admin
     }
 
     public function getMaxStaff(): int
     {
-        return $this->getLimit('max_staff', 5);
+        return 999; // Sin límites para admin
     }
 
     // Métodos de trial
