@@ -55,6 +55,11 @@ class PaymentMethod extends Model
         return $query->where('is_enabled', true);
     }
 
+    public function scopeActive($query)
+    {
+        return $query->where('is_enabled', true);
+    }
+
     public function scopeOrdered($query)
     {
         return $query->orderBy('sort_order')->orderBy('name');

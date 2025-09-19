@@ -173,6 +173,7 @@ return [
         App\Providers\FilamentSkeletonServiceProvider::class,
         Barryvdh\DomPDF\ServiceProvider::class,
     App\Providers\Filament\AdminPanelProvider::class,
+    App\Providers\Filament\PublicPanelProvider::class,
 
     ])->toArray(),
 
