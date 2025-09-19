@@ -95,8 +95,8 @@
                             <p class="text-gray-600 dark:text-gray-300 mb-6">{{ $plan->description }}</p>
 
                             <div class="mb-6">
-                                <span class="text-4xl font-bold text-gray-900 dark:text-white">${{ number_format($plan->price_ars, 0) }}</span>
-                                <span class="text-gray-600 dark:text-gray-300">/mes</span>
+                                <span class="text-4xl font-bold text-gray-900 dark:text-white">{{ $plan->getFormattedPrice() }}</span>
+                                <span class="text-gray-600 dark:text-gray-300">/{{ $plan->billing_period === 'monthly' ? 'mes' : 'año' }}</span>
                             </div>
 
                             @if($plan->hasTrialEnabled())

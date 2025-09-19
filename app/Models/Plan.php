@@ -15,9 +15,8 @@ class Plan extends Model
         'description',
         'billing_period',
         'price_cents',
-        'price_ars',
-        'price_usd',
-        'currency',
+        'prices',
+        'default_currency',
         'yearly_discount_percentage',
         'quarterly_discount_percentage',
         'trial_days',
@@ -36,8 +35,7 @@ class Plan extends Model
     ];
 
     protected $casts = [
-        'price_ars' => 'decimal:2',
-        'price_usd' => 'decimal:2',
+        'prices' => 'array',
         'yearly_discount_percentage' => 'decimal:2',
         'quarterly_discount_percentage' => 'decimal:2',
         'trial_enabled' => 'boolean',
@@ -65,20 +63,44 @@ class Plan extends Model
     }
 
     // Métodos de precios mejorados
-    public function getPrice($currency = 'ARS'): float
+    public function getPrice($currency = null): float
     {
-        return match(strtoupper($currency)) {
-            'ARS' => $this->price_ars ?? 0,
-            'USD' => $this->price_usd ?? 0,
-            default => $this->price_ars ?? 0,
-        };
+        $currency = $currency ?? $this->default_currency ?? 'ARS';
+        $currency = strtoupper($currency);
+
+        return $this->prices[$currency] ?? $this->prices['ARS'] ?? 0;
     }
 
-    public function getFormattedPrice($currency = 'ARS'): string
+    public function getFormattedPrice($currency = null): string
     {
+        $currency = $currency ?? $this->default_currency ?? 'ARS';
         $price = $this->getPrice($currency);
         $symbol = $currency === 'USD' ? '$' : '$';
-        return $symbol . number_format($price, 2);
+        return $symbol . number_format($price, 0, ',', '.');
+    }
+
+    public function getAvailableCurrencies(): array
+    {
+        return array_keys($this->prices ?? []);
+    }
+
+    public function hasPriceForCurrency($currency): bool
+    {
+        return isset($this->prices[strtoupper($currency)]);
+    }
+
+    public function addPrice($currency, $price): void
+    {
+        $prices = $this->prices ?? [];
+        $prices[strtoupper($currency)] = (float) $price;
+        $this->prices = $prices;
+    }
+
+    public function removePrice($currency): void
+    {
+        $prices = $this->prices ?? [];
+        unset($prices[strtoupper($currency)]);
+        $this->prices = $prices;
     }
 
     public function getPriceWithDiscount($period = null, $currency = 'ARS'): float

@@ -58,49 +58,28 @@ class PlanResource extends Resource
                 Section::make('Precios por Moneda')
                     ->description('Configure los precios del plan en diferentes monedas')
                     ->schema([
-                        Forms\Components\TextInput::make('price_ars')
-                            ->label('Precio ARS')
+                        Forms\Components\KeyValue::make('prices')
+                            ->label('Precios por moneda')
+                            ->keyLabel('Moneda (código de 3 letras)')
+                            ->valueLabel('Precio')
+                            ->keyPlaceholder('ARS')
+                            ->valuePlaceholder('15000')
+                            ->helperText('Ejemplo: ARS = 15000, USD = 50')
+                            ->default(['ARS' => 0])
                             ->required()
-                            ->numeric()
-                            ->prefix('$')
-                            ->helperText('Ingrese el precio en pesos argentinos (ej: 15.000)')
-                            ->live()
-                            ->afterStateUpdated(function ($state, $set) {
-                                if ($state) {
-                                    $cleanValue = str_replace(['.', ','], '', $state);
-                                    if (is_numeric($cleanValue)) {
-                                        $formatted = number_format((float)$cleanValue, 0, ',', '.');
-                                        $set('price_ars', $formatted);
-                                    }
-                                }
-                            })
-                            ->dehydrateStateUsing(fn ($state) => $state ? (int) str_replace(['.', ','], '', $state) : null),
-                        Forms\Components\TextInput::make('price_usd')
-                            ->label('Precio USD')
-                            ->numeric()
-                            ->prefix('$')
-                            ->helperText('Precio en dólares (opcional)')
-                            ->live()
-                            ->afterStateUpdated(function ($state, $set) {
-                                if ($state) {
-                                    $cleanValue = str_replace(['.', ','], '', $state);
-                                    if (is_numeric($cleanValue)) {
-                                        $formatted = number_format((float)$cleanValue, 0, ',', '.');
-                                        $set('price_usd', $formatted);
-                                    }
-                                }
-                            })
-                            ->dehydrateStateUsing(fn ($state) => $state ? (int) str_replace(['.', ','], '', $state) : null),
-                        Forms\Components\Select::make('currency')
-                            ->label('Moneda Principal')
+                            ->addActionLabel('Agregar precio'),
+                        Forms\Components\Select::make('default_currency')
+                            ->label('Moneda por defecto')
                             ->options([
                                 'ARS' => 'Peso Argentino (ARS)',
                                 'USD' => 'Dólar Estadounidense (USD)',
+                                'EUR' => 'Euro (EUR)',
+                                'BRL' => 'Real Brasileño (BRL)',
                             ])
                             ->default('ARS')
                             ->required()
-                            ->helperText('Moneda que se usará por defecto para mostrar en listas'),
-                    ])->columns(2),
+                            ->helperText('Moneda que se mostrará por defecto en las listas'),
+                    ])->columns(1),
 
                 Section::make('Información Adicional')
                     ->schema([
@@ -134,17 +113,17 @@ class PlanResource extends Resource
                         'yearly' => 'Anual',
                         default => $state,
                     }),
-                Tables\Columns\TextColumn::make('formatted_price_ars')
-                    ->label('Precio ARS')
-                    ->sortable(['price_ars'])
-                    ->getStateUsing(fn ($record) => $record->price_ars ? '$' . number_format($record->price_ars, 0, ',', '.') : '-'),
-                Tables\Columns\TextColumn::make('formatted_price_usd')
-                    ->label('Precio USD')
-                    ->sortable(['price_usd'])
-                    ->getStateUsing(fn ($record) => $record->price_usd ? '$' . number_format($record->price_usd, 0, ',', '.') : '-')
-                    ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('currency')
-                    ->label('Moneda')
+                Tables\Columns\TextColumn::make('default_price')
+                    ->label('Precio Principal')
+                    ->getStateUsing(fn ($record) => $record->getFormattedPrice()),
+                Tables\Columns\TextColumn::make('available_currencies')
+                    ->label('Monedas disponibles')
+                    ->getStateUsing(fn ($record) => implode(', ', $record->getAvailableCurrencies()))
+                    ->badge()
+                    ->separator(',')
+                    ->toggleable(),
+                Tables\Columns\TextColumn::make('default_currency')
+                    ->label('Moneda por defecto')
                     ->badge(),
                 Tables\Columns\TextColumn::make('trial_days')
                     ->label('Días de prueba')
@@ -183,37 +162,14 @@ class PlanResource extends Resource
                     ->label('Estado')
                     ->trueLabel('Activos')
                     ->falseLabel('Inactivos'),
-                SelectFilter::make('currency')
-                    ->label('Moneda')
+                SelectFilter::make('default_currency')
+                    ->label('Moneda por defecto')
                     ->options([
                         'ARS' => 'Peso Argentino (ARS)',
                         'USD' => 'Dólar Estadounidense (USD)',
+                        'EUR' => 'Euro (EUR)',
+                        'BRL' => 'Real Brasileño (BRL)',
                     ]),
-                Filter::make('price_range_ars')
-                    ->label('Rango de precio ARS')
-                    ->form([
-                        Forms\Components\TextInput::make('price_from')
-                            ->label('Desde')
-                            ->numeric()
-                            ->prefix('$')
-                            ->helperText('Precio mínimo en pesos'),
-                        Forms\Components\TextInput::make('price_to')
-                            ->label('Hasta')
-                            ->numeric()
-                            ->prefix('$')
-                            ->helperText('Precio máximo en pesos'),
-                    ])
-                    ->query(function (Builder $query, array $data): Builder {
-                        return $query
-                            ->when(
-                                $data['price_from'],
-                                fn (Builder $query, $price): Builder => $query->where('price_ars', '>=', $price),
-                            )
-                            ->when(
-                                $data['price_to'],
-                                fn (Builder $query, $price): Builder => $query->where('price_ars', '<=', $price),
-                            );
-                    }),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
