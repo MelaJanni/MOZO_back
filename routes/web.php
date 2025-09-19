@@ -266,7 +266,7 @@ Route::prefix('checkout')->name('public.checkout.')->group(function () {
 });
 
 // Rutas de checkout con autenticación (para usuarios ya registrados)
-Route::prefix('checkout')->name('checkout.')->middleware(['auth'])->group(function () {
+Route::prefix('member/checkout')->name('checkout.')->middleware(['auth'])->group(function () {
     Route::get('/', [CheckoutController::class, 'index'])->name('index');
     Route::get('/plan/{plan}', [CheckoutController::class, 'plan'])->name('plan');
     Route::post('/apply-coupon', [CheckoutController::class, 'applyCoupon'])->name('apply-coupon');

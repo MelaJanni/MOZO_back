@@ -196,10 +196,10 @@ class PublicCheckoutController extends Controller
         }
 
         $bankDetails = [
-            'bank_name' => 'Banco Ejemplo',
-            'account_holder' => 'MOZO QR S.A.',
-            'account_number' => '1234567890',
-            'cbu' => '0123456789012345678901',
+            'bank_name' => config('services.bank_transfer.bank_name'),
+            'account_holder' => config('services.bank_transfer.account_holder'),
+            'account_number' => config('services.bank_transfer.account_number'),
+            'cbu' => config('services.bank_transfer.cbu'),
             'alias' => 'MOZO.QR.PAGOS',
         ];
 
