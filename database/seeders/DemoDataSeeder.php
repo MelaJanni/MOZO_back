@@ -47,8 +47,15 @@ class DemoDataSeeder extends Seeder
                     'name' => $data['name'],
                     'password' => Hash::make('password'),
                     'email_verified_at' => now(),
+                    'is_lifetime_paid' => true, // Cliente permanente
                 ]
             );
+
+            // Asegurar que el usuario tenga el flag de cliente permanente
+            if (!$user->is_lifetime_paid) {
+                $user->update(['is_lifetime_paid' => true]);
+                echo "  ✅ Usuario actualizado como cliente permanente\n";
+            }
 
             // Asignar roles de sistema
             foreach ($data['roles'] as $role) {
@@ -63,15 +70,17 @@ class DemoDataSeeder extends Seeder
             // PASO 2: Usuario crea su negocio (acceso directo, sin planes)
             echo "  🏢 Creando negocio: {$data['business']['name']}\n";
 
-            $business = Business::create([
-                'name' => $data['business']['name'],
-                'email' => $data['business']['email'],
-                'address' => $data['business']['address'],
-                'phone' => $data['business']['phone'],
-                'description' => $data['business']['description'],
-                'invitation_code' => strtoupper(substr($data['business']['name'], 0, 6)),
-                'is_active' => true,
-            ]);
+            $business = Business::firstOrCreate(
+                ['invitation_code' => strtoupper(substr($data['business']['name'], 0, 6))],
+                [
+                    'name' => $data['business']['name'],
+                    'email' => $data['business']['email'],
+                    'address' => $data['business']['address'],
+                    'phone' => $data['business']['phone'],
+                    'description' => $data['business']['description'],
+                    'is_active' => true,
+                ]
+            );
 
             $createdBusinesses[] = $business;
 
@@ -118,15 +127,16 @@ class DemoDataSeeder extends Seeder
 
             $qrService = app(QrCodeService::class);
             for ($i = 1; $i <= $tablesToCreate; $i++) {
-                $table = Table::create([
-                    'business_id' => $business->id,
-                    'number' => $i,
-                    'name' => "Mesa {$i}",
-                    'capacity' => rand(2, 8),
-                    'location' => null,
-                    'status' => 'available',
-                    'notifications_enabled' => true,
-                ]);
+                $table = Table::firstOrCreate(
+                    ['business_id' => $business->id, 'number' => $i],
+                    [
+                        'name' => "Mesa {$i}",
+                        'capacity' => rand(2, 8),
+                        'location' => null,
+                        'status' => 'available',
+                        'notifications_enabled' => true,
+                    ]
+                );
 
                 try {
                     $qrService->generateForTable($table);
