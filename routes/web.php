@@ -247,7 +247,25 @@ Route::get('/admin/clear-caches', function(){
     return response()->json(['status'=>'ok','cleared'=>$results,'timestamp'=>now()->toDateTimeString()]);
 });
 
-// Rutas de checkout público
+// Rutas de planes públicos
+Route::prefix('planes')->name('public.plans.')->group(function () {
+    Route::get('/', [App\Http\Controllers\PublicPlanController::class, 'index'])->name('index');
+    Route::get('/precios', [App\Http\Controllers\PublicPlanController::class, 'pricing'])->name('pricing');
+    Route::get('/{plan}', [App\Http\Controllers\PublicPlanController::class, 'show'])->name('show');
+});
+
+// Rutas de checkout público (SIN autenticación)
+Route::prefix('checkout')->name('public.checkout.')->group(function () {
+    Route::get('/', [App\Http\Controllers\PublicCheckoutController::class, 'index'])->name('index');
+    Route::get('/plan/{plan}', [App\Http\Controllers\PublicCheckoutController::class, 'plan'])->name('plan');
+    Route::post('/register', [App\Http\Controllers\PublicCheckoutController::class, 'register'])->name('register');
+    Route::post('/apply-coupon', [App\Http\Controllers\PublicCheckoutController::class, 'applyCoupon'])->name('apply-coupon');
+    Route::get('/bank-transfer/{subscription}', [App\Http\Controllers\PublicCheckoutController::class, 'bankTransfer'])->name('bank-transfer');
+    Route::get('/success', [App\Http\Controllers\PublicCheckoutController::class, 'success'])->name('success');
+    Route::get('/cancel', [App\Http\Controllers\PublicCheckoutController::class, 'cancel'])->name('cancel');
+});
+
+// Rutas de checkout con autenticación (para usuarios ya registrados)
 Route::prefix('checkout')->name('checkout.')->middleware(['auth'])->group(function () {
     Route::get('/', [CheckoutController::class, 'index'])->name('index');
     Route::get('/plan/{plan}', [CheckoutController::class, 'plan'])->name('plan');
