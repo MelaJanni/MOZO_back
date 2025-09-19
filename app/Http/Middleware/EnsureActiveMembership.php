@@ -44,6 +44,12 @@ class EnsureActiveMembership
             }
         }
 
+        // TEMPORAL: Dar acceso completo a todos los usuarios admin sin restricciones de plan
+        // Los usuarios con rol admin pueden usar todas las funciones independientemente del plan
+        if ($user->hasRole('admin') || $user->hasRole('super_admin') || $user->is_lifetime_paid) {
+            return $next($request);
+        }
+
         if (!$user->hasActiveMembership()) {
             return response()->json([
                 'success' => false,

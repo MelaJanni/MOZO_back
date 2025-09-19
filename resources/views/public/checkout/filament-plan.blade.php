@@ -7,20 +7,32 @@
     <div class="py-12">
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center mb-8">
-                <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Completar Registro</h1>
-                <p class="text-lg text-gray-600 dark:text-gray-300">Plan seleccionado: <span class="font-semibold text-primary-600 dark:text-primary-400">{{ $plan->name }}</span></p>
+                @if($user)
+                    <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Contratar Plan</h1>
+                    <p class="text-lg text-gray-600 dark:text-gray-300">¡Hola {{ $user->name }}! Plan seleccionado: <span class="font-semibold text-primary-600 dark:text-primary-400">{{ $plan->name }}</span></p>
+                @else
+                    <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Completar Registro</h1>
+                    <p class="text-lg text-gray-600 dark:text-gray-300">Plan seleccionado: <span class="font-semibold text-primary-600 dark:text-primary-400">{{ $plan->name }}</span></p>
+                @endif
             </div>
 
             <div class="grid lg:grid-cols-2 gap-8">
                 <!-- Formulario de Registro -->
                 <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
-                    <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-6">Información de Registro</h2>
+                    <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-6">
+                        @if($user)
+                            Información de Pago
+                        @else
+                            Información de Registro
+                        @endif
+                    </h2>
 
-                    <form action="{{ route('public.checkout.register') }}" method="POST" id="checkout-form">
+                    <form action="{{ $user ? route('public.checkout.subscribe') : route('public.checkout.register') }}" method="POST" id="checkout-form">
                         @csrf
                         <input type="hidden" name="plan_id" value="{{ $plan->id }}">
 
                         <div class="space-y-4">
+                            @if(!$user)
                             <!-- Nombre -->
                             <div>
                                 <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -67,6 +79,20 @@
                                 <input type="password" id="password_confirmation" name="password_confirmation" required
                                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white">
                             </div>
+                            @else
+                            <!-- Usuario ya autenticado -->
+                            <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                                <div class="flex items-center">
+                                    <svg class="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    <div>
+                                        <p class="text-green-700 dark:text-green-400 font-medium">Sesión iniciada como:</p>
+                                        <p class="text-green-600 dark:text-green-300">{{ $user->name }} ({{ $user->email }})</p>
+                                    </div>
+                                </div>
+                            </div>
+                            @endif
 
                             <!-- Período de facturación -->
                             <div>
@@ -77,7 +103,7 @@
                                     <label class="flex items-center">
                                         <input type="radio" name="billing_period" value="monthly" checked
                                                class="text-primary-600 focus:ring-primary-500">
-                                        <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Mensual - ${{ number_format($plan->price_ars, 0) }}/mes</span>
+                                        <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Mensual - {{ $plan->getFormattedPrice() }}/mes</span>
                                     </label>
                                     @if($plan->quarterly_discount_percentage > 0)
                                     <label class="flex items-center">
@@ -153,7 +179,11 @@
 
                         <button type="submit"
                                 class="w-full mt-6 bg-primary-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-primary-700 transition duration-300">
-                            Completar Registro y Pago
+                            @if($user)
+                                Contratar Plan
+                            @else
+                                Completar Registro y Pago
+                            @endif
                         </button>
                     </form>
                 </div>
@@ -167,7 +197,7 @@
                         <p class="text-gray-600 dark:text-gray-300 mt-2">{{ $plan->description }}</p>
 
                         <div class="mt-4">
-                            <span class="text-3xl font-bold text-primary-600 dark:text-primary-400">${{ number_format($plan->price_ars, 0) }}</span>
+                            <span class="text-3xl font-bold text-primary-600 dark:text-primary-400">{{ $plan->getFormattedPrice() }}</span>
                             <span class="text-gray-600 dark:text-gray-300">/mes</span>
                         </div>
 

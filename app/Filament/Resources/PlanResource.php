@@ -49,10 +49,41 @@ class PlanResource extends Resource
                         Forms\Components\TextInput::make('trial_days')
                             ->label('Días de prueba')
                             ->numeric()
-                            ->default(0),
+                            ->default(14),
+                        Forms\Components\Toggle::make('trial_enabled')
+                            ->label('Período de prueba habilitado')
+                            ->default(true)
+                            ->live(),
+                        Forms\Components\Toggle::make('trial_requires_payment_method')
+                            ->label('Requiere método de pago para trial')
+                            ->default(false)
+                            ->visible(fn ($get) => $get('trial_enabled')),
+                        Forms\Components\TextInput::make('yearly_discount_percentage')
+                            ->label('Descuento anual (%)')
+                            ->numeric()
+                            ->suffix('%')
+                            ->default(20)
+                            ->helperText('Descuento aplicado al pago anual'),
+                        Forms\Components\TextInput::make('quarterly_discount_percentage')
+                            ->label('Descuento trimestral (%)')
+                            ->numeric()
+                            ->suffix('%')
+                            ->default(10)
+                            ->helperText('Descuento aplicado al pago trimestral'),
                         Forms\Components\Toggle::make('is_active')
                             ->label('Plan activo')
                             ->default(true),
+                        Forms\Components\TextInput::make('sort_order')
+                            ->label('Orden de visualización')
+                            ->numeric()
+                            ->default(1)
+                            ->helperText('Número para ordenar los planes (menor = primero)'),
+                        Forms\Components\Toggle::make('is_featured')
+                            ->label('Plan destacado')
+                            ->default(false),
+                        Forms\Components\Toggle::make('is_popular')
+                            ->label('Plan popular')
+                            ->default(false),
                     ])->columns(2),
 
                 Section::make('Precios por Moneda')
@@ -125,11 +156,69 @@ class PlanResource extends Resource
                             ->helperText('Moneda que se mostrará por defecto en las listas'),
                     ])->columns(1),
 
-                Section::make('Información Adicional')
+                Section::make('Límites y Características')
+                    ->description('Configure los límites del plan y características incluidas')
                     ->schema([
+                        Forms\Components\KeyValue::make('limits')
+                            ->label('Items incluidos (límites)')
+                            ->keyLabel('Tipo de límite')
+                            ->valueLabel('Cantidad')
+                            ->keyPlaceholder('max_tables')
+                            ->valuePlaceholder('10')
+                            ->helperText('Ejemplo: max_tables = 10, max_staff = 5, max_businesses = 1')
+                            ->afterStateHydrated(function ($state, $set, $record) {
+                                // Si estamos editando un registro existente y hay datos, usarlos
+                                if ($record && !empty($record->limits)) {
+                                    $set('limits', $record->limits);
+                                } elseif (empty($state)) {
+                                    // Si no hay datos, usar valores por defecto solo para nuevos registros
+                                    $set('limits', [
+                                        'max_businesses' => 1,
+                                        'max_tables' => 10,
+                                        'max_staff' => 5,
+                                    ]);
+                                }
+                            })
+                            ->addActionLabel('Agregar límite')
+                            ->live()
+                            ->dehydrateStateUsing(function ($state) {
+                                if (is_array($state)) {
+                                    $cleaned = [];
+                                    foreach ($state as $key => $value) {
+                                        if ($value && is_numeric($value)) {
+                                            $cleaned[$key] = (int) $value;
+                                        } else {
+                                            $cleaned[$key] = $value;
+                                        }
+                                    }
+                                    return $cleaned;
+                                }
+                                return $state;
+                            }),
+
+                        Forms\Components\TagsInput::make('features')
+                            ->label('Características incluidas')
+                            ->placeholder('Agregar característica...')
+                            ->helperText('Presiona Enter después de cada característica para agregarla')
+                            ->afterStateHydrated(function ($state, $set, $record) {
+                                // Si estamos editando un registro existente y hay datos, usarlos
+                                if ($record && !empty($record->features)) {
+                                    $set('features', $record->features);
+                                } elseif (empty($state)) {
+                                    // Si no hay datos, usar valores por defecto solo para nuevos registros
+                                    $set('features', [
+                                        'Códigos QR personalizados',
+                                        'Menú digital',
+                                        'Notificaciones móviles',
+                                    ]);
+                                }
+                            })
+                            ->separator(',')
+                            ->splitKeys(['Enter', ',', 'Tab']),
+
                         Forms\Components\KeyValue::make('metadata')
                             ->label('Metadatos adicionales')
-                            ->helperText('Información adicional del plan en formato clave-valor (opcional)'),
+                            ->helperText('Información técnica adicional del plan (opcional)'),
                     ])->columns(1),
             ]);
     }

@@ -235,8 +235,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/table-profiles/{profile}/deactivate', [TableProfileController::class, 'deactivate']);
     });
 
-    // Rutas de ADMIN: requieren membresía activa
-    Route::prefix('admin')->middleware('membership')->group(function () {
+    // Rutas de ADMIN: acceso completo sin restricciones de plan (temporal)
+    Route::prefix('admin')->group(function () {
         Route::delete('/staff/{staffId}', [AdminController::class, 'removeStaff']);
         Route::post('/staff/request/{requestId}', [AdminController::class, 'handleStaffRequest']);
     Route::get('/staff/requests', [AdminController::class, 'fetchStaffRequests']);
@@ -370,8 +370,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/change-password', [AuthController::class, 'changePassword']);
     Route::delete('/delete-account', [AuthController::class, 'deleteAccount']);
 
-    // Estadísticas de admin también requieren membresía
-    Route::get('/admin/statistics', [AdminController::class, 'getStatistics'])->middleware('membership');
+    // Estadísticas de admin sin restricciones
+    Route::get('/admin/statistics', [AdminController::class, 'getStatistics']);
 });
 
 // Rutas públicas para QR codes y llamadas de mozo (sin autenticación)

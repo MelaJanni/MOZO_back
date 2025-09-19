@@ -36,8 +36,104 @@ class PublicCheckoutController extends Controller
         }
 
         $paymentMethods = PaymentMethod::active()->ordered()->get();
+        $user = Auth::user(); // Detectar si hay usuario autenticado
 
-        return view('public.checkout.filament-plan', compact('plan', 'paymentMethods'));
+        return view('public.checkout.filament-plan', compact('plan', 'paymentMethods', 'user'));
+    }
+
+    public function subscribe(Request $request)
+    {
+        $request->validate([
+            'plan_id' => 'required|exists:plans,id',
+            'billing_period' => 'required|in:monthly,quarterly,yearly',
+            'payment_method' => 'required|in:mercadopago,bank_transfer',
+            'coupon_code' => 'nullable|string',
+            'terms' => 'required|accepted',
+        ]);
+
+        $plan = Plan::findOrFail($request->plan_id);
+        $user = auth()->user();
+
+        if (!$plan->is_active) {
+            return back()->withErrors(['plan_id' => 'El plan seleccionado no está disponible.']);
+        }
+
+        DB::beginTransaction();
+
+        try {
+            // Aplicar cupón si existe
+            $coupon = null;
+            if ($request->coupon_code) {
+                $coupon = Coupon::where('code', $request->coupon_code)
+                    ->where('is_active', true)
+                    ->where('starts_at', '<=', now())
+                    ->where('expires_at', '>=', now())
+                    ->first();
+
+                if (!$coupon || !$coupon->isValid()) {
+                    return back()->withErrors(['coupon_code' => 'El cupón no es válido o ha expirado.']);
+                }
+            }
+
+            // Calcular precio
+            $basePrice = $plan->getPriceWithDiscount($request->billing_period);
+            $finalPrice = $coupon ? $plan->getDiscountedPrice($coupon) : $basePrice;
+
+            // Crear suscripción
+            $subscription = Subscription::create([
+                'user_id' => $user->id,
+                'plan_id' => $plan->id,
+                'status' => 'pending',
+                'billing_period' => $request->billing_period,
+                'price_at_creation' => $finalPrice,
+                'currency' => 'ARS',
+                'trial_ends_at' => $plan->hasTrialEnabled() ? now()->addDays($plan->getTrialDays()) : null,
+                'next_billing_date' => $this->calculateNextBillingDate($request->billing_period, $plan->hasTrialEnabled() ? $plan->getTrialDays() : 0),
+                'coupon_id' => $coupon?->id,
+                'metadata' => [
+                    'user_ip' => $request->ip(),
+                    'user_agent' => $request->userAgent(),
+                ],
+            ]);
+
+            // Usar cupón si existe
+            if ($coupon) {
+                $coupon->increment('redeemed_count');
+            }
+
+            // Procesar pago según método
+            if ($request->payment_method === 'mercadopago') {
+                $paymentResult = $this->processMercadoPago($subscription, $request);
+
+                if (!$paymentResult['success']) {
+                    DB::rollBack();
+                    return back()->withErrors(['payment' => $paymentResult['message']]);
+                }
+
+                DB::commit();
+                return redirect($paymentResult['checkout_url']);
+            }
+
+            if ($request->payment_method === 'bank_transfer') {
+                $subscription->update(['status' => 'pending_bank_transfer']);
+
+                DB::commit();
+                return redirect()->route('public.checkout.bank-transfer', $subscription->id);
+            }
+
+            DB::rollBack();
+            return back()->withErrors(['payment_method' => 'Método de pago no válido.']);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error en suscripción de usuario autenticado', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return back()->withErrors(['general' => 'Ocurrió un error procesando tu suscripción. Intenta nuevamente.']);
+        }
     }
 
     public function register(Request $request)

@@ -261,6 +261,7 @@ Route::get('/checkout', [App\Http\Controllers\PublicCheckoutController::class, '
 Route::get('/checkout/plan/{plan}', [App\Http\Controllers\PublicCheckoutController::class, 'plan'])->name('public.checkout.plan');
 Route::post('/checkout/register', [App\Http\Controllers\PublicCheckoutController::class, 'register'])->name('public.checkout.register');
 Route::post('/checkout/apply-coupon', [App\Http\Controllers\PublicCheckoutController::class, 'applyCoupon'])->name('public.checkout.apply-coupon');
+Route::post('/checkout/subscribe', [App\Http\Controllers\PublicCheckoutController::class, 'subscribe'])->name('public.checkout.subscribe')->middleware('auth');
 Route::get('/checkout/bank-transfer/{subscription}', [App\Http\Controllers\PublicCheckoutController::class, 'bankTransfer'])->name('public.checkout.bank-transfer');
 Route::get('/checkout/success', [App\Http\Controllers\PublicCheckoutController::class, 'success'])->name('public.checkout.success');
 Route::get('/checkout/cancel', [App\Http\Controllers\PublicCheckoutController::class, 'cancel'])->name('public.checkout.cancel');
