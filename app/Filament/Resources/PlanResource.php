@@ -92,59 +92,11 @@ class PlanResource extends Resource
                             ->default(true),
                     ])->columns(2),
 
-                Section::make('Precios por Moneda')
-                    ->description('Configure los precios del plan en diferentes monedas')
+                Section::make('Información Adicional')
                     ->schema([
-                        Forms\Components\Repeater::make('currency_prices')
-                            ->label('Precios')
-                            ->schema([
-                                Forms\Components\Select::make('currency')
-                                    ->label('Moneda')
-                                    ->options([
-                                        'ARS' => 'Peso Argentino (ARS)',
-                                        'USD' => 'Dólar Estadounidense (USD)',
-                                        'EUR' => 'Euro (EUR)',
-                                        'BRL' => 'Real Brasileño (BRL)',
-                                    ])
-                                    ->required()
-                                    ->distinct()
-                                    ->disableOptionsWhenSelectedInSiblingRepeaterItems(),
-                                Forms\Components\TextInput::make('price')
-                                    ->label('Precio')
-                                    ->required()
-                                    ->numeric()
-                                    ->prefix(fn($get) => match($get('currency')) {
-                                        'USD', 'ARS' => '$',
-                                        'EUR' => '€',
-                                        'BRL' => 'R$',
-                                        default => '$'
-                                    })
-                                    ->live()
-                                    ->afterStateUpdated(function ($state, $set) {
-                                        if ($state) {
-                                            $cleanValue = (int) str_replace(['.', ','], '', $state);
-                                            $set('price', number_format($cleanValue, 0, ',', '.'));
-                                        }
-                                    })
-                                    ->formatStateUsing(fn ($state) => $state ? number_format($state, 0, ',', '.') : '')
-                                    ->dehydrateStateUsing(fn ($state) => $state ? (int) str_replace(['.', ','], '', $state) : null),
-                                Forms\Components\TextInput::make('discount_percentage')
-                                    ->label('Descuento (%)')
-                                    ->numeric()
-                                    ->suffix('%')
-                                    ->minValue(0)
-                                    ->maxValue(100)
-                                    ->helperText('Descuento opcional para esta moneda'),
-                            ])
-                            ->columns(3)
-                            ->defaultItems(1)
-                            ->addActionLabel('Agregar Precio')
-                            ->collapsible()
-                            ->itemLabel(fn (array $state): ?string => ($state['currency'] ?? 'Nueva moneda') . ': ' . (isset($state['price']) ? number_format($state['price'], 0, ',', '.') : '0'))
-                            ->mutateRelationshipDataBeforeCreateUsing(function (array $data): array {
-                                $data['metadata'] = $data;
-                                return $data;
-                            }),
+                        Forms\Components\KeyValue::make('metadata')
+                            ->label('Metadatos adicionales')
+                            ->helperText('Información adicional del plan en formato clave-valor (opcional)'),
                     ])->columns(1),
             ]);
     }
