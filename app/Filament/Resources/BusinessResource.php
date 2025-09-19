@@ -54,10 +54,34 @@ class BusinessResource extends Resource
 
                 Section::make('Configuración')
                     ->schema([
+                        Forms\Components\Select::make('owner_id')
+                            ->label('Propietario/Admin Principal')
+                            ->relationship('owner', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->helperText('Usuario que será el administrador principal del negocio'),
                         Forms\Components\Toggle::make('is_active')
                             ->label('Negocio activo')
                             ->default(true),
-                    ])->columns(1),
+                    ])->columns(2),
+
+                Section::make('Gestión de Personal')
+                    ->schema([
+                        Forms\Components\Select::make('admin_users')
+                            ->label('Administradores Adicionales')
+                            ->multiple()
+                            ->relationship('admins', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->helperText('Usuarios que tendrán permisos de administración'),
+                        Forms\Components\Select::make('waiter_users')
+                            ->label('Mozos')
+                            ->multiple()
+                            ->relationship('waiters', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->helperText('Usuarios que trabajarán como mozos'),
+                    ])->columns(2),
 
                 Section::make('Información Adicional')
                     ->schema([

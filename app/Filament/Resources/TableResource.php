@@ -13,6 +13,9 @@ class TableResource extends Resource
 {
     protected static ?string $model = TableModel::class;
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-group';
+    protected static ?string $navigationLabel = 'Mesas';
+    protected static ?string $modelLabel = 'Mesa';
+    protected static ?string $pluralModelLabel = 'Mesas';
     protected static ?string $navigationGroup = 'Gestión';
 
     public static function form(Form $form): Form

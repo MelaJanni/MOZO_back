@@ -13,6 +13,9 @@ class MenuResource extends Resource
 {
     protected static ?string $model = Menu::class;
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
+    protected static ?string $navigationLabel = 'Menús';
+    protected static ?string $modelLabel = 'Menú';
+    protected static ?string $pluralModelLabel = 'Menús';
     protected static ?string $navigationGroup = 'Gestión';
 
     public static function form(Form $form): Form
@@ -25,26 +28,23 @@ class MenuResource extends Resource
             Forms\Components\TextInput::make('name')
                 ->required()
                 ->label('Nombre del menú'),
-            Forms\Components\TextInput::make('file_path')
-                ->label('Ruta PDF')
+            Forms\Components\FileUpload::make('pdf_file')
+                ->label('Archivo PDF del Menú')
+                ->acceptedFileTypes(['application/pdf'])
+                ->maxSize(10240) // 10MB
+                ->directory('menus')
+                ->preserveFilenames()
+                ->helperText('Sube el PDF del menú (máximo 10MB)')
                 ->required()
-                ->hint(fn ($record) => $record && $record->file_path ? 'Archivo: ' . basename($record->file_path) : 'No hay archivo subido')
-                ->suffixAction(
-                    Forms\Components\Actions\Action::make('download')
-                        ->icon('heroicon-o-arrow-down-tray')
-                        ->tooltip('Descargar PDF')
-                        ->url(fn ($record) => $record && $record->id ? url('/api/menus/' . $record->id . '/download') : null)
-                        ->openUrlInNewTab()
-                        ->visible(fn ($record) => $record && $record->id && $record->file_path)
-                )
-                ->suffixAction(
-                    Forms\Components\Actions\Action::make('preview')
-                        ->icon('heroicon-o-eye')
-                        ->tooltip('Ver PDF')
-                        ->url(fn ($record) => $record && $record->id ? url('/api/menus/' . $record->id . '/preview') : null)
-                        ->openUrlInNewTab()
-                        ->visible(fn ($record) => $record && $record->id && $record->file_path)
-                ),
+                ->afterStateUpdated(function ($state, $set) {
+                    if ($state) {
+                        $set('file_path', 'menus/' . $state->getClientOriginalName());
+                    }
+                }),
+            Forms\Components\TextInput::make('file_path')
+                ->label('Ruta del archivo')
+                ->disabled()
+                ->helperText('Se genera automáticamente al subir el PDF'),
             Forms\Components\Toggle::make('is_default')
                 ->label('Menú por defecto'),
             Forms\Components\TextInput::make('display_order')

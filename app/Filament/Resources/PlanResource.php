@@ -254,14 +254,12 @@ class PlanResource extends Resource
                     }),
             ])
             ->actions([
-                Tables\Actions\ViewAction::make()
-                    ->label('Ver'),
-                Tables\Actions\EditAction::make()
-                    ->label('Editar'),
+                Tables\Actions\ViewAction::make(),
+                Tables\Actions\EditAction::make(),
                 Tables\Actions\Action::make('toggle_status')
-                    ->label(fn ($record) => $record->is_active ? 'Desactivar' : 'Activar')
                     ->icon(fn ($record) => $record->is_active ? 'heroicon-o-x-circle' : 'heroicon-o-check-circle')
                     ->color(fn ($record) => $record->is_active ? 'danger' : 'success')
+                    ->tooltip(fn ($record) => $record->is_active ? 'Desactivar' : 'Activar')
                     ->requiresConfirmation()
                     ->action(function ($record) {
                         $record->update(['is_active' => !$record->is_active]);
