@@ -30,7 +30,10 @@
       "Bash(bash:*)",
       "Bash(net start:*)",
       "Bash(git rm:*)",
-      "Bash(rg:*)"
+      "Bash(rg:*)",
+      "Bash(sc query:*)",
+      "Bash(tasklist)",
+      "Bash(ssh:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",

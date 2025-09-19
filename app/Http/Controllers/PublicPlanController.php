@@ -13,7 +13,7 @@ class PublicPlanController extends Controller
             ->ordered()
             ->get();
 
-        return view('public.plans.index', compact('plans'));
+        return view('public.plans.filament-index', compact('plans'));
     }
 
     public function show(Plan $plan)
@@ -22,7 +22,7 @@ class PublicPlanController extends Controller
             abort(404);
         }
 
-        return view('public.plans.show', compact('plan'));
+        return view('public.plans.filament-show', compact('plan'));
     }
 
     public function pricing()
@@ -34,6 +34,6 @@ class PublicPlanController extends Controller
         $featuredPlan = $plans->where('is_featured', true)->first();
         $popularPlan = $plans->where('is_popular', true)->first();
 
-        return view('public.plans.pricing', compact('plans', 'featuredPlan', 'popularPlan'));
+        return view('public.plans.filament-pricing', compact('plans', 'featuredPlan', 'popularPlan'));
     }
 }

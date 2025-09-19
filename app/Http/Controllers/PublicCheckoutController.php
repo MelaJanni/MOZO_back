@@ -26,7 +26,7 @@ class PublicCheckoutController extends Controller
     public function index()
     {
         $plans = Plan::active()->ordered()->get();
-        return view('public.checkout.index', compact('plans'));
+        return view('public.checkout.filament-index', compact('plans'));
     }
 
     public function plan(Plan $plan)
@@ -37,7 +37,7 @@ class PublicCheckoutController extends Controller
 
         $paymentMethods = PaymentMethod::active()->ordered()->get();
 
-        return view('public.checkout.plan', compact('plan', 'paymentMethods'));
+        return view('public.checkout.filament-plan', compact('plan', 'paymentMethods'));
     }
 
     public function register(Request $request)
@@ -208,12 +208,12 @@ class PublicCheckoutController extends Controller
 
     public function success()
     {
-        return view('public.checkout.success');
+        return view('public.checkout.filament-success');
     }
 
     public function cancel()
     {
-        return view('public.checkout.cancel');
+        return view('public.checkout.filament-cancel');
     }
 
     private function processMercadoPago(Subscription $subscription, Request $request)

@@ -247,32 +247,22 @@ Route::get('/admin/clear-caches', function(){
     return response()->json(['status'=>'ok','cleared'=>$results,'timestamp'=>now()->toDateTimeString()]);
 });
 
-// Rutas de planes públicos - Redirigir a Filament
-Route::get('/planes', function() {
-    return redirect('/public/public-plans-page');
-})->name('public.plans.index');
+// Rutas de planes públicos con estilo Filament
+Route::get('/plans', [App\Http\Controllers\PublicPlanController::class, 'index'])->name('public.plans.index');
+Route::get('/plans/pricing', [App\Http\Controllers\PublicPlanController::class, 'pricing'])->name('public.plans.pricing');
+Route::get('/plans/{plan}', [App\Http\Controllers\PublicPlanController::class, 'show'])->name('public.plans.show');
 
-Route::get('/planes/precios', function() {
-    return redirect('/public/public-plans-page');
-})->name('public.plans.pricing');
+// Alias en español
+Route::get('/planes', [App\Http\Controllers\PublicPlanController::class, 'index'])->name('public.planes.index');
+Route::get('/planes/precios', [App\Http\Controllers\PublicPlanController::class, 'pricing'])->name('public.planes.pricing');
 
-// Rutas de checkout público - Redirigir a Filament
-Route::get('/checkout', function() {
-    return redirect('/public/public-checkout-page');
-})->name('public.checkout.index');
-
-Route::get('/checkout/plan/{plan}', function($plan) {
-    return redirect("/public/public-checkout-page?planId={$plan}");
-})->name('public.checkout.plan');
-
-Route::get('/checkout/success', function() {
-    return redirect('/public/public-success-page');
-})->name('public.checkout.success');
-
-// Mantener rutas de API/backend
+// Rutas de checkout público con estilo Filament
+Route::get('/checkout', [App\Http\Controllers\PublicCheckoutController::class, 'index'])->name('public.checkout.index');
+Route::get('/checkout/plan/{plan}', [App\Http\Controllers\PublicCheckoutController::class, 'plan'])->name('public.checkout.plan');
 Route::post('/checkout/register', [App\Http\Controllers\PublicCheckoutController::class, 'register'])->name('public.checkout.register');
 Route::post('/checkout/apply-coupon', [App\Http\Controllers\PublicCheckoutController::class, 'applyCoupon'])->name('public.checkout.apply-coupon');
 Route::get('/checkout/bank-transfer/{subscription}', [App\Http\Controllers\PublicCheckoutController::class, 'bankTransfer'])->name('public.checkout.bank-transfer');
+Route::get('/checkout/success', [App\Http\Controllers\PublicCheckoutController::class, 'success'])->name('public.checkout.success');
 Route::get('/checkout/cancel', [App\Http\Controllers\PublicCheckoutController::class, 'cancel'])->name('public.checkout.cancel');
 
 // Rutas de checkout con autenticación (para usuarios ya registrados)
