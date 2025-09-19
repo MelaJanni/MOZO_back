@@ -43,20 +43,32 @@ class PlanResource extends Resource
                             ->label('Periodo de facturación')
                             ->options([
                                 'monthly' => 'Mensual',
-                                'quarterly' => 'Trimestral',
                                 'yearly' => 'Anual',
                             ])
                             ->required(),
-                        Forms\Components\TextInput::make('price_cents')
-                            ->label('Precio (en centavos)')
+                        Forms\Components\TextInput::make('price_ars')
+                            ->label('Precio ARS')
                             ->required()
                             ->numeric()
-                            ->helperText('Ingrese el precio en centavos (ej: 1500 para $15.00)'),
-                        Forms\Components\TextInput::make('currency')
+                            ->prefix('$')
+                            ->helperText('Ingrese el precio en pesos argentinos (ej: 15000)')
+                            ->formatStateUsing(fn ($state) => $state ? number_format($state, 0, ',', '.') : '')
+                            ->dehydrateStateUsing(fn ($state) => $state ? (int) str_replace(['.', ','], '', $state) : null),
+                        Forms\Components\TextInput::make('price_usd')
+                            ->label('Precio USD')
+                            ->numeric()
+                            ->prefix('$')
+                            ->helperText('Precio en dólares (opcional)')
+                            ->formatStateUsing(fn ($state) => $state ? number_format($state, 0, ',', '.') : '')
+                            ->dehydrateStateUsing(fn ($state) => $state ? (int) str_replace(['.', ','], '', $state) : null),
+                        Forms\Components\Select::make('currency')
                             ->label('Moneda')
-                            ->default('USD')
-                            ->required()
-                            ->maxLength(3),
+                            ->options([
+                                'ARS' => 'Peso Argentino (ARS)',
+                                'USD' => 'Dólar Estadounidense (USD)',
+                            ])
+                            ->default('ARS')
+                            ->required(),
                         Forms\Components\TextInput::make('trial_days')
                             ->label('Días de prueba')
                             ->numeric()
@@ -94,19 +106,22 @@ class PlanResource extends Resource
                     ->label('Periodo')
                     ->colors([
                         'primary' => 'monthly',
-                        'warning' => 'quarterly',
                         'success' => 'yearly',
                     ])
                     ->formatStateUsing(fn (string $state): string => match ($state) {
                         'monthly' => 'Mensual',
-                        'quarterly' => 'Trimestral',
                         'yearly' => 'Anual',
                         default => $state,
                     }),
-                Tables\Columns\TextColumn::make('formatted_price')
-                    ->label('Precio')
-                    ->sortable(['price_cents'])
-                    ->getStateUsing(fn ($record) => '$' . number_format($record->price_cents / 100, 2)),
+                Tables\Columns\TextColumn::make('formatted_price_ars')
+                    ->label('Precio ARS')
+                    ->sortable(['price_ars'])
+                    ->getStateUsing(fn ($record) => $record->price_ars ? '$' . number_format($record->price_ars, 0, ',', '.') : '-'),
+                Tables\Columns\TextColumn::make('formatted_price_usd')
+                    ->label('Precio USD')
+                    ->sortable(['price_usd'])
+                    ->getStateUsing(fn ($record) => $record->price_usd ? '$' . number_format($record->price_usd, 0, ',', '.') : '-')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('currency')
                     ->label('Moneda')
                     ->badge(),
@@ -135,7 +150,6 @@ class PlanResource extends Resource
                     ->label('Periodo')
                     ->options([
                         'monthly' => 'Mensual',
-                        'quarterly' => 'Trimestral',
                         'yearly' => 'Anual',
                     ]),
                 Tables\Filters\TernaryFilter::make('is_active')
@@ -145,31 +159,32 @@ class PlanResource extends Resource
                 SelectFilter::make('currency')
                     ->label('Moneda')
                     ->options([
-                        'USD' => 'USD',
-                        'EUR' => 'EUR',
-                        'COP' => 'COP',
+                        'ARS' => 'Peso Argentino (ARS)',
+                        'USD' => 'Dólar Estadounidense (USD)',
                     ]),
-                Filter::make('price_range')
-                    ->label('Rango de precio')
+                Filter::make('price_range_ars')
+                    ->label('Rango de precio ARS')
                     ->form([
                         Forms\Components\TextInput::make('price_from')
                             ->label('Desde')
                             ->numeric()
-                            ->prefix('$'),
+                            ->prefix('$')
+                            ->helperText('Precio mínimo en pesos'),
                         Forms\Components\TextInput::make('price_to')
                             ->label('Hasta')
                             ->numeric()
-                            ->prefix('$'),
+                            ->prefix('$')
+                            ->helperText('Precio máximo en pesos'),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
                             ->when(
                                 $data['price_from'],
-                                fn (Builder $query, $price): Builder => $query->where('price_cents', '>=', $price * 100),
+                                fn (Builder $query, $price): Builder => $query->where('price_ars', '>=', $price),
                             )
                             ->when(
                                 $data['price_to'],
-                                fn (Builder $query, $price): Builder => $query->where('price_cents', '<=', $price * 100),
+                                fn (Builder $query, $price): Builder => $query->where('price_ars', '<=', $price),
                             );
                     }),
             ])
