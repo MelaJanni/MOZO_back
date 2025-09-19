@@ -36,4 +36,19 @@ class PublicPlanController extends Controller
 
         return view('public.plans.filament-pricing', compact('plans', 'featuredPlan', 'popularPlan'));
     }
+
+    public function gracePeriod()
+    {
+        $user = auth()->user();
+        $subscription = $user->subscriptions()->latest()->first();
+
+        // Verificar si el usuario realmente necesita seleccionar un plan
+        if (!$subscription || !$subscription->requires_plan_selection) {
+            return redirect()->route('public.plans.index');
+        }
+
+        $availablePlans = Plan::active()->ordered()->get();
+
+        return view('public.plans.grace-period', compact('subscription', 'availablePlans'));
+    }
 }

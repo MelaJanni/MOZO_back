@@ -20,6 +20,8 @@ class Subscription extends Model
         'trial_ends_at',
         'coupon_id',
         'metadata',
+        'grace_ends_at',
+        'requires_plan_selection',
     ];
 
     protected $attributes = [
@@ -32,6 +34,8 @@ class Subscription extends Model
         'auto_renew' => 'boolean',
         'current_period_end' => 'datetime',
         'trial_ends_at' => 'datetime',
+        'grace_ends_at' => 'datetime',
+        'requires_plan_selection' => 'boolean',
         'metadata' => 'array',
     ];
 
@@ -103,5 +107,43 @@ class Subscription extends Model
         }
 
         return null;
+    }
+
+    // Métodos para período de gracia cuando el plan se desactiva
+    public function isInGracePeriod(): bool
+    {
+        return $this->status === 'grace_period' &&
+               $this->grace_ends_at &&
+               $this->grace_ends_at->isFuture();
+    }
+
+    public function getGraceDaysRemaining(): ?int
+    {
+        if ($this->isInGracePeriod() && $this->grace_ends_at) {
+            return now()->diffInDays($this->grace_ends_at, false);
+        }
+        return null;
+    }
+
+    public function enterGracePeriod(int $graceDays = 7): void
+    {
+        $this->update([
+            'status' => 'grace_period',
+            'grace_ends_at' => now()->addDays($graceDays),
+            'requires_plan_selection' => true,
+        ]);
+    }
+
+    public function hasInactivePlan(): bool
+    {
+        return $this->plan && !$this->plan->is_active;
+    }
+
+    public function shouldEnterGracePeriod(): bool
+    {
+        return $this->isActive() &&
+               $this->hasInactivePlan() &&
+               $this->current_period_end &&
+               $this->current_period_end->isPast();
     }
 }

@@ -216,6 +216,25 @@ class PublicCheckoutController extends Controller
         return view('public.checkout.filament-cancel');
     }
 
+    public function gracePlan(Plan $plan)
+    {
+        if (!$plan->is_active) {
+            abort(404);
+        }
+
+        $user = auth()->user();
+        $subscription = $user->subscriptions()->latest()->first();
+
+        // Verificar si el usuario realmente está en período de gracia
+        if (!$subscription || !$subscription->requires_plan_selection) {
+            return redirect()->route('public.plans.index');
+        }
+
+        $paymentMethods = PaymentMethod::active()->ordered()->get();
+
+        return view('public.checkout.filament-grace-plan', compact('plan', 'paymentMethods', 'subscription'));
+    }
+
     private function processMercadoPago(Subscription $subscription, Request $request)
     {
         try {

@@ -207,20 +207,37 @@ class PlanResource extends Resource
                     ->action(function ($record) {
                         $record->update(['is_active' => !$record->is_active]);
                     }),
+                Tables\Actions\Action::make('deactivate_plan')
+                    ->label('Desactivar Plan')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('warning')
+                    ->requiresConfirmation()
+                    ->modalHeading('¿Desactivar este plan?')
+                    ->modalDescription('Los usuarios con este plan entrarán en período de gracia cuando expire su suscripción actual.')
+                    ->visible(fn ($record) => $record->is_active && $record->hasActiveSubscriptions())
+                    ->action(function ($record) {
+                        $record->update(['is_active' => false]);
+
+                        \Filament\Notifications\Notification::make()
+                            ->title('Plan desactivado')
+                            ->body('Los usuarios existentes tendrán un período de gracia para seleccionar un nuevo plan.')
+                            ->success()
+                            ->send();
+                    }),
                 Tables\Actions\DeleteAction::make()
                     ->label('Eliminar')
                     ->requiresConfirmation()
                     ->modalHeading('¿Eliminar este plan?')
                     ->modalDescription('Esta acción no se puede deshacer.')
+                    ->visible(fn ($record) => !$record->hasActiveSubscriptions())
                     ->before(function ($record) {
-                        if (!$record->canBeDeleted()) {
+                        if ($record->hasActiveSubscriptions()) {
                             \Filament\Notifications\Notification::make()
                                 ->title('No se puede eliminar')
-                                ->body($record->getDeletionRestrictionReason() . ' Considera desactivarlo en su lugar.')
+                                ->body($record->getDeletionRestrictionReason() . ' Usa "Desactivar Plan" en su lugar.')
                                 ->danger()
                                 ->send();
 
-                            // Cancelar la eliminación
                             throw new \Filament\Actions\Exceptions\Cancel();
                         }
                     }),
@@ -228,30 +245,45 @@ class PlanResource extends Resource
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\BulkAction::make('activate')
-                        ->label('Activar seleccionados')
+                        ->label('Reactivar seleccionados')
                         ->icon('heroicon-o-check-circle')
                         ->color('success')
                         ->requiresConfirmation()
+                        ->modalHeading('¿Reactivar planes seleccionados?')
+                        ->modalDescription('Los planes volverán a estar disponibles para nuevas suscripciones.')
                         ->action(function ($records) {
                             $records->each(function ($record) {
                                 $record->update(['is_active' => true]);
                             });
                         }),
-                    Tables\Actions\BulkAction::make('deactivate')
+                    Tables\Actions\BulkAction::make('deactivate_selected')
                         ->label('Desactivar seleccionados')
                         ->icon('heroicon-o-x-circle')
-                        ->color('danger')
+                        ->color('warning')
                         ->requiresConfirmation()
+                        ->modalHeading('¿Desactivar planes seleccionados?')
+                        ->modalDescription('Los usuarios con estos planes entrarán en período de gracia cuando expire su suscripción actual.')
                         ->action(function ($records) {
-                            $records->each(function ($record) {
-                                $record->update(['is_active' => false]);
-                            });
+                            $deactivatedCount = 0;
+
+                            foreach ($records as $record) {
+                                if ($record->is_active) {
+                                    $record->update(['is_active' => false]);
+                                    $deactivatedCount++;
+                                }
+                            }
+
+                            \Filament\Notifications\Notification::make()
+                                ->title('Planes desactivados')
+                                ->body("Se desactivaron {$deactivatedCount} planes. Los usuarios tendrán período de gracia.")
+                                ->success()
+                                ->send();
                         }),
                     Tables\Actions\DeleteBulkAction::make()
                         ->label('Eliminar seleccionados')
                         ->requiresConfirmation()
                         ->modalHeading('¿Eliminar planes seleccionados?')
-                        ->modalDescription('Esta acción no se puede deshacer. Los planes con suscripciones activas no serán eliminados.')
+                        ->modalDescription('Solo se eliminarán planes sin suscripciones activas.')
                         ->action(function ($records) {
                             $deletedCount = 0;
                             $protectedCount = 0;
@@ -268,13 +300,13 @@ class PlanResource extends Resource
                             if ($deletedCount > 0 && $protectedCount > 0) {
                                 \Filament\Notifications\Notification::make()
                                     ->title('Eliminación parcial completada')
-                                    ->body("Se eliminaron {$deletedCount} planes. {$protectedCount} planes fueron protegidos porque tienen suscripciones activas.")
+                                    ->body("Se eliminaron {$deletedCount} planes. {$protectedCount} planes fueron protegidos.")
                                     ->warning()
                                     ->send();
                             } elseif ($protectedCount > 0) {
                                 \Filament\Notifications\Notification::make()
                                     ->title('No se pudo eliminar')
-                                    ->body("Los {$protectedCount} planes seleccionados tienen suscripciones activas y no pueden ser eliminados. Considera desactivarlos en su lugar.")
+                                    ->body("Los {$protectedCount} planes tienen suscripciones activas. Usa \"Desactivar\" en su lugar.")
                                     ->danger()
                                     ->send();
                             } else {

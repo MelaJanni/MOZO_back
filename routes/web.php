@@ -265,6 +265,10 @@ Route::get('/checkout/bank-transfer/{subscription}', [App\Http\Controllers\Publi
 Route::get('/checkout/success', [App\Http\Controllers\PublicCheckoutController::class, 'success'])->name('public.checkout.success');
 Route::get('/checkout/cancel', [App\Http\Controllers\PublicCheckoutController::class, 'cancel'])->name('public.checkout.cancel');
 
+// Rutas para período de gracia y reselección de planes
+Route::get('/plans/grace-period', [App\Http\Controllers\PublicPlanController::class, 'gracePeriod'])->name('public.plans.grace-period')->middleware('auth');
+Route::get('/checkout/grace-plan/{plan}', [App\Http\Controllers\PublicCheckoutController::class, 'gracePlan'])->name('public.checkout.grace-plan')->middleware('auth');
+
 // Rutas de checkout con autenticación (para usuarios ya registrados)
 Route::prefix('member/checkout')->name('checkout.')->middleware(['auth'])->group(function () {
     Route::get('/', [CheckoutController::class, 'index'])->name('index');
