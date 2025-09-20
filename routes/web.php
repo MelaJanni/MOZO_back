@@ -13,7 +13,19 @@ use Illuminate\Support\Facades\Artisan;
 
 
 Route::get('/', function () {
-    return view('welcome');
+    $plans = \App\Models\Plan::where('is_active', true)
+                           ->orderBy('price_ars')
+                           ->get();
+
+    // Obtener configuraciones del sitio
+    $whatsappNumber = \App\Models\SiteSetting::get('whatsapp_number', '+5491234567890');
+    $contactEmail = \App\Models\SiteSetting::get('contact_email', 'contacto@mozoqr.com');
+    $supportEmail = \App\Models\SiteSetting::get('support_email', 'soporte@mozoqr.com');
+    $socialLinks = \App\Models\SiteSetting::getGroup('social');
+    $androidAppUrl = \App\Models\SiteSetting::get('android_app_url', '#');
+    $iosAppUrl = \App\Models\SiteSetting::get('ios_app_url', '#');
+
+    return view('welcome', compact('plans', 'whatsappNumber', 'contactEmail', 'supportEmail', 'socialLinks', 'androidAppUrl', 'iosAppUrl'));
 });
 
 // Forzar logout de la sesión web para permitir acceder al login de Filament si el usuario actual no tiene permisos
