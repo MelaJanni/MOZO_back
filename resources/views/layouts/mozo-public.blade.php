@@ -73,11 +73,14 @@
                             100: '#e0aaff',
                             50: '#f3e8ff'
                         },
+                        'crypto-purple': '#6366f1',
+                        'crypto-light-purple': '#a855f7',
+                        'crypto-dark-purple': '#4338ca',
                         'crypto': {
                             'blue': '#1A1F2C',
-                            'purple': '#9f54fd',
-                            'light-purple': '#e0aaff',
-                            'dark-purple': '#5a189a',
+                            'purple': '#6366f1',
+                            'light-purple': '#a855f7',
+                            'dark-purple': '#4338ca',
                             'accent': '#F97316',
                         }
                     },
@@ -127,8 +130,8 @@
                         'gradient-shift': 'gradient-shift 3s ease infinite'
                     },
                     backgroundImage: {
-                        'gradient-hero': 'linear-gradient(135deg, #10002b 0%, #240046 25%, #3c096c 50%, #5a189a 75%, #9f54fd 100%)',
-                        'text-gradient': 'linear-gradient(135deg, #9f54fd 0%, #e0aaff 100%)'
+                        'gradient-hero': 'linear-gradient(135deg, #1e293b 0%, #1e40af 25%, #3730a3 50%, #4338ca 75%, #6366f1 100%)',
+                        'text-gradient': 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)'
                     }
                 }
             }
@@ -182,7 +185,7 @@
 
         /* Text gradient effect */
         .text-gradient {
-            background: linear-gradient(135deg, #9f54fd 0%, #e0aaff 100%);
+            background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -202,7 +205,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: radial-gradient(ellipse at center, rgba(159, 84, 253, 0.15) 0%, transparent 70%);
+            background: radial-gradient(ellipse at center, rgba(99, 102, 241, 0.15) 0%, transparent 70%);
             pointer-events: none;
         }
 
@@ -220,7 +223,7 @@
 
         .hover-lift:hover {
             transform: translateY(-5px);
-            box-shadow: 0 20px 40px rgba(159, 84, 253, 0.15);
+            box-shadow: 0 20px 40px rgba(99, 102, 241, 0.15);
         }
 
         /* Custom scrollbar */
@@ -229,28 +232,28 @@
         }
 
         ::-webkit-scrollbar-track {
-            background: #1a1f2c;
+            background: #1e293b;
         }
 
         ::-webkit-scrollbar-thumb {
-            background: #9f54fd;
+            background: #6366f1;
             border-radius: 4px;
         }
 
         ::-webkit-scrollbar-thumb:hover {
-            background: #7b2cbf;
+            background: #4338ca;
         }
 
         /* Button styles */
         .btn-primary {
-            background: linear-gradient(135deg, #9f54fd 0%, #7b2cbf 100%);
+            background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%);
             transition: all 0.3s ease;
         }
 
         .btn-primary:hover {
-            background: linear-gradient(135deg, #7b2cbf 0%, #5a189a 100%);
+            background: linear-gradient(135deg, #4338ca 0%, #3730a3 100%);
             transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(159, 84, 253, 0.4);
+            box-shadow: 0 10px 25px rgba(99, 102, 241, 0.4);
         }
 
         /* Scroll animation setup */
@@ -266,16 +269,16 @@
         }
     </style>
 </head>
-<body class="h-full bg-white font-sans antialiased">
+<body class="h-full bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 font-sans antialiased">
 
     <!-- Header -->
-    <header class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
+    <header class="bg-black/20 backdrop-blur-md border-b border-white/10 sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center h-16">
                 <div class="flex items-center">
                     <a href="/" class="flex items-center space-x-3">
                         <img src="{{ asset('images/logo.svg') }}" alt="MOZO QR" class="h-10 w-auto">
-                        <span class="text-2xl font-bold text-mozo-600">
+                        <span class="text-2xl font-bold text-white">
                             MOZO QR
                         </span>
                     </a>
@@ -283,16 +286,16 @@
 
                 <div class="flex items-center space-x-8">
                     <nav class="hidden md:flex items-center space-x-8">
-                        <a href="#features" class="text-gray-700 hover:text-mozo-600 font-medium transition-colors">
+                        <a href="#features" class="text-gray-300 hover:text-crypto-purple font-medium transition-colors">
                             Características
                         </a>
-                        <a href="#plans" class="text-gray-700 hover:text-mozo-600 font-medium transition-colors">
+                        <a href="#plans" class="text-gray-300 hover:text-crypto-purple font-medium transition-colors">
                             Planes
                         </a>
-                        <a href="#download" class="text-gray-700 hover:text-mozo-600 font-medium transition-colors">
+                        <a href="#download" class="text-gray-300 hover:text-crypto-purple font-medium transition-colors">
                             Descarga
                         </a>
-                        <a href="#contact" class="text-gray-700 hover:text-mozo-600 font-medium transition-colors">
+                        <a href="#contact" class="text-gray-300 hover:text-crypto-purple font-medium transition-colors">
                             Contacto
                         </a>
                     </nav>
@@ -300,10 +303,10 @@
                     @auth
                         <!-- Usuario autenticado -->
                         <div class="flex items-center space-x-4">
-                            <span class="text-gray-700">Hola, {{ auth()->user()->name }}</span>
+                            <span class="text-gray-300">Hola, {{ auth()->user()->name }}</span>
                             <form method="POST" action="{{ route('logout') }}" class="inline">
                                 @csrf
-                                <button type="submit" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 font-medium transition-colors">
+                                <button type="submit" class="bg-gray-600/80 text-white px-4 py-2 rounded-lg hover:bg-gray-700 font-medium transition-colors backdrop-blur-sm">
                                     Cerrar Sesión
                                 </button>
                             </form>
@@ -311,10 +314,10 @@
                     @else
                         <!-- Usuario no autenticado -->
                         <div class="flex items-center space-x-3">
-                            <a href="{{ route('login') }}" class="text-gray-700 hover:text-mozo-600 font-medium transition-colors">
+                            <a href="{{ route('login') }}" class="text-gray-300 hover:text-crypto-purple font-medium transition-colors">
                                 Iniciar Sesión
                             </a>
-                            <a href="{{ route('register') }}" class="bg-mozo-600 text-white px-4 py-2 rounded-lg hover:bg-mozo-700 font-medium transition-colors">
+                            <a href="{{ route('register') }}" class="bg-crypto-purple text-white px-4 py-2 rounded-lg hover:bg-crypto-dark-purple font-medium transition-colors">
                                 Registrarse
                             </a>
                         </div>
@@ -322,7 +325,7 @@
 
                     <!-- Mobile menu button -->
                     <div class="md:hidden">
-                        <button type="button" class="text-gray-700 hover:text-mozo-600">
+                        <button type="button" class="text-gray-300 hover:text-crypto-purple">
                             <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                             </svg>
@@ -341,7 +344,7 @@
     <!-- Footer -->
     <footer class="relative overflow-hidden">
         <!-- Background with gradient -->
-        <div class="bg-gradient-to-br from-crypto-blue via-crypto-dark-blue to-gray-900 text-white py-20">
+        <div class="bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 text-white py-20">
             <!-- Animated background elements -->
             <div class="absolute inset-0 overflow-hidden">
                 <div class="absolute top-10 left-10 w-64 h-64 bg-crypto-purple/10 rounded-full filter blur-3xl animate-pulse-slow"></div>
@@ -349,7 +352,7 @@
             </div>
 
             <!-- Grid pattern overlay -->
-            <div class="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%239f54fd" fill-opacity="0.02"%3E%3Cpath d="M30 30h30v30H30zM0 0h30v30H0z"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-30"></div>
+            <div class="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%236366f1" fill-opacity="0.02"%3E%3Cpath d="M30 30h30v30H30zM0 0h30v30H0z"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-30"></div>
 
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
                 <div class="grid md:grid-cols-4 gap-12">
