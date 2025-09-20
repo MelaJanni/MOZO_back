@@ -14,7 +14,8 @@ use Illuminate\Support\Facades\Artisan;
 
 Route::get('/', function () {
     $plans = \App\Models\Plan::where('is_active', true)
-                           ->orderBy('price_ars')
+                           ->orderBy('sort_order')
+                           ->orderBy('id')
                            ->get();
 
     // Obtener configuraciones del sitio
@@ -269,14 +270,18 @@ Route::get('/planes', [App\Http\Controllers\PublicPlanController::class, 'index'
 Route::get('/planes/precios', [App\Http\Controllers\PublicPlanController::class, 'pricing'])->name('public.planes.pricing');
 
 // Rutas de checkout público con estilo Filament
-Route::get('/checkout', [App\Http\Controllers\PublicCheckoutController::class, 'index'])->name('public.checkout.index');
-Route::get('/checkout/plan/{plan}', [App\Http\Controllers\PublicCheckoutController::class, 'plan'])->name('public.checkout.plan');
+Route::get('/checkout', [App\Http\Controllers\PublicCheckoutController::class, 'index'])->name('public.checkout.index')->middleware('detect.mobile.app');
+Route::get('/checkout/plan/{plan}', [App\Http\Controllers\PublicCheckoutController::class, 'plan'])->name('public.checkout.plan')->middleware('detect.mobile.app');
 Route::post('/checkout/register', [App\Http\Controllers\PublicCheckoutController::class, 'register'])->name('public.checkout.register');
 Route::post('/checkout/apply-coupon', [App\Http\Controllers\PublicCheckoutController::class, 'applyCoupon'])->name('public.checkout.apply-coupon');
 Route::post('/checkout/subscribe', [App\Http\Controllers\PublicCheckoutController::class, 'subscribe'])->name('public.checkout.subscribe')->middleware('auth');
 Route::get('/checkout/bank-transfer/{subscription}', [App\Http\Controllers\PublicCheckoutController::class, 'bankTransfer'])->name('public.checkout.bank-transfer');
 Route::get('/checkout/success', [App\Http\Controllers\PublicCheckoutController::class, 'success'])->name('public.checkout.success');
 Route::get('/checkout/cancel', [App\Http\Controllers\PublicCheckoutController::class, 'cancel'])->name('public.checkout.cancel');
+
+// Google OAuth routes
+Route::get('/auth/google', [App\Http\Controllers\Auth\GoogleAuthController::class, 'redirectToGoogle'])->name('auth.google');
+Route::get('/auth/google/callback', [App\Http\Controllers\Auth\GoogleAuthController::class, 'handleGoogleCallback'])->name('auth.google.callback');
 
 // Rutas para período de gracia y reselección de planes
 Route::get('/plans/grace-period', [App\Http\Controllers\PublicPlanController::class, 'gracePeriod'])->name('public.plans.grace-period')->middleware('auth');
