@@ -297,9 +297,28 @@
                         </a>
                     </nav>
 
-                    <a href="/admin" class="bg-mozo-600 text-white px-4 py-2 rounded-lg hover:bg-mozo-700 font-medium transition-colors">
-                        Iniciar Sesión
-                    </a>
+                    @auth
+                        <!-- Usuario autenticado -->
+                        <div class="flex items-center space-x-4">
+                            <span class="text-gray-700">Hola, {{ auth()->user()->name }}</span>
+                            <form method="POST" action="{{ route('logout') }}" class="inline">
+                                @csrf
+                                <button type="submit" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 font-medium transition-colors">
+                                    Cerrar Sesión
+                                </button>
+                            </form>
+                        </div>
+                    @else
+                        <!-- Usuario no autenticado -->
+                        <div class="flex items-center space-x-3">
+                            <a href="{{ route('login') }}" class="text-gray-700 hover:text-mozo-600 font-medium transition-colors">
+                                Iniciar Sesión
+                            </a>
+                            <a href="{{ route('register') }}" class="bg-mozo-600 text-white px-4 py-2 rounded-lg hover:bg-mozo-700 font-medium transition-colors">
+                                Registrarse
+                            </a>
+                        </div>
+                    @endauth
 
                     <!-- Mobile menu button -->
                     <div class="md:hidden">

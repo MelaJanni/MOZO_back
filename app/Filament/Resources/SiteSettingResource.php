@@ -17,17 +17,17 @@ class SiteSettingResource extends Resource
 {
     protected static ?string $model = SiteSetting::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-cog-6-tooth';
+    protected static ?string $navigationIcon = 'heroicon-o-globe-alt';
 
-    protected static ?string $navigationLabel = 'Configuraciones del Sitio';
+    protected static ?string $navigationLabel = 'Configuraciones Web';
 
-    protected static ?string $modelLabel = 'Configuración';
+    protected static ?string $modelLabel = 'Configuración Web';
 
-    protected static ?string $pluralModelLabel = 'Configuraciones del Sitio';
+    protected static ?string $pluralModelLabel = 'Configuraciones Web';
 
-    protected static ?string $navigationGroup = 'Configuración';
+    protected static ?string $navigationGroup = 'Landing Page';
 
-    protected static ?int $navigationSort = 90;
+    protected static ?int $navigationSort = 10;
 
     public static function form(Form $form): Form
     {

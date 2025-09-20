@@ -44,11 +44,11 @@ class GoogleAuthController extends Controller
 
         // Verificar el state token
         if ($state !== csrf_token()) {
-            return redirect()->route('public.checkout.index')->withErrors(['google' => 'Error de autenticación.']);
+            return redirect()->route('login')->withErrors(['google' => 'Error de autenticación.']);
         }
 
         if (!$code) {
-            return redirect()->route('public.checkout.index')->withErrors(['google' => 'Error al obtener código de Google.']);
+            return redirect()->route('login')->withErrors(['google' => 'Error al obtener código de Google.']);
         }
 
         try {
@@ -109,8 +109,8 @@ class GoogleAuthController extends Controller
                 return redirect()->route('public.checkout.plan', $planId);
             }
 
-            // Redirigir al checkout general
-            return redirect()->route('public.checkout.index');
+            // Redirigir a la página principal
+            return redirect('/')->with('success', '¡Sesión iniciada exitosamente con Google!');
 
         } catch (\Exception $e) {
             Log::error('Error en autenticación Google', [
@@ -118,7 +118,7 @@ class GoogleAuthController extends Controller
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return redirect()->route('public.checkout.index')->withErrors(['google' => 'Error al autenticar con Google. Intenta nuevamente.']);
+            return redirect()->route('login')->withErrors(['google' => 'Error al autenticar con Google. Intenta nuevamente.']);
         }
     }
 }

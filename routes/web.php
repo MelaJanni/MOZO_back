@@ -279,6 +279,16 @@ Route::get('/checkout/bank-transfer/{subscription}', [App\Http\Controllers\Publi
 Route::get('/checkout/success', [App\Http\Controllers\PublicCheckoutController::class, 'success'])->name('public.checkout.success');
 Route::get('/checkout/cancel', [App\Http\Controllers\PublicCheckoutController::class, 'cancel'])->name('public.checkout.cancel');
 
+// Public Authentication Routes
+Route::middleware('guest')->group(function () {
+    Route::get('/login', [App\Http\Controllers\Auth\PublicAuthController::class, 'showLoginForm'])->name('login');
+    Route::post('/login', [App\Http\Controllers\Auth\PublicAuthController::class, 'login']);
+    Route::get('/register', [App\Http\Controllers\Auth\PublicAuthController::class, 'showRegisterForm'])->name('register');
+    Route::post('/register', [App\Http\Controllers\Auth\PublicAuthController::class, 'register']);
+});
+
+Route::post('/logout', [App\Http\Controllers\Auth\PublicAuthController::class, 'logout'])->name('logout')->middleware('auth');
+
 // Google OAuth routes
 Route::get('/auth/google', [App\Http\Controllers\Auth\GoogleAuthController::class, 'redirectToGoogle'])->name('auth.google');
 Route::get('/auth/google/callback', [App\Http\Controllers\Auth\GoogleAuthController::class, 'handleGoogleCallback'])->name('auth.google.callback');

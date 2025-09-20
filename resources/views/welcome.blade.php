@@ -435,8 +435,25 @@
                             <p class="text-gray-600 mb-6">{{ $plan->description }}</p>
 
                             <div class="mb-6">
-                                <span class="text-5xl font-bold {{ $plan->is_popular ? 'text-crypto-purple' : 'text-gray-900' }}">${{ number_format($plan->price_ars, 0) }}</span>
-                                <span class="text-gray-600 text-xl">/mes</span>
+                                @if($plan->yearly_discount_percentage > 0)
+                                    <!-- Precio con descuento anual -->
+                                    <div class="text-center">
+                                        <div class="text-lg text-gray-500 line-through">
+                                            {{ $plan->getFormattedPrice() }}/mes
+                                        </div>
+                                        <div>
+                                            <span class="text-5xl font-bold {{ $plan->is_popular ? 'text-crypto-purple' : 'text-gray-900' }}">${{ number_format($plan->getPriceWithDiscount('yearly'), 0) }}</span>
+                                            <span class="text-gray-600 text-xl">/mes</span>
+                                        </div>
+                                        <div class="text-sm text-green-600 font-semibold mt-1">
+                                            {{ $plan->yearly_discount_percentage }}% OFF pagando anual
+                                        </div>
+                                    </div>
+                                @else
+                                    <!-- Precio normal -->
+                                    <span class="text-5xl font-bold {{ $plan->is_popular ? 'text-crypto-purple' : 'text-gray-900' }}">{{ $plan->getFormattedPrice() }}</span>
+                                    <span class="text-gray-600 text-xl">/mes</span>
+                                @endif
                             </div>
 
                             @if($plan->hasTrialEnabled())
