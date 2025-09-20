@@ -33,7 +33,9 @@
       "Bash(rg:*)",
       "Bash(sc query:*)",
       "Bash(tasklist)",
-      "Bash(ssh:*)"
+      "Bash(ssh:*)",
+      "WebSearch",
+      "Bash(unzip:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",

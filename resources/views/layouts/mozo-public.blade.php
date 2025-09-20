@@ -17,40 +17,118 @@
     <!-- Custom Configuration -->
     <script>
         tailwind.config = {
+            darkMode: ['class'],
             theme: {
+                container: {
+                    center: true,
+                    padding: '2rem',
+                    screens: {
+                        'sm': '640px',
+                        'md': '768px',
+                        'lg': '1024px',
+                        'xl': '1280px',
+                        '2xl': '1400px'
+                    }
+                },
                 extend: {
                     fontFamily: {
-                        'sans': ['Inter', 'system-ui', 'sans-serif'],
+                        'sans': ['Inter var', 'Inter', 'system-ui', 'sans-serif'],
+                        'display': ['Poppins', 'sans-serif'],
                     },
                     colors: {
-                        'purple': {
-                            50: '#f5f3ff',
-                            100: '#ede9fe',
-                            200: '#ddd6fe',
-                            300: '#c4b5fd',
-                            400: '#a78bfa',
-                            500: '#8b5cf6',
-                            600: '#7c3aed',
-                            700: '#6d28d9',
-                            800: '#5b21b6',
-                            900: '#4c1d95',
-                            950: '#2e1065'
+                        border: 'hsl(var(--border))',
+                        input: 'hsl(var(--input))',
+                        ring: 'hsl(var(--ring))',
+                        background: 'hsl(var(--background))',
+                        foreground: 'hsl(var(--foreground))',
+                        primary: {
+                            DEFAULT: 'hsl(var(--primary))',
+                            foreground: 'hsl(var(--primary-foreground))'
+                        },
+                        secondary: {
+                            DEFAULT: 'hsl(var(--secondary))',
+                            foreground: 'hsl(var(--secondary-foreground))'
+                        },
+                        muted: {
+                            DEFAULT: 'hsl(var(--muted))',
+                            foreground: 'hsl(var(--muted-foreground))'
+                        },
+                        accent: {
+                            DEFAULT: 'hsl(var(--accent))',
+                            foreground: 'hsl(var(--accent-foreground))'
+                        },
+                        card: {
+                            DEFAULT: 'hsl(var(--card))',
+                            foreground: 'hsl(var(--card-foreground))'
                         },
                         'mozo': {
-                            // Dark Purple Base
                             900: '#10002b',
                             800: '#240046',
                             700: '#3c096c',
                             600: '#5a189a',
-                            // Primary Purple (Logo)
                             500: '#9f54fd',
-                            // Light Purple Variants
                             400: '#7b2cbf',
                             300: '#9d4edd',
                             200: '#c77dff',
                             100: '#e0aaff',
                             50: '#f3e8ff'
+                        },
+                        'crypto': {
+                            'blue': '#1A1F2C',
+                            'purple': '#9f54fd',
+                            'light-purple': '#e0aaff',
+                            'dark-purple': '#5a189a',
+                            'accent': '#F97316',
                         }
+                    },
+                    borderRadius: {
+                        'xs': '0.125rem',
+                        'sm': '0.25rem',
+                        'md': '0.375rem',
+                        'lg': '0.5rem',
+                        'xl': '0.75rem',
+                        '2xl': '1rem',
+                        '3xl': '1.5rem',
+                        'circle': '50%',
+                        'pill': '9999px'
+                    },
+                    keyframes: {
+                        'float': {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-10px)' }
+                        },
+                        'pulse-slow': {
+                            '0%, 100%': { opacity: '1' },
+                            '50%': { opacity: '0.8' }
+                        },
+                        'fade-in': {
+                            '0%': { opacity: '0', transform: 'translateY(10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' }
+                        },
+                        'fade-in-left': {
+                            '0%': { opacity: '0', transform: 'translateX(-20px)' },
+                            '100%': { opacity: '1', transform: 'translateX(0)' }
+                        },
+                        'fade-in-right': {
+                            '0%': { opacity: '0', transform: 'translateX(20px)' },
+                            '100%': { opacity: '1', transform: 'translateX(0)' }
+                        },
+                        'gradient-shift': {
+                            '0%, 100%': { backgroundPosition: '0% 50%' },
+                            '50%': { backgroundPosition: '100% 50%' }
+                        }
+                    },
+                    animation: {
+                        'float': 'float 3s ease-in-out infinite',
+                        'pulse-slow': 'pulse-slow 3s ease-in-out infinite',
+                        'fade-in': 'fade-in 0.7s ease-out',
+                        'fade-in-left': 'fade-in-left 0.7s ease-out',
+                        'fade-in-right': 'fade-in-right 0.7s ease-out',
+                        'gradient-shift': 'gradient-shift 3s ease infinite'
+                    },
+                    backgroundImage: {
+                        'gradient-hero': 'linear-gradient(135deg, #10002b 0%, #240046 25%, #3c096c 50%, #5a189a 75%, #9f54fd 100%)',
+                        'text-gradient': 'linear-gradient(135deg, #9f54fd 0%, #e0aaff 100%)'
                     }
                 }
             }
@@ -61,25 +139,78 @@
     <style>
         [x-cloak] { display: none !important; }
 
+        :root {
+            --border: 214.3 31.8% 91.4%;
+            --input: 214.3 31.8% 91.4%;
+            --ring: 221.2 83.2% 53.3%;
+            --background: 0 0% 100%;
+            --foreground: 222.2 84% 4.9%;
+            --primary: 221.2 83.2% 53.3%;
+            --primary-foreground: 210 40% 98%;
+            --secondary: 210 40% 96%;
+            --secondary-foreground: 222.2 84% 4.9%;
+            --muted: 210 40% 96%;
+            --muted-foreground: 215.4 16.3% 46.9%;
+            --accent: 210 40% 96%;
+            --accent-foreground: 222.2 84% 4.9%;
+            --card: 0 0% 100%;
+            --card-foreground: 222.2 84% 4.9%;
+        }
+
+        .dark {
+            --border: 217.2 32.6% 17.5%;
+            --input: 217.2 32.6% 17.5%;
+            --ring: 224.3 76.3% 94.1%;
+            --background: 222.2 84% 4.9%;
+            --foreground: 210 40% 98%;
+            --primary: 224.3 76.3% 94.1%;
+            --primary-foreground: 220.9 39.3% 11%;
+            --secondary: 217.2 32.6% 17.5%;
+            --secondary-foreground: 210 40% 98%;
+            --muted: 217.2 32.6% 17.5%;
+            --muted-foreground: 215 20.2% 65.1%;
+            --accent: 217.2 32.6% 17.5%;
+            --accent-foreground: 210 40% 98%;
+            --card: 222.2 84% 4.9%;
+            --card-foreground: 210 40% 98%;
+        }
+
         /* Smooth animations */
         .transition-all {
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        /* Gradient backgrounds */
-        .bg-gradient-mozo {
-            background: linear-gradient(135deg, #10002b 0%, #3c096c 50%, #9f54fd 100%);
+        /* Text gradient effect */
+        .text-gradient {
+            background: linear-gradient(135deg, #9f54fd 0%, #e0aaff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            background-size: 200% 200%;
+            animation: gradient-shift 3s ease infinite;
         }
 
-        .bg-gradient-mozo-light {
-            background: linear-gradient(135deg, #9d4edd 0%, #c77dff 50%, #e0aaff 100%);
+        /* Hero background with glow effect */
+        .hero-glow {
+            position: relative;
+        }
+
+        .hero-glow::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(ellipse at center, rgba(159, 84, 253, 0.15) 0%, transparent 70%);
+            pointer-events: none;
         }
 
         /* Glass morphism effect */
         .glass {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.05);
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         /* Hover effects */
@@ -98,7 +229,7 @@
         }
 
         ::-webkit-scrollbar-track {
-            background: #f1f1f1;
+            background: #1a1f2c;
         }
 
         ::-webkit-scrollbar-thumb {
@@ -108,6 +239,30 @@
 
         ::-webkit-scrollbar-thumb:hover {
             background: #7b2cbf;
+        }
+
+        /* Button styles */
+        .btn-primary {
+            background: linear-gradient(135deg, #9f54fd 0%, #7b2cbf 100%);
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #7b2cbf 0%, #5a189a 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(159, 84, 253, 0.4);
+        }
+
+        /* Scroll animation setup */
+        .animate-on-scroll {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.7s ease-out;
+        }
+
+        .animate-on-scroll.animated {
+            opacity: 1;
+            transform: translateY(0);
         }
     </style>
 </head>
