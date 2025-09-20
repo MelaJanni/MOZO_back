@@ -133,6 +133,41 @@ class SiteSettingSeeder extends Seeder
                 'label' => 'URL de la App iOS',
                 'description' => 'Enlace a la aplicación en App Store'
             ],
+
+            // FAQs para la landing page
+            [
+                'key' => 'faqs_data',
+                'value' => json_encode([
+                    [
+                        'question' => '¿Cómo funciona MOZO QR?',
+                        'answer' => 'MOZO QR genera códigos QR únicos para cada mesa de tu restaurante. Los clientes escanean el código, acceden al menú digital y pueden llamar al mozo instantáneamente cuando necesiten atención.'
+                    ],
+                    [
+                        'question' => '¿Necesito una aplicación especial?',
+                        'answer' => 'Los clientes no necesitan descargar nada. Solo escanean el QR con la cámara de su teléfono. Tu personal puede usar nuestra app móvil para recibir notificaciones.'
+                    ],
+                    [
+                        'question' => '¿Funciona sin internet?',
+                        'answer' => 'MOZO QR requiere conexión a internet para funcionar. Recomendamos tener WiFi estable en tu restaurante para la mejor experiencia.'
+                    ],
+                    [
+                        'question' => '¿Cuánto tiempo toma implementar?',
+                        'answer' => 'La implementación es inmediata. Una vez que te registras, puedes generar los códigos QR y comenzar a usarlos el mismo día.'
+                    ],
+                    [
+                        'question' => '¿Hay soporte técnico?',
+                        'answer' => 'Sí, ofrecemos soporte técnico completo vía WhatsApp, email y chat en vivo durante horarios comerciales.'
+                    ],
+                    [
+                        'question' => '¿Puedo personalizar el menú?',
+                        'answer' => 'Por supuesto. Puedes subir tu menú en PDF, actualizarlo cuando quieras y personalizarlo completamente desde el panel de administración.'
+                    ]
+                ]),
+                'type' => 'json',
+                'group' => 'content',
+                'label' => 'Preguntas Frecuentes',
+                'description' => 'Lista de preguntas frecuentes para la landing page'
+            ],
         ];
 
         foreach ($settings as $setting) {

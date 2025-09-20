@@ -1,29 +1,35 @@
-@extends('layouts.app')
+@extends('layouts.mozo-public')
 
 @section('title', 'Checkout - ' . $plan->name . ' - MOZO QR')
 @section('description', 'Completa tu registro y contratación del plan ' . $plan->name . ' para comenzar a digitalizar tu restaurante.')
 
 @section('content')
-    <div class="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 py-12">
-        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 py-12 relative overflow-hidden">
+        <!-- Animated background elements -->
+        <div class="absolute inset-0 overflow-hidden">
+            <div class="absolute top-1/4 left-10 w-72 h-72 bg-crypto-purple/10 rounded-full filter blur-3xl animate-pulse-slow"></div>
+            <div class="absolute bottom-1/4 right-10 w-96 h-96 bg-crypto-light-purple/10 rounded-full filter blur-3xl animate-pulse-slow" style="animation-delay: 1s;"></div>
+        </div>
+
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
             <!-- Header -->
             <div class="text-center mb-8">
                 <a href="/" class="inline-block mb-6">
-                    <img src="{{ asset('images/mozo-logo.png') }}" alt="MOZO QR" class="h-12 w-auto mx-auto">
+                    <img src="{{ asset('images/logo.svg') }}" alt="MOZO QR" class="h-12 w-auto mx-auto">
                 </a>
                 @if($user)
-                    <h1 class="text-3xl font-bold text-gray-900 mb-2">Contratar Plan</h1>
-                    <p class="text-lg text-gray-600">¡Hola {{ $user->name }}! Plan seleccionado: <span class="font-semibold text-crypto-purple">{{ $plan->name }}</span></p>
+                    <h1 class="text-3xl font-bold text-white mb-2">Contratar Plan</h1>
+                    <p class="text-lg text-gray-300">¡Hola {{ $user->name }}! Plan seleccionado: <span class="font-semibold text-crypto-purple">{{ $plan->name }}</span></p>
                 @else
-                    <h1 class="text-3xl font-bold text-gray-900 mb-2">Completar Registro</h1>
-                    <p class="text-lg text-gray-600">Plan seleccionado: <span class="font-semibold text-crypto-purple">{{ $plan->name }}</span></p>
+                    <h1 class="text-3xl font-bold text-white mb-2">Completar Registro</h1>
+                    <p class="text-lg text-gray-300">Plan seleccionado: <span class="font-semibold text-crypto-purple">{{ $plan->name }}</span></p>
                 @endif
             </div>
 
             <div class="grid lg:grid-cols-2 gap-8">
                 <!-- Formulario de Registro -->
                 <div class="bg-white/80 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/50 p-8">
-                    <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-6">
+                    <h2 class="text-xl font-semibold text-gray-900 mb-6">
                         @if($user)
                             Información de Pago
                         @else
@@ -39,24 +45,24 @@
                             @if(!$user)
                             <!-- Nombre -->
                             <div>
-                                <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                <label for="name" class="block text-sm font-medium text-gray-700 mb-1">
                                     Nombre completo
                                 </label>
                                 <input type="text" id="name" name="name" required
-                                       class="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-crypto-purple focus:border-crypto-purple transition-colors"
+                                       class="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-crypto-purple focus:border-crypto-purple transition-colors bg-white bg-white"
                                        value="{{ old('name') }}">
                                 @error('name')
-                                    <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                 @enderror
                             </div>
 
                             <!-- Email -->
                             <div>
-                                <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                <label for="email" class="block text-sm font-medium text-gray-700 mb-1">
                                     Correo electrónico
                                 </label>
                                 <input type="email" id="email" name="email" required
-                                       class="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-crypto-purple focus:border-crypto-purple transition-colors"
+                                       class="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-crypto-purple focus:border-crypto-purple transition-colors bg-white"
                                        value="{{ old('email') }}">
                                 @error('email')
                                     <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
@@ -65,11 +71,11 @@
 
                             <!-- Contraseña -->
                             <div>
-                                <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                <label for="password" class="block text-sm font-medium text-gray-700 mb-1">
                                     Contraseña
                                 </label>
                                 <input type="password" id="password" name="password" required
-                                       class="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-crypto-purple focus:border-crypto-purple transition-colors">
+                                       class="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-crypto-purple focus:border-crypto-purple transition-colors bg-white">
                                 @error('password')
                                     <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
                                 @enderror
@@ -77,11 +83,11 @@
 
                             <!-- Confirmar contraseña -->
                             <div>
-                                <label for="password_confirmation" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                <label for="password_confirmation" class="block text-sm font-medium text-gray-700 mb-1">
                                     Confirmar contraseña
                                 </label>
                                 <input type="password" id="password_confirmation" name="password_confirmation" required
-                                       class="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-crypto-purple focus:border-crypto-purple transition-colors">
+                                       class="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-crypto-purple focus:border-crypto-purple transition-colors bg-white">
                             </div>
 
                             <!-- Separador con Google -->
@@ -90,14 +96,14 @@
                                     <div class="w-full border-t border-gray-300 dark:border-gray-600"></div>
                                 </div>
                                 <div class="relative flex justify-center text-sm">
-                                    <span class="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">o registrarse con</span>
+                                    <span class="px-2 bg-white dark:bg-gray-800 text-gray-500">o registrarse con</span>
                                 </div>
                             </div>
 
                             <!-- Botón de Google -->
                             <div class="mb-6">
                                 <a href="{{ route('auth.google', ['plan_id' => $plan->id]) }}"
-                                   class="w-full flex items-center justify-center px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition duration-300">
+                                   class="w-full flex items-center justify-center px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-700 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition duration-300">
                                     <svg class="w-5 h-5 mr-3" viewBox="0 0 24 24">
                                         <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                                         <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -115,8 +121,8 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                     </svg>
                                     <div>
-                                        <p class="text-green-700 dark:text-green-400 font-medium">Sesión iniciada como:</p>
-                                        <p class="text-green-600 dark:text-green-300">{{ $user->name }} ({{ $user->email }})</p>
+                                        <p class="text-green-700 font-medium">Sesión iniciada como:</p>
+                                        <p class="text-green-600">{{ $user->name }} ({{ $user->email }})</p>
                                     </div>
                                 </div>
                             </div>
@@ -124,22 +130,22 @@
 
                             <!-- Período de facturación -->
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                                <label class="block text-sm font-medium text-gray-700 mb-3">
                                     Período de facturación
                                 </label>
                                 <div class="space-y-2">
                                     <label class="flex items-center">
                                         <input type="radio" name="billing_period" value="monthly" checked
                                                class="text-crypto-purple focus:ring-crypto-purple">
-                                        <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Mensual - {{ $plan->getFormattedPrice() }}/mes</span>
+                                        <span class="ml-2 text-sm text-gray-700">Mensual - {{ $plan->getFormattedPrice() }}/mes</span>
                                     </label>
                                     @if($plan->quarterly_discount_percentage > 0)
                                     <label class="flex items-center">
                                         <input type="radio" name="billing_period" value="quarterly"
                                                class="text-crypto-purple focus:ring-crypto-purple">
-                                        <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                                        <span class="ml-2 text-sm text-gray-700">
                                             Trimestral - ${{ number_format($plan->getPriceWithDiscount('quarterly'), 0) }}/trimestre
-                                            <span class="text-green-600 dark:text-green-400 font-medium">({{ $plan->quarterly_discount_percentage }}% descuento)</span>
+                                            <span class="text-green-600 font-medium">({{ $plan->quarterly_discount_percentage }}% descuento)</span>
                                         </span>
                                     </label>
                                     @endif
@@ -147,9 +153,9 @@
                                     <label class="flex items-center">
                                         <input type="radio" name="billing_period" value="yearly"
                                                class="text-crypto-purple focus:ring-crypto-purple">
-                                        <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                                        <span class="ml-2 text-sm text-gray-700">
                                             Anual - ${{ number_format($plan->getPriceWithDiscount('yearly'), 0) }}/año
-                                            <span class="text-green-600 dark:text-green-400 font-medium">({{ $plan->yearly_discount_percentage }}% descuento)</span>
+                                            <span class="text-green-600 font-medium">({{ $plan->yearly_discount_percentage }}% descuento)</span>
                                         </span>
                                     </label>
                                     @endif
@@ -158,7 +164,7 @@
 
                             <!-- Método de pago -->
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                                <label class="block text-sm font-medium text-gray-700 mb-3">
                                     Método de pago
                                 </label>
                                 <div class="space-y-2">
@@ -166,16 +172,16 @@
                                         <input type="radio" name="payment_method" value="mercadopago" checked
                                                class="text-crypto-purple focus:ring-crypto-purple">
                                         <div class="ml-3">
-                                            <p class="text-sm font-medium text-gray-700 dark:text-gray-300">MercadoPago</p>
-                                            <p class="text-xs text-gray-500 dark:text-gray-400">Tarjetas de crédito, débito y efectivo</p>
+                                            <p class="text-sm font-medium text-gray-700">MercadoPago</p>
+                                            <p class="text-xs text-gray-500">Tarjetas de crédito, débito y efectivo</p>
                                         </div>
                                     </label>
                                     <label class="flex items-center p-3 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer">
                                         <input type="radio" name="payment_method" value="bank_transfer"
                                                class="text-crypto-purple focus:ring-crypto-purple">
                                         <div class="ml-3">
-                                            <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Transferencia Bancaria</p>
-                                            <p class="text-xs text-gray-500 dark:text-gray-400">Pago manual por transferencia</p>
+                                            <p class="text-sm font-medium text-gray-700">Transferencia Bancaria</p>
+                                            <p class="text-xs text-gray-500">Pago manual por transferencia</p>
                                         </div>
                                     </label>
                                 </div>
@@ -183,7 +189,7 @@
 
                             <!-- Cupón -->
                             <div>
-                                <label for="coupon_code" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                <label for="coupon_code" class="block text-sm font-medium text-gray-700 mb-1">
                                     Código de cupón (opcional)
                                 </label>
                                 <div class="flex">
@@ -191,7 +197,7 @@
                                            class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-l-lg focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
                                            value="{{ old('coupon_code') }}">
                                     <button type="button" id="apply-coupon"
-                                            class="px-4 py-2 bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-300 border border-l-0 border-gray-300 dark:border-gray-600 rounded-r-lg hover:bg-gray-200 dark:hover:bg-gray-500">
+                                            class="px-4 py-2 bg-gray-100 dark:bg-gray-600 text-gray-700 border border-l-0 border-gray-300 dark:border-gray-600 rounded-r-lg hover:bg-gray-200 dark:hover:bg-gray-500">
                                         Aplicar
                                     </button>
                                 </div>
@@ -224,10 +230,10 @@
 
                 <!-- Resumen del Plan -->
                 <div class="bg-white/80 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/50 p-8">
-                    <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-6">Resumen del Plan</h2>
+                    <h2 class="text-xl font-semibold text-gray-900 mb-6">Resumen del Plan</h2>
 
                     <div class="text-center mb-6">
-                        <h3 class="text-2xl font-bold text-gray-900 dark:text-white">{{ $plan->name }}</h3>
+                        <h3 class="text-2xl font-bold text-gray-900">{{ $plan->name }}</h3>
                         <p class="text-gray-600 dark:text-gray-300 mt-2">{{ $plan->description }}</p>
 
                         <div class="mt-4">
@@ -236,7 +242,7 @@
                         </div>
 
                         @if($plan->hasTrialEnabled())
-                        <div class="mt-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 px-4 py-2 rounded-lg">
+                        <div class="mt-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 px-4 py-2 rounded-lg">
                             <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"></path>
                             </svg>
@@ -246,7 +252,7 @@
                     </div>
 
                     <div>
-                        <h4 class="font-semibold text-gray-900 dark:text-white mb-4">Incluye:</h4>
+                        <h4 class="font-semibold text-gray-900 mb-4">Incluye:</h4>
                         <ul class="space-y-3">
                             @if($plan->features && is_array($plan->features))
                                 @foreach($plan->features as $feature)
@@ -254,7 +260,7 @@
                                     <svg class="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                                     </svg>
-                                    <span class="text-gray-700 dark:text-gray-300">{{ $feature }}</span>
+                                    <span class="text-gray-700">{{ $feature }}</span>
                                 </li>
                                 @endforeach
                             @else
@@ -262,15 +268,15 @@
                                     <svg class="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                                     </svg>
-                                    <span class="text-gray-700 dark:text-gray-300">Plan completo disponible</span>
+                                    <span class="text-gray-700">Plan completo disponible</span>
                                 </li>
                             @endif
                         </ul>
                     </div>
 
                     <!-- Seguridad -->
-                    <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-                        <div class="flex items-center justify-center text-sm text-gray-600 dark:text-gray-400">
+                    <div class="mt-6 pt-6 border-t border-gray-200">
+                        <div class="flex items-center justify-center text-sm text-gray-600">
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
                             </svg>
