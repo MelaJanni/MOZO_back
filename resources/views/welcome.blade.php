@@ -30,18 +30,18 @@
                     Transforma la experiencia de tus clientes con menús digitales, notificaciones instantáneas y gestión eficiente de mesas.
                 </p>
                 <div class="flex flex-col sm:flex-row gap-4">
-                    <button class="btn-primary text-white px-8 py-4 rounded-xl font-semibold text-lg inline-flex items-center justify-center">
-                        Comenzar Ahora
+                    <a href="#download" class="btn-primary text-white px-8 py-4 rounded-xl font-semibold text-lg inline-flex items-center justify-center">
+                        Descargar Ahora
                         <svg class="ml-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                         </svg>
-                    </button>
-                    <button class="border border-gray-700 text-white hover:bg-white/5 px-8 py-4 rounded-xl font-semibold text-lg inline-flex items-center justify-center transition-all">
+                    </a>
+                    <a href="#features" class="border border-gray-700 text-white hover:bg-white/5 px-8 py-4 rounded-xl font-semibold text-lg inline-flex items-center justify-center transition-all">
                         Más Información
                         <svg class="ml-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
                         </svg>
-                    </button>
+                    </a>
                 </div>
             </div>
 
@@ -378,7 +378,335 @@
     </div>
 </section>
 
-<!-- Download App Section -->
+<!-- Plans Section -->
+<section id="plans" class="py-20 bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 relative overflow-hidden">
+    <!-- Background Pattern -->
+    <div class="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"%3E%3Cdefs%3E%3Cpattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"%3E%3Cpath d="M 10 0 L 0 0 0 10" fill="none" stroke="%23e5e7eb" stroke-width="0.5"/%3E%3C/pattern%3E%3C/defs%3E%3Crect width="100" height="100" fill="url(%23grid)"/%3E%3C/svg%3E')] opacity-40"></div>
+
+    <div class="container mx-auto px-4 relative z-10">
+        <div class="text-center mb-16 animate-on-scroll">
+            <div class="inline-flex items-center glass rounded-full px-6 py-3 mb-6 border border-crypto-purple/20">
+                <span class="text-sm font-medium text-crypto-purple mr-2">💰 Planes</span>
+                <span class="text-sm text-gray-600">Soluciones para cada negocio</span>
+            </div>
+            <h2 class="text-4xl lg:text-6xl font-bold text-gray-900 mb-6">
+                <span class="text-gradient bg-gradient-to-r from-crypto-purple to-crypto-light-purple bg-clip-text text-transparent">Elige el Plan Perfecto</span><br class="hidden sm:block">
+                <span class="text-gray-900">para tu Restaurante</span>
+            </h2>
+            <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+                Desde pequeños cafés hasta grandes cadenas. Encuentra la solución que se adapte a las necesidades específicas de tu negocio.
+            </p>
+        </div>
+
+        <!-- Plans Grid with max-width container -->
+        <div class="max-w-4xl mx-auto mb-20">
+            <div class="grid md:grid-cols-1 lg:grid-cols-3 gap-8 justify-items-center">
+                <!-- Basic Plan -->
+                <div class="group relative animate-on-scroll w-full max-w-sm">
+                    <div class="absolute inset-0 bg-gradient-to-br from-gray-500/5 to-gray-600/5 rounded-3xl transform rotate-1 group-hover:rotate-0 transition-transform duration-300"></div>
+
+                    <div class="relative bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-2xl border border-white/50 hover:shadow-gray-500/20 transition-all duration-300">
+                        <!-- Plan Header -->
+                        <div class="text-center mb-8">
+                            <div class="w-16 h-16 bg-gradient-to-br from-gray-700 to-gray-900 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                                </svg>
+                            </div>
+                            <h3 class="text-3xl font-bold text-gray-900 mb-2">Básico</h3>
+                            <p class="text-gray-600 mb-6">Perfecto para restaurantes pequeños</p>
+
+                            <div class="mb-6">
+                                <span class="text-5xl font-bold text-gray-900">$9,999</span>
+                                <span class="text-gray-600 text-xl">/mes</span>
+                            </div>
+
+                            <div class="inline-flex items-center bg-green-50 text-green-700 px-4 py-2 rounded-xl mb-6 border border-green-200">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"></path>
+                                </svg>
+                                14 días gratis
+                            </div>
+                        </div>
+
+                        <!-- Features List -->
+                        <div class="mb-8">
+                            <h4 class="font-bold text-gray-900 mb-6 text-lg">✨ Incluye:</h4>
+                            <ul class="space-y-4">
+                                <li class="flex items-center">
+                                    <div class="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center mr-3">
+                                        <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                    </div>
+                                    <span class="text-gray-700">Hasta <strong>15</strong> mesas</span>
+                                </li>
+                                <li class="flex items-center">
+                                    <div class="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center mr-3">
+                                        <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                    </div>
+                                    <span class="text-gray-700"><strong>5</strong> usuarios/mozos</span>
+                                </li>
+                                <li class="flex items-center">
+                                    <div class="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center mr-3">
+                                        <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                    </div>
+                                    <span class="text-gray-700"><strong>1</strong> restaurante</span>
+                                </li>
+                                <li class="flex items-center">
+                                    <div class="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center mr-3">
+                                        <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                    </div>
+                                    <span class="text-gray-700">Menús digitales</span>
+                                </li>
+                                <li class="flex items-center">
+                                    <div class="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center mr-3">
+                                        <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                    </div>
+                                    <span class="text-gray-700">Notificaciones en tiempo real</span>
+                                </li>
+                                <li class="flex items-center">
+                                    <div class="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center mr-3">
+                                        <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                    </div>
+                                    <span class="text-gray-700">Soporte por email</span>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="space-y-4">
+                            <a href="#contact" class="w-full bg-gradient-to-r from-gray-700 to-gray-900 hover:from-gray-800 hover:to-gray-900 text-white font-bold py-4 px-8 rounded-xl transition-all duration-300 text-center block transform hover:scale-105 shadow-lg">
+                                Empezar con Básico
+                            </a>
+
+                            <a href="#contact" class="w-full border-2 border-gray-300 text-gray-700 hover:bg-gray-100 hover:text-gray-900 font-semibold py-3 px-8 rounded-xl transition-all duration-300 text-center block">
+                                Más Información
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pro Plan (Most Popular) -->
+                <div class="group relative animate-on-scroll w-full max-w-sm">
+                    <!-- Popular badge -->
+                    <div class="absolute -top-4 left-1/2 transform -translate-x-1/2 z-20">
+                        <span class="bg-gradient-to-r from-crypto-purple to-crypto-light-purple text-white px-6 py-2 rounded-full text-sm font-bold shadow-lg">
+                            ⭐ Más Popular
+                        </span>
+                    </div>
+
+                    <div class="absolute inset-0 bg-gradient-to-br from-crypto-purple/10 to-crypto-light-purple/5 rounded-3xl transform rotate-1 group-hover:rotate-0 transition-transform duration-300"></div>
+
+                    <div class="relative bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-2xl border border-white/50 hover:shadow-crypto-purple/20 transition-all duration-300">
+                        <!-- Plan Header -->
+                        <div class="text-center mb-8">
+                            <div class="w-16 h-16 bg-gradient-to-br from-crypto-purple to-crypto-dark-purple rounded-2xl flex items-center justify-center mx-auto mb-6">
+                                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                                </svg>
+                            </div>
+                            <h3 class="text-3xl font-bold text-gray-900 mb-2">Pro</h3>
+                            <p class="text-gray-600 mb-6">Ideal para restaurantes medianos</p>
+
+                            <div class="mb-6">
+                                <span class="text-5xl font-bold text-crypto-purple">$19,999</span>
+                                <span class="text-gray-600 text-xl">/mes</span>
+                            </div>
+
+                            <div class="inline-flex items-center bg-green-50 text-green-700 px-4 py-2 rounded-xl mb-6 border border-green-200">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"></path>
+                                </svg>
+                                14 días gratis
+                            </div>
+                        </div>
+
+                        <!-- Features List -->
+                        <div class="mb-8">
+                            <h4 class="font-bold text-gray-900 mb-6 text-lg">✨ Incluye:</h4>
+                            <ul class="space-y-4">
+                                <li class="flex items-center">
+                                    <div class="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center mr-3">
+                                        <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                    </div>
+                                    <span class="text-gray-700">Hasta <strong>50</strong> mesas</span>
+                                </li>
+                                <li class="flex items-center">
+                                    <div class="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center mr-3">
+                                        <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                    </div>
+                                    <span class="text-gray-700"><strong>15</strong> usuarios/mozos</span>
+                                </li>
+                                <li class="flex items-center">
+                                    <div class="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center mr-3">
+                                        <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                    </div>
+                                    <span class="text-gray-700"><strong>3</strong> restaurantes</span>
+                                </li>
+                                <li class="flex items-center">
+                                    <div class="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center mr-3">
+                                        <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                    </div>
+                                    <span class="text-gray-700">Analytics avanzados</span>
+                                </li>
+                                <li class="flex items-center">
+                                    <div class="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center mr-3">
+                                        <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                    </div>
+                                    <span class="text-gray-700">Soporte prioritario</span>
+                                </li>
+                                <li class="flex items-center">
+                                    <div class="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center mr-3">
+                                        <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                    </div>
+                                    <span class="text-gray-700">Personalización avanzada</span>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="space-y-4">
+                            <a href="#contact" class="w-full bg-gradient-to-r from-crypto-purple to-crypto-light-purple hover:from-crypto-dark-purple hover:to-crypto-purple text-white font-bold py-4 px-8 rounded-xl transition-all duration-300 text-center block transform hover:scale-105 shadow-lg">
+                                Empezar con Pro
+                            </a>
+
+                            <a href="#contact" class="w-full border-2 border-crypto-purple text-crypto-purple hover:bg-crypto-purple hover:text-white font-semibold py-3 px-8 rounded-xl transition-all duration-300 text-center block">
+                                Más Información
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Enterprise Plan -->
+                <div class="group relative animate-on-scroll w-full max-w-sm">
+                    <div class="absolute -top-4 right-4 z-20">
+                        <span class="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg">
+                            ✨ Recomendado
+                        </span>
+                    </div>
+
+                    <div class="absolute inset-0 bg-gradient-to-br from-green-500/5 to-emerald-600/5 rounded-3xl transform rotate-1 group-hover:rotate-0 transition-transform duration-300"></div>
+
+                    <div class="relative bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-2xl border border-white/50 hover:shadow-green-500/20 transition-all duration-300">
+                        <!-- Plan Header -->
+                        <div class="text-center mb-8">
+                            <div class="w-16 h-16 bg-gradient-to-br from-green-600 to-emerald-700 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                                </svg>
+                            </div>
+                            <h3 class="text-3xl font-bold text-gray-900 mb-2">Enterprise</h3>
+                            <p class="text-gray-600 mb-6">Para cadenas y grandes restaurantes</p>
+
+                            <div class="mb-6">
+                                <span class="text-5xl font-bold text-green-600">$49,999</span>
+                                <span class="text-gray-600 text-xl">/mes</span>
+                            </div>
+
+                            <div class="inline-flex items-center bg-green-50 text-green-700 px-4 py-2 rounded-xl mb-6 border border-green-200">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"></path>
+                                </svg>
+                                30 días gratis
+                            </div>
+                        </div>
+
+                        <!-- Features List -->
+                        <div class="mb-8">
+                            <h4 class="font-bold text-gray-900 mb-6 text-lg">✨ Incluye:</h4>
+                            <ul class="space-y-4">
+                                <li class="flex items-center">
+                                    <div class="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center mr-3">
+                                        <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                    </div>
+                                    <span class="text-gray-700">Mesas <strong>ilimitadas</strong></span>
+                                </li>
+                                <li class="flex items-center">
+                                    <div class="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center mr-3">
+                                        <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                    </div>
+                                    <span class="text-gray-700">Usuarios <strong>ilimitados</strong></span>
+                                </li>
+                                <li class="flex items-center">
+                                    <div class="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center mr-3">
+                                        <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                    </div>
+                                    <span class="text-gray-700">Restaurantes <strong>ilimitados</strong></span>
+                                </li>
+                                <li class="flex items-center">
+                                    <div class="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center mr-3">
+                                        <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                    </div>
+                                    <span class="text-gray-700">API dedicada</span>
+                                </li>
+                                <li class="flex items-center">
+                                    <div class="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center mr-3">
+                                        <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                    </div>
+                                    <span class="text-gray-700">Soporte 24/7</span>
+                                </li>
+                                <li class="flex items-center">
+                                    <div class="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center mr-3">
+                                        <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                    </div>
+                                    <span class="text-gray-700">Consultor dedicado</span>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="space-y-4">
+                            <a href="#contact" class="w-full bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 text-white font-bold py-4 px-8 rounded-xl transition-all duration-300 text-center block transform hover:scale-105 shadow-lg">
+                                Empezar con Enterprise
+                            </a>
+
+                            <a href="#contact" class="w-full border-2 border-green-600 text-green-600 hover:bg-green-600 hover:text-white font-semibold py-3 px-8 rounded-xl transition-all duration-300 text-center block">
+                                Contactar Ventas
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Download App Section with QR Codes -->
 <section id="download" class="py-24 bg-gradient-to-br from-crypto-blue via-crypto-dark-blue to-gray-900 relative overflow-hidden">
     <!-- Animated Background Elements -->
     <div class="absolute inset-0 overflow-hidden">
@@ -393,195 +721,199 @@
     <div class="container mx-auto px-4 relative z-10">
         <div class="text-center mb-16 animate-on-scroll">
             <div class="inline-flex items-center glass rounded-full px-6 py-3 mb-6">
-                <span class="text-sm font-medium text-crypto-purple mr-2">🚀 Lanzamiento</span>
-                <span class="text-sm text-gray-300">Próximamente</span>
+                <span class="text-sm font-medium text-crypto-purple mr-2">📱 Descarga ahora</span>
+                <span class="text-sm text-gray-300">Disponible en Play Store</span>
             </div>
             <h2 class="text-4xl lg:text-6xl font-bold text-white mb-6">
-                Descarga la app <span class="text-gradient bg-gradient-to-r from-crypto-purple to-crypto-light-purple bg-clip-text text-transparent">MOZO QR</span>
+                Descarga la app <span class="text-gradient bg-gradient-to-r from-crypto-purple to-crypto-light-purple bg-clip-text text-transparent">ahora!</span>
             </h2>
             <p class="text-xl text-gray-300 max-w-3xl mx-auto mb-8">
-                Gestiona tu restaurante desde cualquier lugar con nuestra aplicación móvil completa. Próximamente disponible en Google Play Store.
+                Chatea y acepta la mejor propuesta, son elegidos!
+                Hace tu trato rápido y confiará, rápido, ya no hogar.
             </p>
         </div>
 
-        <div class="grid lg:grid-cols-2 gap-16 items-center max-w-7xl mx-auto">
+        <div class="flex flex-col lg:flex-row items-center gap-16 max-w-7xl mx-auto">
             <!-- Left Content -->
-            <div class="space-y-8 animate-on-scroll">
-                <!-- Features Grid -->
-                <div class="grid sm:grid-cols-2 gap-6">
-                    <div class="glass rounded-xl p-6 border border-crypto-purple/20 hover:border-crypto-purple/40 transition-all group">
-                        <div class="w-12 h-12 bg-gradient-to-br from-crypto-purple to-crypto-dark-purple rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                            </svg>
+            <div class="lg:w-1/2 space-y-8 animate-on-scroll">
+                <h3 class="text-2xl font-bold text-white mb-4">
+                    Descarga la App <span class="text-gradient">ahora!</span>
+                </h3>
+                <p class="text-gray-300 mb-8">
+                    Chatea y acepta la mejor propuesta, son elegidos!<br>
+                    Hace tu trato rápido y confiará, rápido, ya no hogar.
+                </p>
+
+                <!-- Download buttons with app store badges -->
+                <div class="flex flex-col sm:flex-row gap-4 mb-8">
+                    <a href="#" class="inline-flex items-center bg-black text-white px-6 py-3 rounded-xl hover:bg-gray-800 transition-all">
+                        <svg class="w-8 h-8 mr-3" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M17.9 17.39C17.64 16.59 16.89 16 16 16H8c-.89 0-1.64.59-1.9 1.39L5 19h14l-1.1-1.61zM8 14h8c2.21 0 4-1.79 4-4s-1.79-4-4-4H8c-2.21 0-4 1.79-4 4s1.79 4 4 4z"/>
+                        </svg>
+                        <div class="text-left">
+                            <div class="text-xs">Download on the</div>
+                            <div class="text-lg font-semibold">Google Play</div>
                         </div>
-                        <h3 class="font-bold text-white mb-2">Panel Admin</h3>
-                        <p class="text-gray-300 text-sm">Gestión completa de restaurante</p>
-                    </div>
+                    </a>
 
-                    <div class="glass rounded-xl p-6 border border-blue-500/20 hover:border-blue-500/40 transition-all group">
-                        <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5v-5zM12 17h-7a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v5"></path>
-                            </svg>
+                    <a href="#" class="inline-flex items-center bg-black text-white px-6 py-3 rounded-xl hover:bg-gray-800 transition-all">
+                        <svg class="w-8 h-8 mr-3" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+                        </svg>
+                        <div class="text-left">
+                            <div class="text-xs">Download on the</div>
+                            <div class="text-lg font-semibold">App Store</div>
                         </div>
-                        <h3 class="font-bold text-white mb-2">Push Real-time</h3>
-                        <p class="text-gray-300 text-sm">Notificaciones instantáneas</p>
-                    </div>
-
-                    <div class="glass rounded-xl p-6 border border-green-500/20 hover:border-green-500/40 transition-all group">
-                        <div class="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
-                            </svg>
-                        </div>
-                        <h3 class="font-bold text-white mb-2">Analytics</h3>
-                        <p class="text-gray-300 text-sm">Reportes y estadísticas</p>
-                    </div>
-
-                    <div class="glass rounded-xl p-6 border border-yellow-500/20 hover:border-yellow-500/40 transition-all group">
-                        <div class="w-12 h-12 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                        </div>
-                        <h3 class="font-bold text-white mb-2">Seguridad</h3>
-                        <p class="text-gray-300 text-sm">Encriptación bancaria</p>
-                    </div>
-                </div>
-
-                <!-- Download Buttons -->
-                <div class="space-y-4">
-                    <div class="inline-flex items-center glass rounded-lg px-4 py-2 mb-4">
-                        <div class="w-3 h-3 bg-yellow-500 rounded-full mr-2 animate-pulse"></div>
-                        <span class="text-sm text-gray-300">En desarrollo activo</span>
-                    </div>
-
-                    <div class="flex flex-col sm:flex-row gap-4">
-                        <button class="btn-primary text-white px-8 py-4 rounded-xl font-semibold text-lg inline-flex items-center justify-center bg-gradient-to-r from-crypto-purple to-crypto-light-purple hover:from-crypto-dark-purple hover:to-crypto-purple transition-all hover:scale-105 shadow-lg hover:shadow-crypto-purple/25">
-                            <svg class="w-6 h-6 mr-3" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M17.9 17.39C17.64 16.59 16.89 16 16 16H8c-.89 0-1.64.59-1.9 1.39L5 19h14l-1.1-1.61zM8 14h8c2.21 0 4-1.79 4-4s-1.79-4-4-4H8c-2.21 0-4 1.79-4 4s1.79 4 4 4z"/>
-                            </svg>
-                            Pre-registro Play Store
-                        </button>
-
-                        <button class="border-2 border-crypto-purple text-crypto-purple bg-white/10 backdrop-blur-sm px-8 py-4 rounded-xl font-semibold text-lg hover:bg-crypto-purple hover:text-white transition-all inline-flex items-center justify-center">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
-                            </svg>
-                            Contáctanos
-                        </button>
-                    </div>
+                    </a>
                 </div>
             </div>
 
-            <!-- Right - Phone Mockups -->
-            <div class="relative animate-on-scroll">
-                <div class="relative z-10 flex justify-center items-center">
-                    <!-- Main Phone -->
-                    <div class="relative animate-float">
-                        <div class="bg-gray-900 rounded-[3rem] p-4 shadow-2xl border border-gray-700 transform rotate-3 hover:rotate-0 transition-transform duration-500">
-                            <div class="bg-gradient-to-br from-crypto-blue to-crypto-dark-blue rounded-[2.5rem] p-6 h-[600px] w-[280px]">
-                                <!-- Status bar -->
-                                <div class="flex justify-between items-center mb-6 text-white text-sm">
-                                    <div class="flex items-center space-x-1">
-                                        <div class="w-1 h-1 bg-white rounded-full"></div>
-                                        <div class="w-1 h-1 bg-white rounded-full"></div>
-                                        <div class="w-1 h-1 bg-white rounded-full"></div>
-                                    </div>
-                                    <div class="font-semibold">9:41</div>
-                                    <div class="flex items-center space-x-1">
-                                        <div class="w-4 h-2 bg-white rounded-sm"></div>
-                                        <div class="w-1 h-3 bg-white rounded-full"></div>
+            <!-- Right Content - QR Codes Section -->
+            <div class="lg:w-1/2 relative animate-on-scroll">
+                <div class="bg-white/10 backdrop-blur-lg rounded-3xl p-8 border border-white/20 relative overflow-hidden">
+                    <!-- Background decoration -->
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-crypto-purple/20 rounded-full -translate-y-16 translate-x-16"></div>
+                    <div class="absolute bottom-0 left-0 w-24 h-24 bg-crypto-light-purple/20 rounded-full translate-y-12 -translate-x-12"></div>
+
+                    <div class="relative z-10">
+                        <div class="text-center mb-8">
+                            <h3 class="text-2xl font-bold text-white mb-2">Encuentra nuestra app en Android e iOS</h3>
+                            <p class="text-gray-300">Escanea el código QR con tu dispositivo</p>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-8">
+                            <!-- Android QR -->
+                            <div class="text-center">
+                                <div class="bg-white rounded-2xl p-4 mb-4 mx-auto w-32 h-32 flex items-center justify-center">
+                                    <!-- QR Code placeholder for Android -->
+                                    <div class="w-24 h-24 bg-gray-900 rounded-lg flex items-center justify-center">
+                                        <div class="grid grid-cols-8 gap-0.5">
+                                            <div class="w-1 h-1 bg-white"></div>
+                                            <div class="w-1 h-1 bg-black"></div>
+                                            <div class="w-1 h-1 bg-white"></div>
+                                            <div class="w-1 h-1 bg-black"></div>
+                                            <div class="w-1 h-1 bg-white"></div>
+                                            <div class="w-1 h-1 bg-black"></div>
+                                            <div class="w-1 h-1 bg-white"></div>
+                                            <div class="w-1 h-1 bg-black"></div>
+                                            <!-- Repeat pattern for QR effect -->
+                                            <div class="w-1 h-1 bg-black"></div>
+                                            <div class="w-1 h-1 bg-white"></div>
+                                            <div class="w-1 h-1 bg-black"></div>
+                                            <div class="w-1 h-1 bg-white"></div>
+                                            <div class="w-1 h-1 bg-black"></div>
+                                            <div class="w-1 h-1 bg-white"></div>
+                                            <div class="w-1 h-1 bg-black"></div>
+                                            <div class="w-1 h-1 bg-white"></div>
+                                            <div class="w-1 h-1 bg-white"></div>
+                                            <div class="w-1 h-1 bg-black"></div>
+                                            <div class="w-1 h-1 bg-white"></div>
+                                            <div class="w-1 h-1 bg-black"></div>
+                                            <div class="w-1 h-1 bg-white"></div>
+                                            <div class="w-1 h-1 bg-black"></div>
+                                            <div class="w-1 h-1 bg-white"></div>
+                                            <div class="w-1 h-1 bg-black"></div>
+                                            <div class="w-1 h-1 bg-black"></div>
+                                            <div class="w-1 h-1 bg-white"></div>
+                                            <div class="w-1 h-1 bg-black"></div>
+                                            <div class="w-1 h-1 bg-white"></div>
+                                            <div class="w-1 h-1 bg-black"></div>
+                                            <div class="w-1 h-1 bg-white"></div>
+                                            <div class="w-1 h-1 bg-black"></div>
+                                            <div class="w-1 h-1 bg-white"></div>
+                                            <div class="w-1 h-1 bg-white"></div>
+                                            <div class="w-1 h-1 bg-black"></div>
+                                            <div class="w-1 h-1 bg-white"></div>
+                                            <div class="w-1 h-1 bg-black"></div>
+                                            <div class="w-1 h-1 bg-white"></div>
+                                            <div class="w-1 h-1 bg-black"></div>
+                                            <div class="w-1 h-1 bg-white"></div>
+                                            <div class="w-1 h-1 bg-black"></div>
+                                            <div class="w-1 h-1 bg-black"></div>
+                                            <div class="w-1 h-1 bg-white"></div>
+                                            <div class="w-1 h-1 bg-black"></div>
+                                            <div class="w-1 h-1 bg-white"></div>
+                                            <div class="w-1 h-1 bg-black"></div>
+                                            <div class="w-1 h-1 bg-white"></div>
+                                            <div class="w-1 h-1 bg-black"></div>
+                                            <div class="w-1 h-1 bg-white"></div>
+                                        </div>
                                     </div>
                                 </div>
-
-                                <!-- App Content -->
-                                <div class="space-y-6">
-                                    <!-- Header -->
-                                    <div class="flex items-center justify-between">
-                                        <div>
-                                            <h3 class="text-white font-bold text-lg">Mi Restaurante</h3>
-                                            <p class="text-gray-300 text-sm">Mesa 5 - Llamando</p>
-                                        </div>
-                                        <div class="w-12 h-12 bg-crypto-purple rounded-xl flex items-center justify-center">
-                                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5v-5zM12 17h-7a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v5"></path>
-                                            </svg>
-                                        </div>
-                                    </div>
-
-                                    <!-- Stats Cards -->
-                                    <div class="grid grid-cols-2 gap-3">
-                                        <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
-                                            <div class="text-2xl font-bold text-white">24</div>
-                                            <div class="text-xs text-gray-300">Mesas activas</div>
-                                        </div>
-                                        <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
-                                            <div class="text-2xl font-bold text-green-400">3</div>
-                                            <div class="text-xs text-gray-300">Llamadas hoy</div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Live Notifications -->
-                                    <div class="space-y-3">
-                                        <div class="bg-yellow-500/20 border border-yellow-500/30 rounded-xl p-4 flex items-center space-x-3">
-                                            <div class="w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center">
-                                                <span class="text-black text-xs font-bold">5</span>
-                                            </div>
-                                            <div>
-                                                <div class="text-white font-semibold text-sm">Mesa 5 necesita atención</div>
-                                                <div class="text-yellow-300 text-xs">Hace 2 segundos</div>
-                                            </div>
-                                        </div>
-
-                                        <div class="bg-green-500/20 border border-green-500/30 rounded-xl p-4 flex items-center space-x-3">
-                                            <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                                                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                                </svg>
-                                            </div>
-                                            <div>
-                                                <div class="text-white font-semibold text-sm">Mesa 3 atendida</div>
-                                                <div class="text-green-300 text-xs">Hace 1 minuto</div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Action Button -->
-                                    <button class="w-full bg-gradient-to-r from-crypto-purple to-crypto-light-purple text-white py-4 rounded-xl font-semibold">
-                                        Atender Mesa 5
-                                    </button>
+                                <div class="flex items-center justify-center mb-2">
+                                    <svg class="w-6 h-6 mr-2 text-green-500" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M17.9 17.39C17.64 16.59 16.89 16 16 16H8c-.89 0-1.64.59-1.9 1.39L5 19h14l-1.1-1.61zM8 14h8c2.21 0 4-1.79 4-4s-1.79-4-4-4H8c-2.21 0-4 1.79-4 4s1.79 4 4 4z"/>
+                                    </svg>
+                                    <span class="text-white font-semibold">Android</span>
                                 </div>
+                                <p class="text-gray-300 text-sm">Google Play Store</p>
                             </div>
-                        </div>
-                    </div>
 
-                    <!-- Floating stats -->
-                    <div class="absolute -top-8 -left-8 glass rounded-xl p-4 border border-crypto-purple/30 shadow-lg animate-float" style="animation-delay: 0.5s;">
-                        <div class="text-center">
-                            <div class="text-2xl font-bold text-crypto-purple">4.9</div>
-                            <div class="text-xs text-gray-400">Rating</div>
-                            <div class="flex space-x-1 mt-1">
-                                <span class="text-yellow-400 text-xs">⭐</span>
-                                <span class="text-yellow-400 text-xs">⭐</span>
-                                <span class="text-yellow-400 text-xs">⭐</span>
-                                <span class="text-yellow-400 text-xs">⭐</span>
-                                <span class="text-yellow-400 text-xs">⭐</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="absolute -bottom-8 -right-8 glass rounded-xl p-4 border border-green-500/30 shadow-lg animate-float" style="animation-delay: 1s;">
-                        <div class="flex items-center space-x-3">
-                            <div class="w-10 h-10 bg-green-500/20 rounded-full flex items-center justify-center">
-                                <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                                </svg>
-                            </div>
-                            <div>
-                                <div class="text-sm font-bold text-green-500">< 30s</div>
-                                <div class="text-xs text-gray-400">Respuesta</div>
+                            <!-- iOS QR -->
+                            <div class="text-center">
+                                <div class="bg-white rounded-2xl p-4 mb-4 mx-auto w-32 h-32 flex items-center justify-center">
+                                    <!-- QR Code placeholder for iOS -->
+                                    <div class="w-24 h-24 bg-gray-900 rounded-lg flex items-center justify-center">
+                                        <div class="grid grid-cols-8 gap-0.5">
+                                            <div class="w-1 h-1 bg-black"></div>
+                                            <div class="w-1 h-1 bg-white"></div>
+                                            <div class="w-1 h-1 bg-black"></div>
+                                            <div class="w-1 h-1 bg-white"></div>
+                                            <div class="w-1 h-1 bg-black"></div>
+                                            <div class="w-1 h-1 bg-white"></div>
+                                            <div class="w-1 h-1 bg-black"></div>
+                                            <div class="w-1 h-1 bg-white"></div>
+                                            <!-- Repeat pattern for QR effect -->
+                                            <div class="w-1 h-1 bg-white"></div>
+                                            <div class="w-1 h-1 bg-black"></div>
+                                            <div class="w-1 h-1 bg-white"></div>
+                                            <div class="w-1 h-1 bg-black"></div>
+                                            <div class="w-1 h-1 bg-white"></div>
+                                            <div class="w-1 h-1 bg-black"></div>
+                                            <div class="w-1 h-1 bg-white"></div>
+                                            <div class="w-1 h-1 bg-black"></div>
+                                            <div class="w-1 h-1 bg-black"></div>
+                                            <div class="w-1 h-1 bg-white"></div>
+                                            <div class="w-1 h-1 bg-black"></div>
+                                            <div class="w-1 h-1 bg-white"></div>
+                                            <div class="w-1 h-1 bg-black"></div>
+                                            <div class="w-1 h-1 bg-white"></div>
+                                            <div class="w-1 h-1 bg-black"></div>
+                                            <div class="w-1 h-1 bg-white"></div>
+                                            <div class="w-1 h-1 bg-white"></div>
+                                            <div class="w-1 h-1 bg-black"></div>
+                                            <div class="w-1 h-1 bg-white"></div>
+                                            <div class="w-1 h-1 bg-black"></div>
+                                            <div class="w-1 h-1 bg-white"></div>
+                                            <div class="w-1 h-1 bg-black"></div>
+                                            <div class="w-1 h-1 bg-white"></div>
+                                            <div class="w-1 h-1 bg-black"></div>
+                                            <div class="w-1 h-1 bg-black"></div>
+                                            <div class="w-1 h-1 bg-white"></div>
+                                            <div class="w-1 h-1 bg-black"></div>
+                                            <div class="w-1 h-1 bg-white"></div>
+                                            <div class="w-1 h-1 bg-black"></div>
+                                            <div class="w-1 h-1 bg-white"></div>
+                                            <div class="w-1 h-1 bg-black"></div>
+                                            <div class="w-1 h-1 bg-white"></div>
+                                            <div class="w-1 h-1 bg-white"></div>
+                                            <div class="w-1 h-1 bg-black"></div>
+                                            <div class="w-1 h-1 bg-white"></div>
+                                            <div class="w-1 h-1 bg-black"></div>
+                                            <div class="w-1 h-1 bg-white"></div>
+                                            <div class="w-1 h-1 bg-black"></div>
+                                            <div class="w-1 h-1 bg-white"></div>
+                                            <div class="w-1 h-1 bg-black"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center justify-center mb-2">
+                                    <svg class="w-6 h-6 mr-2 text-gray-400" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+                                    </svg>
+                                    <span class="text-white font-semibold">iOS</span>
+                                </div>
+                                <p class="text-gray-300 text-sm">App Store</p>
                             </div>
                         </div>
                     </div>

@@ -274,11 +274,7 @@
             <div class="flex justify-between items-center h-16">
                 <div class="flex items-center">
                     <a href="/" class="flex items-center space-x-3">
-                        <div class="w-8 h-8 bg-mozo-600 rounded-lg flex items-center justify-center">
-                            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
-                            </svg>
-                        </div>
+                        <img src="{{ asset('images/logo.svg') }}" alt="MOZO QR" class="h-10 w-auto">
                         <span class="text-2xl font-bold text-mozo-600">
                             MOZO QR
                         </span>
@@ -290,23 +286,20 @@
                         <a href="#features" class="text-gray-700 hover:text-mozo-600 font-medium transition-colors">
                             Características
                         </a>
-                        <a href="{{ route('public.plans.index') }}" class="text-gray-700 hover:text-mozo-600 font-medium transition-colors">
+                        <a href="#plans" class="text-gray-700 hover:text-mozo-600 font-medium transition-colors">
                             Planes
+                        </a>
+                        <a href="#download" class="text-gray-700 hover:text-mozo-600 font-medium transition-colors">
+                            Descarga
                         </a>
                         <a href="#contact" class="text-gray-700 hover:text-mozo-600 font-medium transition-colors">
                             Contacto
                         </a>
                     </nav>
 
-                    @auth
-                        <a href="/admin" class="bg-mozo-600 text-white px-4 py-2 rounded-lg hover:bg-mozo-700 font-medium transition-colors">
-                            Dashboard
-                        </a>
-                    @else
-                        <a href="/admin" class="bg-mozo-600 text-white px-4 py-2 rounded-lg hover:bg-mozo-700 font-medium transition-colors">
-                            Iniciar Sesión
-                        </a>
-                    @endauth
+                    <a href="/admin" class="bg-mozo-600 text-white px-4 py-2 rounded-lg hover:bg-mozo-700 font-medium transition-colors">
+                        Iniciar Sesión
+                    </a>
 
                     <!-- Mobile menu button -->
                     <div class="md:hidden">
