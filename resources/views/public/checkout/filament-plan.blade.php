@@ -1,24 +1,28 @@
-@extends('layouts.filament-public')
+@extends('layouts.app')
 
 @section('title', 'Checkout - ' . $plan->name . ' - MOZO QR')
 @section('description', 'Completa tu registro y contratación del plan ' . $plan->name . ' para comenzar a digitalizar tu restaurante.')
 
 @section('content')
-    <div class="py-12">
+    <div class="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 py-12">
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <!-- Header -->
             <div class="text-center mb-8">
+                <a href="/" class="inline-block mb-6">
+                    <img src="{{ asset('images/mozo-logo.png') }}" alt="MOZO QR" class="h-12 w-auto mx-auto">
+                </a>
                 @if($user)
-                    <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Contratar Plan</h1>
-                    <p class="text-lg text-gray-600 dark:text-gray-300">¡Hola {{ $user->name }}! Plan seleccionado: <span class="font-semibold text-primary-600 dark:text-primary-400">{{ $plan->name }}</span></p>
+                    <h1 class="text-3xl font-bold text-gray-900 mb-2">Contratar Plan</h1>
+                    <p class="text-lg text-gray-600">¡Hola {{ $user->name }}! Plan seleccionado: <span class="font-semibold text-crypto-purple">{{ $plan->name }}</span></p>
                 @else
-                    <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Completar Registro</h1>
-                    <p class="text-lg text-gray-600 dark:text-gray-300">Plan seleccionado: <span class="font-semibold text-primary-600 dark:text-primary-400">{{ $plan->name }}</span></p>
+                    <h1 class="text-3xl font-bold text-gray-900 mb-2">Completar Registro</h1>
+                    <p class="text-lg text-gray-600">Plan seleccionado: <span class="font-semibold text-crypto-purple">{{ $plan->name }}</span></p>
                 @endif
             </div>
 
             <div class="grid lg:grid-cols-2 gap-8">
                 <!-- Formulario de Registro -->
-                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
+                <div class="bg-white/80 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/50 p-8">
                     <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-6">
                         @if($user)
                             Información de Pago
@@ -39,7 +43,7 @@
                                     Nombre completo
                                 </label>
                                 <input type="text" id="name" name="name" required
-                                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
+                                       class="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-crypto-purple focus:border-crypto-purple transition-colors"
                                        value="{{ old('name') }}">
                                 @error('name')
                                     <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
@@ -52,7 +56,7 @@
                                     Correo electrónico
                                 </label>
                                 <input type="email" id="email" name="email" required
-                                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white"
+                                       class="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-crypto-purple focus:border-crypto-purple transition-colors"
                                        value="{{ old('email') }}">
                                 @error('email')
                                     <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
@@ -65,7 +69,7 @@
                                     Contraseña
                                 </label>
                                 <input type="password" id="password" name="password" required
-                                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white">
+                                       class="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-crypto-purple focus:border-crypto-purple transition-colors">
                                 @error('password')
                                     <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
                                 @enderror
@@ -77,7 +81,7 @@
                                     Confirmar contraseña
                                 </label>
                                 <input type="password" id="password_confirmation" name="password_confirmation" required
-                                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white">
+                                       class="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-crypto-purple focus:border-crypto-purple transition-colors">
                             </div>
 
                             <!-- Separador con Google -->
@@ -126,13 +130,13 @@
                                 <div class="space-y-2">
                                     <label class="flex items-center">
                                         <input type="radio" name="billing_period" value="monthly" checked
-                                               class="text-primary-600 focus:ring-primary-500">
+                                               class="text-crypto-purple focus:ring-crypto-purple">
                                         <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Mensual - {{ $plan->getFormattedPrice() }}/mes</span>
                                     </label>
                                     @if($plan->quarterly_discount_percentage > 0)
                                     <label class="flex items-center">
                                         <input type="radio" name="billing_period" value="quarterly"
-                                               class="text-primary-600 focus:ring-primary-500">
+                                               class="text-crypto-purple focus:ring-crypto-purple">
                                         <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">
                                             Trimestral - ${{ number_format($plan->getPriceWithDiscount('quarterly'), 0) }}/trimestre
                                             <span class="text-green-600 dark:text-green-400 font-medium">({{ $plan->quarterly_discount_percentage }}% descuento)</span>
@@ -142,7 +146,7 @@
                                     @if($plan->yearly_discount_percentage > 0)
                                     <label class="flex items-center">
                                         <input type="radio" name="billing_period" value="yearly"
-                                               class="text-primary-600 focus:ring-primary-500">
+                                               class="text-crypto-purple focus:ring-crypto-purple">
                                         <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">
                                             Anual - ${{ number_format($plan->getPriceWithDiscount('yearly'), 0) }}/año
                                             <span class="text-green-600 dark:text-green-400 font-medium">({{ $plan->yearly_discount_percentage }}% descuento)</span>
@@ -158,16 +162,22 @@
                                     Método de pago
                                 </label>
                                 <div class="space-y-2">
-                                    @foreach($paymentMethods as $method)
                                     <label class="flex items-center p-3 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer">
-                                        <input type="radio" name="payment_method" value="{{ $method->provider }}" {{ $loop->first ? 'checked' : '' }}
-                                               class="text-primary-600 focus:ring-primary-500">
+                                        <input type="radio" name="payment_method" value="mercadopago" checked
+                                               class="text-crypto-purple focus:ring-crypto-purple">
                                         <div class="ml-3">
-                                            <p class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ $method->name }}</p>
-                                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ $method->description }}</p>
+                                            <p class="text-sm font-medium text-gray-700 dark:text-gray-300">MercadoPago</p>
+                                            <p class="text-xs text-gray-500 dark:text-gray-400">Tarjetas de crédito, débito y efectivo</p>
                                         </div>
                                     </label>
-                                    @endforeach
+                                    <label class="flex items-center p-3 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer">
+                                        <input type="radio" name="payment_method" value="bank_transfer"
+                                               class="text-crypto-purple focus:ring-crypto-purple">
+                                        <div class="ml-3">
+                                            <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Transferencia Bancaria</p>
+                                            <p class="text-xs text-gray-500 dark:text-gray-400">Pago manual por transferencia</p>
+                                        </div>
+                                    </label>
                                 </div>
                             </div>
 
@@ -193,16 +203,16 @@
                             <!-- Términos -->
                             <div class="flex items-start">
                                 <input type="checkbox" id="terms" name="terms" required
-                                       class="mt-1 text-primary-600 focus:ring-primary-500">
-                                <label for="terms" class="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                                    Acepto los <a href="#" class="text-primary-600 dark:text-primary-400 hover:underline">términos y condiciones</a>
-                                    y la <a href="#" class="text-primary-600 dark:text-primary-400 hover:underline">política de privacidad</a>
+                                       class="mt-1 h-4 w-4 text-crypto-purple focus:ring-crypto-purple border-gray-300 rounded">
+                                <label for="terms" class="ml-2 text-sm text-gray-700">
+                                    Acepto los <a href="#" class="text-crypto-purple hover:text-crypto-dark-purple hover:underline">términos y condiciones</a>
+                                    y la <a href="#" class="text-crypto-purple hover:text-crypto-dark-purple hover:underline">política de privacidad</a>
                                 </label>
                             </div>
                         </div>
 
                         <button type="submit"
-                                class="w-full mt-6 bg-primary-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-primary-700 transition duration-300">
+                                class="w-full mt-6 bg-gradient-to-r from-crypto-purple to-crypto-light-purple text-white font-bold py-4 px-8 rounded-xl hover:from-crypto-dark-purple hover:to-crypto-purple transform hover:scale-105 transition-all duration-300 shadow-lg">
                             @if($user)
                                 Contratar Plan
                             @else
@@ -213,7 +223,7 @@
                 </div>
 
                 <!-- Resumen del Plan -->
-                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
+                <div class="bg-white/80 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/50 p-8">
                     <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-6">Resumen del Plan</h2>
 
                     <div class="text-center mb-6">
@@ -221,8 +231,8 @@
                         <p class="text-gray-600 dark:text-gray-300 mt-2">{{ $plan->description }}</p>
 
                         <div class="mt-4">
-                            <span class="text-3xl font-bold text-primary-600 dark:text-primary-400">{{ $plan->getFormattedPrice() }}</span>
-                            <span class="text-gray-600 dark:text-gray-300">/mes</span>
+                            <span class="text-3xl font-bold text-crypto-purple">{{ $plan->getFormattedPrice() }}</span>
+                            <span class="text-gray-600">/mes</span>
                         </div>
 
                         @if($plan->hasTrialEnabled())

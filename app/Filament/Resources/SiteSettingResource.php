@@ -114,7 +114,23 @@ class SiteSettingResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return true; // Siempre mostrar el resource
+        // Verificar si la tabla existe
+        try {
+            \Schema::hasTable('site_settings');
+            return true;
+        } catch (\Exception $e) {
+            return true; // Mostrar igualmente para que el admin vea que falta configurar
+        }
+    }
+
+    public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
+    {
+        try {
+            return parent::getEloquentQuery();
+        } catch (\Exception $e) {
+            // Si la tabla no existe, retornar query vacío
+            return static::getModel()::whereRaw('1 = 0');
+        }
     }
 
     public static function table(Table $table): Table
