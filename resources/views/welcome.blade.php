@@ -470,30 +470,6 @@
                         <div class="mb-8">
                             <h4 class="font-bold text-gray-900 mb-6 text-lg">✨ Incluye:</h4>
                             <ul class="space-y-4">
-                                <li class="flex items-center">
-                                    <div class="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center mr-3">
-                                        <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                        </svg>
-                                    </div>
-                                    <span class="text-gray-700">Hasta <strong>{{ $plan->getMaxTables() }}</strong> mesas</span>
-                                </li>
-                                <li class="flex items-center">
-                                    <div class="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center mr-3">
-                                        <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                        </svg>
-                                    </div>
-                                    <span class="text-gray-700"><strong>{{ $plan->getMaxStaff() }}</strong> usuarios/mozos</span>
-                                </li>
-                                <li class="flex items-center">
-                                    <div class="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center mr-3">
-                                        <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                        </svg>
-                                    </div>
-                                    <span class="text-gray-700"><strong>{{ $plan->getMaxBusinesses() }}</strong> {{ $plan->getMaxBusinesses() == 1 ? 'restaurante' : 'restaurantes' }}</span>
-                                </li>
                                 @if($plan->features && is_array($plan->features))
                                     @foreach($plan->features as $feature)
                                     <li class="flex items-center">
@@ -505,6 +481,16 @@
                                         <span class="text-gray-700">{{ $feature }}</span>
                                     </li>
                                     @endforeach
+                                @else
+                                    <!-- Características por defecto si no hay configuradas -->
+                                    <li class="flex items-center">
+                                        <div class="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center mr-3">
+                                            <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                            </svg>
+                                        </div>
+                                        <span class="text-gray-700">Plan completo disponible</span>
+                                    </li>
                                 @endif
                             </ul>
                         </div>

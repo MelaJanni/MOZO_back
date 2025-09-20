@@ -112,6 +112,11 @@ class SiteSettingResource extends Resource
             ]);
     }
 
+    public static function canViewAny(): bool
+    {
+        return true; // Siempre mostrar el resource
+    }
+
     public static function table(Table $table): Table
     {
         return $table

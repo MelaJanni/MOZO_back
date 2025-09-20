@@ -238,25 +238,7 @@
                     <div>
                         <h4 class="font-semibold text-gray-900 dark:text-white mb-4">Incluye:</h4>
                         <ul class="space-y-3">
-                            <li class="flex items-center">
-                                <svg class="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                </svg>
-                                <span class="text-gray-700 dark:text-gray-300">Hasta {{ $plan->getMaxTables() }} mesas</span>
-                            </li>
-                            <li class="flex items-center">
-                                <svg class="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                </svg>
-                                <span class="text-gray-700 dark:text-gray-300">{{ $plan->getMaxStaff() }} usuarios/mozos</span>
-                            </li>
-                            <li class="flex items-center">
-                                <svg class="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                </svg>
-                                <span class="text-gray-700 dark:text-gray-300">{{ $plan->getMaxBusinesses() }} {{ $plan->getMaxBusinesses() == 1 ? 'restaurante' : 'restaurantes' }}</span>
-                            </li>
-                            @if($plan->features)
+                            @if($plan->features && is_array($plan->features))
                                 @foreach($plan->features as $feature)
                                 <li class="flex items-center">
                                     <svg class="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -265,6 +247,13 @@
                                     <span class="text-gray-700 dark:text-gray-300">{{ $feature }}</span>
                                 </li>
                                 @endforeach
+                            @else
+                                <li class="flex items-center">
+                                    <svg class="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                    <span class="text-gray-700 dark:text-gray-300">Plan completo disponible</span>
+                                </li>
                             @endif
                         </ul>
                     </div>
