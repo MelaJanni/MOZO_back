@@ -23,40 +23,25 @@
                     </svg>
                 </div>
                 <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
-                    <span class="text-gradient">Digitaliza tu Restaurante</span> con Códigos QR Inteligentes
+                    <span class="text-gradient">Digitaliza tu Restaurante</span><br class="hidden sm:block">
+                    <span class="text-white">con </span><span class="text-gradient">Códigos QR Inteligentes</span>
                 </h1>
                 <p class="text-lg text-gray-300 mb-8 max-w-lg">
                     Transforma la experiencia de tus clientes con menús digitales, notificaciones instantáneas y gestión eficiente de mesas.
                 </p>
                 <div class="flex flex-col sm:flex-row gap-4">
                     <button class="btn-primary text-white px-8 py-4 rounded-xl font-semibold text-lg inline-flex items-center justify-center">
-                        Descargar App
+                        Comenzar Ahora
                         <svg class="ml-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
                         </svg>
                     </button>
                     <button class="border border-gray-700 text-white hover:bg-white/5 px-8 py-4 rounded-xl font-semibold text-lg inline-flex items-center justify-center transition-all">
-                        Ver Demo
+                        Más Información
                         <svg class="ml-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
                         </svg>
                     </button>
-                </div>
-                <div class="mt-8 flex items-center space-x-6">
-                    <div>
-                        <p class="text-2xl font-bold text-white">500+</p>
-                        <p class="text-sm text-gray-400">Restaurantes</p>
-                    </div>
-                    <div class="h-12 w-px bg-gray-700"></div>
-                    <div>
-                        <p class="text-2xl font-bold text-white">50k+</p>
-                        <p class="text-sm text-gray-400">Mesas Activas</p>
-                    </div>
-                    <div class="h-12 w-px bg-gray-700"></div>
-                    <div>
-                        <p class="text-2xl font-bold text-white">99.9%</p>
-                        <p class="text-sm text-gray-400">Uptime</p>
-                    </div>
                 </div>
             </div>
 
@@ -149,8 +134,8 @@
                         </div>
                     </div>
 
-                    <!-- Floating elements -->
-                    <div class="absolute -top-6 -left-6 glass rounded-xl p-4 border border-crypto-purple/30 shadow-lg animate-float" style="animation-delay: 0.5s;">
+                    <!-- Floating elements with proper z-index -->
+                    <div class="absolute -top-6 -left-6 z-20 glass rounded-xl p-4 border border-crypto-purple/30 shadow-lg animate-float" style="animation-delay: 0.5s;">
                         <div class="flex items-center space-x-3">
                             <div class="h-10 w-10 bg-green-500/20 rounded-full flex items-center justify-center">
                                 <svg class="h-5 w-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -164,7 +149,7 @@
                         </div>
                     </div>
 
-                    <div class="absolute -bottom-4 -right-8 glass rounded-xl p-4 border border-blue-500/30 shadow-lg animate-float" style="animation-delay: 1s;">
+                    <div class="absolute -bottom-4 -right-8 z-20 glass rounded-xl p-4 border border-blue-500/30 shadow-lg animate-float" style="animation-delay: 1s;">
                         <div class="flex items-center space-x-3">
                             <div class="h-10 w-10 bg-blue-500/20 rounded-full flex items-center justify-center">
                                 <svg class="h-5 w-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -175,20 +160,6 @@
                                 <p class="text-xs text-gray-400">Respuesta</p>
                                 <p class="text-sm font-bold text-blue-500">< 30s</p>
                             </div>
-                        </div>
-                    </div>
-
-                    <div class="absolute top-1/2 -right-12 glass rounded-xl p-3 border border-purple-500/30 shadow-lg animate-float" style="animation-delay: 1.5s;">
-                        <div class="text-center">
-                            <p class="text-xs text-gray-400 mb-1">Satisfacción</p>
-                            <div class="flex space-x-1">
-                                <span class="text-yellow-400">⭐</span>
-                                <span class="text-yellow-400">⭐</span>
-                                <span class="text-yellow-400">⭐</span>
-                                <span class="text-yellow-400">⭐</span>
-                                <span class="text-yellow-400">⭐</span>
-                            </div>
-                            <p class="text-xs font-bold text-yellow-400">4.9/5</p>
                         </div>
                     </div>
 
@@ -496,10 +467,9 @@
 
                         <button class="border-2 border-crypto-purple text-crypto-purple bg-white/10 backdrop-blur-sm px-8 py-4 rounded-xl font-semibold text-lg hover:bg-crypto-purple hover:text-white transition-all inline-flex items-center justify-center">
                             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
                             </svg>
-                            Ver Demo Web
+                            Contáctanos
                         </button>
                     </div>
                 </div>
@@ -646,25 +616,23 @@
             </p>
         </div>
 
-        <div class="grid lg:grid-cols-2 gap-12 max-w-7xl mx-auto">
-            <!-- Contact Form -->
+        <!-- Single Contact Form -->
+        <div class="max-w-2xl mx-auto">
             <div class="group relative animate-on-scroll">
                 <div class="absolute inset-0 bg-gradient-to-br from-crypto-purple/10 to-crypto-light-purple/5 rounded-3xl transform rotate-1 group-hover:rotate-0 transition-transform duration-300"></div>
-                <div class="relative bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-2xl border border-white/50 hover:shadow-crypto-purple/20 transition-all duration-300">
-                    <div class="flex items-center mb-8">
-                        <div class="w-12 h-12 bg-gradient-to-br from-crypto-purple to-crypto-dark-purple rounded-xl flex items-center justify-center mr-4">
-                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="relative bg-white/80 backdrop-blur-lg rounded-3xl p-10 shadow-2xl border border-white/50 hover:shadow-crypto-purple/20 transition-all duration-300">
+                    <div class="text-center mb-8">
+                        <div class="w-16 h-16 bg-gradient-to-br from-crypto-purple to-crypto-dark-purple rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
                             </svg>
                         </div>
-                        <div>
-                            <h3 class="text-2xl font-bold text-gray-900">Contacto General</h3>
-                            <p class="text-gray-600">Consultas, demos y información</p>
-                        </div>
+                        <h3 class="text-3xl font-bold text-gray-900 mb-2">¡Hablemos!</h3>
+                        <p class="text-gray-600">Cuéntanos sobre tu restaurante y cómo podemos ayudarte a digitalizarlo</p>
                     </div>
 
                     <form action="#" method="POST" class="space-y-6">
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
                             <div class="relative">
                                 <label for="nombre" class="block text-sm font-semibold text-gray-700 mb-2">Nombre</label>
                                 <input type="text" id="nombre" name="nombre" required
@@ -694,94 +662,25 @@
                         </div>
 
                         <div class="relative">
-                            <label for="mensaje" class="block text-sm font-semibold text-gray-700 mb-2">Mensaje</label>
-                            <textarea id="mensaje" name="mensaje" rows="4" required
-                                class="w-full px-4 py-4 bg-white/70 border border-gray-200 rounded-xl focus:ring-2 focus:ring-crypto-purple focus:border-crypto-purple focus:bg-white transition-all duration-300 hover:shadow-md resize-none"
-                                placeholder="Cuéntanos sobre tu restaurante y cómo podemos ayudarte..."></textarea>
+                            <label for="empresa" class="block text-sm font-semibold text-gray-700 mb-2">Nombre del restaurante</label>
+                            <input type="text" id="empresa" name="empresa" required
+                                class="w-full px-4 py-4 bg-white/70 border border-gray-200 rounded-xl focus:ring-2 focus:ring-crypto-purple focus:border-crypto-purple focus:bg-white transition-all duration-300 hover:shadow-md">
                             <div class="absolute inset-0 rounded-xl bg-gradient-to-r from-crypto-purple/5 to-transparent opacity-0 hover:opacity-100 transition-opacity pointer-events-none"></div>
                         </div>
 
-                        <button type="submit" class="w-full bg-gradient-to-r from-crypto-purple to-crypto-light-purple hover:from-crypto-dark-purple hover:to-crypto-purple text-white py-4 px-8 rounded-xl font-semibold text-lg shadow-lg hover:shadow-crypto-purple/25 transition-all duration-300 transform hover:scale-105 flex items-center justify-center">
+                        <div class="relative">
+                            <label for="mensaje" class="block text-sm font-semibold text-gray-700 mb-2">Mensaje</label>
+                            <textarea id="mensaje" name="mensaje" rows="5" required
+                                class="w-full px-4 py-4 bg-white/70 border border-gray-200 rounded-xl focus:ring-2 focus:ring-crypto-purple focus:border-crypto-purple focus:bg-white transition-all duration-300 hover:shadow-md resize-none"
+                                placeholder="Cuéntanos sobre tu restaurante: cuántas mesas tienen, qué tipo de comida sirven, qué problemas actuales necesitan resolver..."></textarea>
+                            <div class="absolute inset-0 rounded-xl bg-gradient-to-r from-crypto-purple/5 to-transparent opacity-0 hover:opacity-100 transition-opacity pointer-events-none"></div>
+                        </div>
+
+                        <button type="submit" class="w-full bg-gradient-to-r from-crypto-purple to-crypto-light-purple hover:from-crypto-dark-purple hover:to-crypto-purple text-white py-5 px-8 rounded-xl font-semibold text-lg shadow-lg hover:shadow-crypto-purple/25 transition-all duration-300 transform hover:scale-105 flex items-center justify-center">
                             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
                             </svg>
                             Enviar mensaje
-                        </button>
-                    </form>
-                </div>
-            </div>
-
-            <!-- Support Form -->
-            <div class="group relative animate-on-scroll">
-                <div class="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-indigo-500/5 rounded-3xl transform -rotate-1 group-hover:rotate-0 transition-transform duration-300"></div>
-                <div class="relative bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-2xl border border-white/50 hover:shadow-blue-500/20 transition-all duration-300">
-                    <div class="flex items-center mb-8">
-                        <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center mr-4">
-                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192L5.636 18.364M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"></path>
-                            </svg>
-                        </div>
-                        <div>
-                            <h3 class="text-2xl font-bold text-gray-900">Soporte Técnico</h3>
-                            <p class="text-gray-600">Asistencia especializada 24/7</p>
-                        </div>
-                    </div>
-
-                    <form action="#" method="POST" class="space-y-6">
-                        <div class="relative">
-                            <label for="empresa" class="block text-sm font-semibold text-gray-700 mb-2">Nombre de la empresa</label>
-                            <input type="text" id="empresa" name="empresa" required
-                                class="w-full px-4 py-4 bg-white/70 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white transition-all duration-300 hover:shadow-md">
-                            <div class="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-500/5 to-transparent opacity-0 hover:opacity-100 transition-opacity pointer-events-none"></div>
-                        </div>
-
-                        <div class="relative">
-                            <label for="contacto_email" class="block text-sm font-semibold text-gray-700 mb-2">Email de contacto</label>
-                            <input type="email" id="contacto_email" name="contacto_email" required
-                                class="w-full px-4 py-4 bg-white/70 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white transition-all duration-300 hover:shadow-md">
-                            <div class="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-500/5 to-transparent opacity-0 hover:opacity-100 transition-opacity pointer-events-none"></div>
-                        </div>
-
-                        <div class="relative">
-                            <label for="tipo_problema" class="block text-sm font-semibold text-gray-700 mb-2">Tipo de problema</label>
-                            <select id="tipo_problema" name="tipo_problema" required
-                                class="w-full px-4 py-4 bg-white/70 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white transition-all duration-300 hover:shadow-md">
-                                <option value="">Selecciona una opción</option>
-                                <option value="tecnico">🔧 Problema técnico</option>
-                                <option value="configuracion">⚙️ Ayuda con configuración</option>
-                                <option value="facturacion">💳 Consulta de facturación</option>
-                                <option value="integracion">🔗 Problemas de integración</option>
-                                <option value="rendimiento">📊 Problemas de rendimiento</option>
-                                <option value="otro">❓ Otro</option>
-                            </select>
-                            <div class="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-500/5 to-transparent opacity-0 hover:opacity-100 transition-opacity pointer-events-none"></div>
-                        </div>
-
-                        <div class="relative">
-                            <label for="descripcion" class="block text-sm font-semibold text-gray-700 mb-2">Descripción del problema</label>
-                            <textarea id="descripcion" name="descripcion" rows="4" required
-                                class="w-full px-4 py-4 bg-white/70 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white transition-all duration-300 hover:shadow-md resize-none"
-                                placeholder="Describe el problema en detalle, incluye pasos para reproducirlo si es posible..."></textarea>
-                            <div class="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-500/5 to-transparent opacity-0 hover:opacity-100 transition-opacity pointer-events-none"></div>
-                        </div>
-
-                        <div class="flex items-center space-x-3 p-4 bg-blue-50 rounded-xl border border-blue-200">
-                            <div class="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-                                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
-                            </div>
-                            <div>
-                                <p class="text-sm font-semibold text-blue-700">Tiempo de respuesta</p>
-                                <p class="text-xs text-blue-600">Problemas críticos: < 2 horas | Otros: < 24 horas</p>
-                            </div>
-                        </div>
-
-                        <button type="submit" class="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white py-4 px-8 rounded-xl font-semibold text-lg shadow-lg hover:shadow-blue-500/25 transition-all duration-300 transform hover:scale-105 flex items-center justify-center">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192L5.636 18.364M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"></path>
-                            </svg>
-                            Solicitar soporte
                         </button>
                     </form>
                 </div>
@@ -860,6 +759,17 @@
         </div>
     </div>
 </section>
+
+<!-- WhatsApp Floating Button -->
+<a href="https://wa.me/5491234567890?text=Hola!%20Me%20interesa%20MOZO%20QR%20para%20mi%20restaurante" target="_blank"
+   class="fixed bottom-8 left-8 bg-green-500 hover:bg-green-600 text-white p-4 rounded-full shadow-lg transition-all duration-300 z-50 hover:scale-110 group">
+    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.302"/>
+    </svg>
+    <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+        ¡Chatea con nosotros!
+    </div>
+</a>
 
 <!-- Scroll to Top Button -->
 <button id="scrollToTop" class="fixed bottom-8 right-8 bg-crypto-purple hover:bg-crypto-dark-purple text-white p-3 rounded-full shadow-lg opacity-0 invisible transition-all duration-300 z-50">
