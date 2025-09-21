@@ -4,25 +4,19 @@
 @section('description', 'Completa tu registro y contratación del plan ' . $plan->name . ' para comenzar a digitalizar tu restaurante.')
 
 @section('content')
-    <div class="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 py-12 relative overflow-hidden">
-        <!-- Animated background elements -->
-        <div class="absolute inset-0 overflow-hidden">
-            <div class="absolute top-1/4 left-10 w-72 h-72 bg-crypto-purple/10 rounded-full filter blur-3xl animate-pulse-slow"></div>
-            <div class="absolute bottom-1/4 right-10 w-96 h-96 bg-crypto-light-purple/10 rounded-full filter blur-3xl animate-pulse-slow" style="animation-delay: 1s;"></div>
-        </div>
-
-        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+    <div class="min-h-screen bg-gradient-to-br from-gray-50 to-white py-12">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
             <!-- Header -->
             <div class="text-center mb-8">
                 <a href="/" class="inline-block mb-6">
                     <img src="{{ asset('images/logo.svg') }}" alt="MOZO QR" class="h-12 w-auto mx-auto">
                 </a>
                 @if($user)
-                    <h1 class="text-3xl font-bold text-white mb-2">Contratar Plan</h1>
-                    <p class="text-lg text-gray-300">¡Hola {{ $user->name }}! Plan seleccionado: <span class="font-semibold text-crypto-purple">{{ $plan->name }}</span></p>
+                    <h1 class="text-3xl font-bold text-gray-900 mb-2">Contratar Plan</h1>
+                    <p class="text-lg text-gray-600">¡Hola {{ $user->name }}! Plan seleccionado: <span class="font-semibold text-crypto-purple">{{ $plan->name }}</span></p>
                 @else
-                    <h1 class="text-3xl font-bold text-white mb-2">Completar Registro</h1>
-                    <p class="text-lg text-gray-300">Plan seleccionado: <span class="font-semibold text-crypto-purple">{{ $plan->name }}</span></p>
+                    <h1 class="text-3xl font-bold text-gray-900 mb-2">Completar Registro</h1>
+                    <p class="text-lg text-gray-600">Plan seleccionado: <span class="font-semibold text-crypto-purple">{{ $plan->name }}</span></p>
                 @endif
             </div>
 

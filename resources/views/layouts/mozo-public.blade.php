@@ -267,18 +267,163 @@
             opacity: 1;
             transform: translateY(0);
         }
+
+        /* Custom Checkbox Styles */
+        .custom-checkbox {
+            position: relative;
+            cursor: pointer;
+        }
+
+        .custom-checkbox input[type="checkbox"] {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .custom-checkbox .checkbox-visual {
+            display: inline-block;
+            position: relative;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border: 2px solid #d1d5db;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+
+        .custom-checkbox input[type="checkbox"]:checked + .checkbox-visual {
+            background: #10b981;
+            border-color: #10b981;
+            transform: scale(1.05);
+        }
+
+        .custom-checkbox .checkbox-visual::after {
+            content: '';
+            position: absolute;
+            left: 6px;
+            top: 2px;
+            width: 4px;
+            height: 8px;
+            border: solid white;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg) scale(0);
+            transition: transform 0.2s ease-in-out;
+        }
+
+        .custom-checkbox input[type="checkbox"]:checked + .checkbox-visual::after {
+            transform: rotate(45deg) scale(1);
+        }
+
+        .custom-checkbox:hover .checkbox-visual {
+            border-color: #10b981;
+        }
+
+        /* Custom Radio Button Styles */
+        .custom-radio {
+            position: relative;
+            cursor: pointer;
+        }
+
+        .custom-radio input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .custom-radio .radio-visual {
+            display: inline-block;
+            position: relative;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border: 2px solid #d1d5db;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .custom-radio input[type="radio"]:checked + .radio-visual {
+            border-color: #6366f1;
+            transform: scale(1.05);
+        }
+
+        .custom-radio .radio-visual::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 8px;
+            height: 8px;
+            background: #6366f1;
+            border-radius: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            transition: transform 0.2s ease-in-out;
+        }
+
+        .custom-radio input[type="radio"]:checked + .radio-visual::after {
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        .custom-radio:hover .radio-visual {
+            border-color: #6366f1;
+        }
+
+        /* Custom Toggle Switch */
+        .custom-toggle {
+            position: relative;
+            cursor: pointer;
+        }
+
+        .custom-toggle input[type="checkbox"] {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .custom-toggle .toggle-visual {
+            display: inline-block;
+            position: relative;
+            width: 44px;
+            height: 24px;
+            background: #d1d5db;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .custom-toggle input[type="checkbox"]:checked + .toggle-visual {
+            background: #10b981;
+        }
+
+        .custom-toggle .toggle-visual::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .custom-toggle input[type="checkbox"]:checked + .toggle-visual::after {
+            transform: translateX(20px);
+        }
     </style>
 </head>
-<body class="h-full bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 font-sans antialiased">
+<body class="h-full bg-white font-sans antialiased">
 
     <!-- Header -->
-    <header class="bg-black/20 backdrop-blur-md border-b border-white/10 sticky top-0 z-50">
+    <header class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center h-16">
                 <div class="flex items-center">
                     <a href="/" class="flex items-center space-x-3">
                         <img src="{{ asset('images/logo.svg') }}" alt="MOZO QR" class="h-10 w-auto">
-                        <span class="text-2xl font-bold text-white">
+                        <span class="text-2xl font-bold text-crypto-purple">
                             MOZO QR
                         </span>
                     </a>
@@ -286,16 +431,16 @@
 
                 <div class="flex items-center space-x-8">
                     <nav class="hidden md:flex items-center space-x-8">
-                        <a href="#features" class="text-gray-300 hover:text-crypto-purple font-medium transition-colors">
+                        <a href="#features" class="text-gray-700 hover:text-crypto-purple font-medium transition-colors">
                             Características
                         </a>
-                        <a href="#plans" class="text-gray-300 hover:text-crypto-purple font-medium transition-colors">
+                        <a href="#plans" class="text-gray-700 hover:text-crypto-purple font-medium transition-colors">
                             Planes
                         </a>
-                        <a href="#download" class="text-gray-300 hover:text-crypto-purple font-medium transition-colors">
+                        <a href="#download" class="text-gray-700 hover:text-crypto-purple font-medium transition-colors">
                             Descarga
                         </a>
-                        <a href="#contact" class="text-gray-300 hover:text-crypto-purple font-medium transition-colors">
+                        <a href="#contact" class="text-gray-700 hover:text-crypto-purple font-medium transition-colors">
                             Contacto
                         </a>
                     </nav>
@@ -303,10 +448,10 @@
                     @auth
                         <!-- Usuario autenticado -->
                         <div class="flex items-center space-x-4">
-                            <span class="text-gray-300">Hola, {{ auth()->user()->name }}</span>
+                            <span class="text-gray-700">Hola, {{ auth()->user()->name }}</span>
                             <form method="POST" action="{{ route('logout') }}" class="inline">
                                 @csrf
-                                <button type="submit" class="bg-gray-600/80 text-white px-4 py-2 rounded-lg hover:bg-gray-700 font-medium transition-colors backdrop-blur-sm">
+                                <button type="submit" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 font-medium transition-colors">
                                     Cerrar Sesión
                                 </button>
                             </form>
@@ -314,7 +459,7 @@
                     @else
                         <!-- Usuario no autenticado -->
                         <div class="flex items-center space-x-3">
-                            <a href="{{ route('login') }}" class="text-gray-300 hover:text-crypto-purple font-medium transition-colors">
+                            <a href="{{ route('login') }}" class="text-gray-700 hover:text-crypto-purple font-medium transition-colors">
                                 Iniciar Sesión
                             </a>
                             <a href="{{ route('register') }}" class="bg-crypto-purple text-white px-4 py-2 rounded-lg hover:bg-crypto-dark-purple font-medium transition-colors">
@@ -325,7 +470,7 @@
 
                     <!-- Mobile menu button -->
                     <div class="md:hidden">
-                        <button type="button" class="text-gray-300 hover:text-crypto-purple">
+                        <button type="button" class="text-gray-700 hover:text-crypto-purple">
                             <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                             </svg>
@@ -344,7 +489,7 @@
     <!-- Footer -->
     <footer class="relative overflow-hidden">
         <!-- Background with gradient -->
-        <div class="bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 text-white py-20">
+        <div class="bg-gray-900 text-white py-20">
             <!-- Animated background elements -->
             <div class="absolute inset-0 overflow-hidden">
                 <div class="absolute top-10 left-10 w-64 h-64 bg-crypto-purple/10 rounded-full filter blur-3xl animate-pulse-slow"></div>

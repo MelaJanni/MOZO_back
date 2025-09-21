@@ -5,7 +5,7 @@
 
 @section('content')
 <!-- Hero Section -->
-<section class="relative min-h-screen flex flex-col justify-center overflow-hidden bg-gradient-hero hero-glow">
+<section class="relative min-h-screen flex flex-col justify-center overflow-hidden bg-gradient-to-br from-gray-50 to-white">
     <!-- Animated Background Elements -->
     <div class="absolute inset-0 overflow-hidden">
         <div class="absolute top-1/4 left-10 w-72 h-72 bg-crypto-purple/10 rounded-full filter blur-3xl animate-pulse-slow"></div>
@@ -15,31 +15,85 @@
     <div class="container mx-auto px-4 py-20 relative z-10">
         <div class="flex flex-col lg:flex-row items-center">
             <div class="lg:w-1/2 animate-fade-in-left">
-                <div class="inline-flex items-center glass rounded-full px-4 py-1.5 mb-6">
+                <div class="inline-flex items-center bg-white/80 backdrop-blur-sm border border-gray-200 rounded-full px-4 py-1.5 mb-6">
                     <span class="text-xs font-medium text-crypto-purple mr-2">📱 Nueva App</span>
-                    <span class="text-xs text-gray-300">Disponible en Play Store</span>
+                    <span class="text-xs text-gray-600">Disponible en Play Store</span>
                     <svg class="h-4 w-4 text-gray-400 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                     </svg>
                 </div>
                 <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
-                    <span class="text-gradient">Digitaliza tu Restaurante</span><br class="hidden sm:block">
-                    <span class="text-white">con </span><span class="text-gradient">Códigos QR Inteligentes</span>
+                    <span class="text-gray-900">Digitaliza tu Restaurante</span><br class="hidden sm:block">
+                    <span class="text-gray-900">con </span><span class="text-crypto-purple font-bold">Códigos QR Inteligentes</span>
                 </h1>
-                <p class="text-lg text-gray-300 mb-8 max-w-lg">
+                <p class="text-lg text-gray-600 mb-6 max-w-lg">
                     Transforma la experiencia de tus clientes con menús digitales, notificaciones instantáneas y gestión eficiente de mesas.
                 </p>
+
+                <!-- Beneficios clave -->
+                <div class="mb-8 space-y-3">
+                    <div class="flex items-center text-sm text-gray-700">
+                        <div class="custom-checkbox mr-3">
+                            <div class="w-5 h-5 bg-green-500 border-2 border-green-500 rounded flex items-center justify-center">
+                                <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <span class="font-medium">Configuración en menos de 5 minutos</span>
+                    </div>
+                    <div class="flex items-center text-sm text-gray-700">
+                        <div class="custom-checkbox mr-3">
+                            <div class="w-5 h-5 bg-green-500 border-2 border-green-500 rounded flex items-center justify-center">
+                                <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <span class="font-medium">Notificaciones en tiempo real</span>
+                    </div>
+                    <div class="flex items-center text-sm text-gray-700">
+                        <div class="custom-checkbox mr-3">
+                            <div class="w-5 h-5 bg-green-500 border-2 border-green-500 rounded flex items-center justify-center">
+                                <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <span class="font-medium">Sin necesidad de instalar apps para clientes</span>
+                    </div>
+                </div>
+
+                <!-- Estadísticas -->
+                <div class="grid grid-cols-3 gap-4 mb-8 p-4 bg-gray-50 rounded-xl border">
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-crypto-purple">98%</div>
+                        <div class="text-xs text-gray-600">Satisfacción</div>
+                    </div>
+                    <div class="text-center border-l border-gray-200">
+                        <div class="text-2xl font-bold text-crypto-purple">< 30s</div>
+                        <div class="text-xs text-gray-600">Tiempo respuesta</div>
+                    </div>
+                    <div class="text-center border-l border-gray-200">
+                        <div class="text-2xl font-bold text-crypto-purple">24/7</div>
+                        <div class="text-xs text-gray-600">Disponibilidad</div>
+                    </div>
+                </div>
+
                 <div class="flex flex-col sm:flex-row gap-4">
-                    <a href="#download" class="btn-primary text-white px-8 py-4 rounded-xl font-semibold text-lg inline-flex items-center justify-center">
-                        Descargar Ahora
-                        <svg class="ml-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    <a href="#download" class="btn-primary text-white px-8 py-4 rounded-xl font-semibold text-lg inline-flex items-center justify-center group">
+                        <svg class="mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                        </svg>
+                        Probar Gratis
+                        <svg class="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                         </svg>
                     </a>
-                    <a href="#features" class="border border-gray-700 text-white hover:bg-white/5 px-8 py-4 rounded-xl font-semibold text-lg inline-flex items-center justify-center transition-all">
-                        Más Información
+                    <a href="#plans" class="border border-gray-300 text-gray-700 hover:bg-gray-50 px-8 py-4 rounded-xl font-semibold text-lg inline-flex items-center justify-center transition-all">
+                        Ver Planes
                         <svg class="ml-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
                     </a>
                 </div>
@@ -182,23 +236,106 @@
     </div>
 </section>
 
+<!-- Trust & Social Proof Section -->
+<section class="py-16 bg-white border-b border-gray-100">
+    <div class="container mx-auto px-4">
+        <!-- Trusted by section -->
+        <div class="text-center mb-12">
+            <p class="text-sm font-medium text-gray-500 mb-6">Más de 500+ restaurantes ya confían en MOZO QR</p>
+            <div class="flex justify-center items-center space-x-8 opacity-60">
+                <div class="text-xl font-bold text-gray-400">🍕 Pizza Bella</div>
+                <div class="text-xl font-bold text-gray-400">🥘 El Asador</div>
+                <div class="text-xl font-bold text-gray-400">☕ Café Central</div>
+            </div>
+        </div>
+
+        <!-- Key benefits cards -->
+        <div class="grid md:grid-cols-3 gap-6 mb-12">
+            <div class="text-center p-6 bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl border border-green-100">
+                <div class="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+                    </svg>
+                </div>
+                <h3 class="font-bold text-gray-900 mb-2">Aumenta tus ventas</h3>
+                <p class="text-sm text-gray-600">Promedio 23% más ventas con atención más rápida</p>
+            </div>
+
+            <div class="text-center p-6 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl border border-blue-100">
+                <div class="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
+                </div>
+                <h3 class="font-bold text-gray-900 mb-2">Servicio más rápido</h3>
+                <p class="text-sm text-gray-600">Respuesta promedio en menos de 30 segundos</p>
+            </div>
+
+            <div class="text-center p-6 bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl border border-purple-100">
+                <div class="w-12 h-12 bg-purple-500 rounded-xl flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+                    </svg>
+                </div>
+                <h3 class="font-bold text-gray-900 mb-2">Clientes felices</h3>
+                <p class="text-sm text-gray-600">98% de satisfacción en encuestas de clientes</p>
+            </div>
+        </div>
+
+        <!-- Testimonial -->
+        <div class="bg-gray-50 rounded-2xl p-8 text-center max-w-2xl mx-auto">
+            <div class="flex justify-center mb-4">
+                <div class="flex space-x-1">
+                    <svg class="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+                    </svg>
+                    <svg class="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+                    </svg>
+                    <svg class="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+                    </svg>
+                    <svg class="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+                    </svg>
+                    <svg class="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+                    </svg>
+                </div>
+            </div>
+            <blockquote class="text-gray-700 text-lg italic mb-4">
+                "Desde que implementamos MOZO QR, nuestros clientes están más satisfechos y podemos atender más mesas con el mismo personal. ¡Es increíble!"
+            </blockquote>
+            <div class="flex items-center justify-center space-x-3">
+                <div class="w-10 h-10 bg-gradient-to-br from-orange-400 to-red-400 rounded-full flex items-center justify-center">
+                    <span class="text-white font-bold text-sm">CM</span>
+                </div>
+                <div>
+                    <p class="font-semibold text-gray-900">Carlos Mendez</p>
+                    <p class="text-sm text-gray-600">Propietario, Restaurante La Plaza</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- Features Section -->
-<section id="features" class="py-20 bg-gradient-to-br from-slate-800 via-blue-900 to-indigo-900 relative overflow-hidden">
+<section id="features" class="py-20 bg-gray-50 relative overflow-hidden">
     <div class="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%236366f1" fill-opacity="0.03"%3E%3Ccircle cx="7" cy="7" r="1"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-40"></div>
 
     <div class="container mx-auto px-4 relative z-10">
         <div class="text-center mb-16 animate-on-scroll">
-            <h2 class="text-3xl lg:text-5xl font-bold text-white mb-4">
+            <h2 class="text-3xl lg:text-5xl font-bold text-gray-900 mb-4">
                 Todo lo que necesitas para <span class="text-gradient">modernizar tu restaurante</span>
             </h2>
-            <p class="text-xl text-gray-300 max-w-3xl mx-auto">
+            <p class="text-xl text-gray-600 max-w-3xl mx-auto">
                 Simplifica la gestión de tu restaurante con herramientas diseñadas para mejorar la experiencia de tus clientes
             </p>
         </div>
 
         <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             <!-- Feature 1 -->
-            <div class="group glass rounded-2xl p-8 hover-lift transition-all animate-on-scroll relative overflow-hidden">
+            <div class="group bg-white rounded-2xl p-8 hover-lift transition-all animate-on-scroll relative overflow-hidden shadow-lg border border-gray-100">
                 <div class="absolute inset-0 bg-gradient-to-br from-crypto-purple/10 to-crypto-light-purple/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                 <div class="relative z-10">
                     <div class="w-16 h-16 bg-gradient-to-br from-crypto-purple to-crypto-dark-purple rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
@@ -206,8 +343,8 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
                         </svg>
                     </div>
-                    <h3 class="text-xl font-bold text-white mb-4 group-hover:text-crypto-purple transition-colors">Códigos QR Inteligentes</h3>
-                    <p class="text-gray-300 leading-relaxed">
+                    <h3 class="text-xl font-bold text-gray-900 mb-4 group-hover:text-crypto-purple transition-colors">Códigos QR Inteligentes</h3>
+                    <p class="text-gray-600 leading-relaxed">
                         Cada mesa tiene su código QR único. Los clientes acceden al menú digital y pueden llamar al mozo instantáneamente.
                     </p>
                     <div class="mt-6 flex items-center text-crypto-purple opacity-0 group-hover:opacity-100 transition-opacity duration-300">
@@ -220,7 +357,7 @@
             </div>
 
             <!-- Feature 2 -->
-            <div class="group glass rounded-2xl p-8 hover-lift transition-all animate-on-scroll relative overflow-hidden">
+            <div class="group bg-white rounded-2xl p-8 hover-lift transition-all animate-on-scroll relative overflow-hidden shadow-lg border border-gray-100">
                 <div class="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                 <div class="relative z-10">
                     <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
@@ -229,7 +366,7 @@
                         </svg>
                     </div>
                     <h3 class="text-xl font-bold text-white mb-4 group-hover:text-blue-400 transition-colors">Menús Digitales</h3>
-                    <p class="text-gray-300 leading-relaxed">
+                    <p class="text-gray-600 leading-relaxed">
                         Sube tus menús en PDF y los clientes los verán en alta calidad en sus dispositivos. Actualiza precios en tiempo real.
                     </p>
                     <div class="mt-6 flex items-center text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
@@ -242,7 +379,7 @@
             </div>
 
             <!-- Feature 3 -->
-            <div class="group glass rounded-2xl p-8 hover-lift transition-all animate-on-scroll relative overflow-hidden">
+            <div class="group bg-white rounded-2xl p-8 hover-lift transition-all animate-on-scroll relative overflow-hidden shadow-lg border border-gray-100">
                 <div class="absolute inset-0 bg-gradient-to-br from-green-500/10 to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                 <div class="relative z-10">
                     <div class="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-500 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
@@ -251,7 +388,7 @@
                         </svg>
                     </div>
                     <h3 class="text-xl font-bold text-white mb-4 group-hover:text-green-400 transition-colors">Notificaciones Instantáneas</h3>
-                    <p class="text-gray-300 leading-relaxed">
+                    <p class="text-gray-600 leading-relaxed">
                         Los mozos reciben alertas instantáneas en su móvil cuando un cliente necesita atención. Sin esperas.
                     </p>
                     <div class="mt-6 flex items-center text-green-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
@@ -264,7 +401,7 @@
             </div>
 
             <!-- Feature 4 -->
-            <div class="group glass rounded-2xl p-8 hover-lift transition-all animate-on-scroll relative overflow-hidden">
+            <div class="group bg-white rounded-2xl p-8 hover-lift transition-all animate-on-scroll relative overflow-hidden shadow-lg border border-gray-100">
                 <div class="absolute inset-0 bg-gradient-to-br from-orange-500/10 to-red-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                 <div class="relative z-10">
                     <div class="w-16 h-16 bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
@@ -273,7 +410,7 @@
                         </svg>
                     </div>
                     <h3 class="text-xl font-bold text-white mb-4 group-hover:text-orange-400 transition-colors">Gestión de Staff</h3>
-                    <p class="text-gray-300 leading-relaxed">
+                    <p class="text-gray-600 leading-relaxed">
                         Administra tu equipo, asigna mesas a mozos específicos y mantén el control total de las operaciones.
                     </p>
                     <div class="mt-6 flex items-center text-orange-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
@@ -286,7 +423,7 @@
             </div>
 
             <!-- Feature 5 -->
-            <div class="group glass rounded-2xl p-8 hover-lift transition-all animate-on-scroll relative overflow-hidden">
+            <div class="group bg-white rounded-2xl p-8 hover-lift transition-all animate-on-scroll relative overflow-hidden shadow-lg border border-gray-100">
                 <div class="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                 <div class="relative z-10">
                     <div class="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
@@ -295,7 +432,7 @@
                         </svg>
                     </div>
                     <h3 class="text-xl font-bold text-white mb-4 group-hover:text-indigo-400 transition-colors">Dashboard Completo</h3>
-                    <p class="text-gray-300 leading-relaxed">
+                    <p class="text-gray-600 leading-relaxed">
                         Estadísticas en tiempo real, historial de llamadas y análisis completo para optimizar tu servicio.
                     </p>
                     <div class="mt-6 flex items-center text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
@@ -308,7 +445,7 @@
             </div>
 
             <!-- Feature 6 -->
-            <div class="group glass rounded-2xl p-8 hover-lift transition-all animate-on-scroll relative overflow-hidden">
+            <div class="group bg-white rounded-2xl p-8 hover-lift transition-all animate-on-scroll relative overflow-hidden shadow-lg border border-gray-100">
                 <div class="absolute inset-0 bg-gradient-to-br from-yellow-500/10 to-orange-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                 <div class="relative z-10">
                     <div class="w-16 h-16 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
@@ -317,7 +454,7 @@
                         </svg>
                     </div>
                     <h3 class="text-xl font-bold text-white mb-4 group-hover:text-yellow-400 transition-colors">100% Seguro</h3>
-                    <p class="text-gray-300 leading-relaxed">
+                    <p class="text-gray-600 leading-relaxed">
                         Tus datos están protegidos con encriptación de nivel bancario. Cumplimos con todas las normativas de seguridad.
                     </p>
                     <div class="mt-6 flex items-center text-yellow-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
