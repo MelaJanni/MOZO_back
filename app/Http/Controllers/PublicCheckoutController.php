@@ -38,6 +38,14 @@ class PublicCheckoutController extends Controller
         $paymentMethods = PaymentMethod::active()->ordered()->get();
         $user = Auth::user(); // Detectar si hay usuario autenticado
 
+        Log::info('Plan checkout page accessed', [
+            'plan_id' => $plan->id,
+            'plan_name' => $plan->name,
+            'user_authenticated' => auth()->check(),
+            'user_id' => auth()->id(),
+            'user_email' => $user ? $user->email : null,
+        ]);
+
         return view('public.checkout.filament-plan', compact('plan', 'paymentMethods', 'user'));
     }
 
