@@ -14,7 +14,6 @@ return new class extends Migration
         Schema::table('subscriptions', function (Blueprint $table) {
             $table->string('billing_period')->nullable()->after('status');
             $table->decimal('price_at_creation', 10, 2)->nullable()->after('billing_period');
-            $table->string('currency', 3)->default('ARS')->after('price_at_creation');
             $table->timestamp('next_billing_date')->nullable()->after('current_period_end');
         });
     }
@@ -25,7 +24,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('subscriptions', function (Blueprint $table) {
-            $table->dropColumn(['billing_period', 'price_at_creation', 'currency', 'next_billing_date']);
+            $table->dropColumn(['billing_period', 'price_at_creation', 'next_billing_date']);
         });
     }
 };
