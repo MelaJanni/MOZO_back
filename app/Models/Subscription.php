@@ -15,8 +15,12 @@ class Subscription extends Model
         'provider',
         'provider_subscription_id',
         'status',
+        'billing_period',
+        'price_at_creation',
+        'currency',
         'auto_renew',
         'current_period_end',
+        'next_billing_date',
         'trial_ends_at',
         'coupon_id',
         'metadata',
@@ -31,8 +35,10 @@ class Subscription extends Model
     ];
 
     protected $casts = [
+        'price_at_creation' => 'decimal:2',
         'auto_renew' => 'boolean',
         'current_period_end' => 'datetime',
+        'next_billing_date' => 'datetime',
         'trial_ends_at' => 'datetime',
         'grace_ends_at' => 'datetime',
         'requires_plan_selection' => 'boolean',
