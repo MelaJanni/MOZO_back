@@ -43,6 +43,11 @@ class PublicCheckoutController extends Controller
 
     public function subscribe(Request $request)
     {
+        Log::info('Subscribe method called', [
+            'user_id' => auth()->id(),
+            'request_data' => $request->all(),
+        ]);
+
         $request->validate([
             'plan_id' => 'required|exists:plans,id',
             'billing_period' => 'required|in:monthly,quarterly,yearly',
@@ -333,6 +338,12 @@ class PublicCheckoutController extends Controller
 
     private function processMercadoPago(Subscription $subscription, Request $request)
     {
+        Log::info('Processing MercadoPago payment', [
+            'subscription_id' => $subscription->id,
+            'user_id' => $subscription->user_id,
+            'amount' => $subscription->price_at_creation,
+        ]);
+
         try {
             $preference = $this->mercadoPagoService->createPreference([
                 'title' => "Suscripción {$subscription->plan->name}",
@@ -358,6 +369,12 @@ class PublicCheckoutController extends Controller
                 'metadata' => array_merge($subscription->metadata ?? [], [
                     'mercadopago_preference_id' => $preference['id'],
                 ])
+            ]);
+
+            Log::info('MercadoPago preference created successfully', [
+                'preference_id' => $preference['id'],
+                'checkout_url' => $preference['init_point'],
+                'subscription_id' => $subscription->id,
             ]);
 
             return [
