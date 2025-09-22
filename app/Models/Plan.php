@@ -64,7 +64,25 @@ class Plan extends Model
         $currency = $currency ?? $this->default_currency ?? 'ARS';
         $currency = strtoupper($currency);
 
-        return $this->prices[$currency] ?? $this->prices['ARS'] ?? 0;
+        \Log::info('Plan getPrice called', [
+            'plan_id' => $this->id,
+            'plan_name' => $this->name,
+            'requested_currency' => $currency,
+            'prices_raw' => $this->prices,
+            'prices_type' => gettype($this->prices),
+            'has_currency' => isset($this->prices[$currency]),
+            'has_ARS' => isset($this->prices['ARS']),
+        ]);
+
+        $price = $this->prices[$currency] ?? $this->prices['ARS'] ?? 0;
+
+        \Log::info('Plan getPrice result', [
+            'plan_id' => $this->id,
+            'currency' => $currency,
+            'final_price' => $price,
+        ]);
+
+        return $price;
     }
 
     public function getFormattedPrice($currency = null): string
