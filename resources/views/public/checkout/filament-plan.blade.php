@@ -315,6 +315,52 @@
     </div>
 
     <script>
+        // Debug del formulario de checkout
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('checkout-form');
+            const submitButton = form.querySelector('button[type="submit"]');
+
+            console.log('Checkout form loaded:', form);
+            console.log('Submit button:', submitButton);
+
+            // Agregar listener al formulario
+            form.addEventListener('submit', function(event) {
+                console.log('Form submit event triggered!');
+                console.log('Event details:', event);
+                console.log('Form action:', form.action);
+                console.log('Form method:', form.method);
+
+                // Verificar campos requeridos
+                const termsCheckbox = form.querySelector('input[name="terms"]');
+                const billingPeriod = form.querySelector('input[name="billing_period"]:checked');
+
+                console.log('Terms checkbox:', termsCheckbox ? termsCheckbox.checked : 'NOT FOUND');
+                console.log('Billing period:', billingPeriod ? billingPeriod.value : 'NOT FOUND');
+
+                if (!termsCheckbox || !termsCheckbox.checked) {
+                    console.error('Terms checkbox not checked!');
+                    alert('Por favor acepta los términos y condiciones');
+                    event.preventDefault();
+                    return false;
+                }
+
+                if (!billingPeriod) {
+                    console.error('No billing period selected!');
+                    alert('Por favor selecciona un período de facturación');
+                    event.preventDefault();
+                    return false;
+                }
+
+                console.log('Form validation passed, submitting...');
+            });
+
+            // Agregar listener al botón submit
+            submitButton.addEventListener('click', function(event) {
+                console.log('Submit button clicked!');
+                console.log('Button details:', event.target);
+            });
+        });
+
         // Aplicar cupón
         document.getElementById('apply-coupon').addEventListener('click', function() {
             const couponCode = document.getElementById('coupon_code').value;
