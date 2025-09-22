@@ -18,6 +18,13 @@ class MercadoPagoService
 
     public function createPreference(array $data)
     {
+        Log::info('MercadoPagoService: Starting createPreference', [
+            'access_token_length' => strlen($this->accessToken),
+            'access_token_start' => substr($this->accessToken, 0, 10) . '...',
+            'base_url' => $this->baseUrl,
+            'input_data' => $data,
+        ]);
+
         $preferenceData = [
             'items' => [
                 [
@@ -37,19 +44,41 @@ class MercadoPagoService
             $preferenceData['payer'] = $data['payer'];
         }
 
+        Log::info('MercadoPagoService: Sending request to MercadoPago', [
+            'url' => $this->baseUrl . '/checkout/preferences',
+            'preference_data' => $preferenceData,
+            'headers' => [
+                'Authorization' => 'Bearer ' . substr($this->accessToken, 0, 10) . '...',
+                'Content-Type' => 'application/json',
+            ],
+        ]);
+
         $response = Http::withHeaders([
             'Authorization' => 'Bearer ' . $this->accessToken,
             'Content-Type' => 'application/json',
         ])->post($this->baseUrl . '/checkout/preferences', $preferenceData);
 
+        Log::info('MercadoPagoService: Received response from MercadoPago', [
+            'status_code' => $response->status(),
+            'successful' => $response->successful(),
+            'response_body' => $response->body(),
+            'response_headers' => $response->headers(),
+        ]);
+
         if ($response->successful()) {
-            return $response->json();
+            $responseData = $response->json();
+            Log::info('MercadoPagoService: Successfully created preference', [
+                'preference_id' => $responseData['id'] ?? 'no_id',
+                'init_point' => $responseData['init_point'] ?? 'no_init_point',
+            ]);
+            return $responseData;
         }
 
-        Log::error('Error creating MercadoPago preference', [
+        Log::error('MercadoPagoService: Error creating preference', [
             'status' => $response->status(),
             'response' => $response->body(),
             'data' => $preferenceData,
+            'access_token_configured' => !empty($this->accessToken),
         ]);
 
         throw new \Exception('Error creating MercadoPago preference: ' . $response->body());
