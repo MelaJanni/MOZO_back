@@ -89,8 +89,25 @@ class PublicCheckoutController extends Controller
             }
 
             // Calcular precio
+            Log::info('Price calculation debug', [
+                'plan_id' => $plan->id,
+                'billing_period' => $request->billing_period,
+                'plan_prices_raw' => $plan->prices,
+                'plan_default_currency' => $plan->default_currency,
+            ]);
+
             $basePrice = $plan->getPriceWithDiscount($request->billing_period);
+            Log::info('Base price calculated', [
+                'base_price' => $basePrice,
+                'base_price_type' => gettype($basePrice),
+            ]);
+
             $finalPrice = $coupon ? $plan->getDiscountedPrice($coupon) : $basePrice;
+            Log::info('Final price calculated', [
+                'final_price' => $finalPrice,
+                'final_price_type' => gettype($finalPrice),
+                'has_coupon' => !is_null($coupon),
+            ]);
 
             // Crear suscripción
             $subscription = Subscription::create([
@@ -194,8 +211,25 @@ class PublicCheckoutController extends Controller
             }
 
             // Calcular precio
+            Log::info('Price calculation debug', [
+                'plan_id' => $plan->id,
+                'billing_period' => $request->billing_period,
+                'plan_prices_raw' => $plan->prices,
+                'plan_default_currency' => $plan->default_currency,
+            ]);
+
             $basePrice = $plan->getPriceWithDiscount($request->billing_period);
+            Log::info('Base price calculated', [
+                'base_price' => $basePrice,
+                'base_price_type' => gettype($basePrice),
+            ]);
+
             $finalPrice = $coupon ? $plan->getDiscountedPrice($coupon) : $basePrice;
+            Log::info('Final price calculated', [
+                'final_price' => $finalPrice,
+                'final_price_type' => gettype($finalPrice),
+                'has_coupon' => !is_null($coupon),
+            ]);
 
             // Crear suscripción
             $subscription = Subscription::create([
