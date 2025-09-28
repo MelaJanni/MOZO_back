@@ -80,14 +80,25 @@ class GoogleAuthController extends Controller
             $user = User::where('email', $googleUser['email'])->first();
 
             if (!$user) {
-                $user = User::create([
-                    'name' => $googleUser['name'],
-                    'email' => $googleUser['email'],
-                    'email_verified_at' => now(),
-                    'password' => bcrypt(Str::random(32)), // Password aleatoria
-                    'google_id' => $googleUser['id'],
-                    'avatar_url' => $googleUser['picture'] ?? null,
-                ]);
+                // Crear usuario SIN observer para evitar duplicados
+                $user = new User();
+                $user->name = $googleUser['name'];
+                $user->email = $googleUser['email'];
+                $user->email_verified_at = now();
+                $user->password = bcrypt(Str::random(32)); // Password aleatoria
+                $user->google_id = $googleUser['id'];
+                $user->avatar_url = $googleUser['picture'] ?? null;
+                $user->saveQuietly(); // Sin disparar events/observers
+
+                // Crear WaiterProfile manualmente de forma segura
+                \App\Models\WaiterProfile::firstOrCreate(
+                    ['user_id' => $user->id],
+                    [
+                        'display_name' => $user->name,
+                        'is_available' => true,
+                        'is_available_for_hire' => true,
+                    ]
+                );
             } else {
                 // Actualizar información de Google si no la tiene
                 if (!$user->google_id) {

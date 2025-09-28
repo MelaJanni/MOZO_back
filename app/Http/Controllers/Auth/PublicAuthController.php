@@ -80,12 +80,25 @@ class PublicAuthController extends Controller
                     throw new \Exception('El usuario ya existe');
                 }
 
-                return User::create([
-                    'name' => $request->name,
-                    'email' => $request->email,
-                    'password' => Hash::make($request->password),
-                    'email_verified_at' => now(),
-                ]);
+                // Crear usuario SIN observer para evitar duplicados
+                $user = new User();
+                $user->name = $request->name;
+                $user->email = $request->email;
+                $user->password = Hash::make($request->password);
+                $user->email_verified_at = now();
+                $user->saveQuietly(); // Sin disparar events/observers
+
+                // Crear WaiterProfile manualmente de forma segura
+                \App\Models\WaiterProfile::firstOrCreate(
+                    ['user_id' => $user->id],
+                    [
+                        'display_name' => $user->name,
+                        'is_available' => true,
+                        'is_available_for_hire' => true,
+                    ]
+                );
+
+                return $user;
             });
 
             Auth::login($user);
