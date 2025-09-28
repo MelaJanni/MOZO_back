@@ -593,21 +593,51 @@ class AuthController extends Controller
             return response()->json($validator->errors(), 422);
         }
 
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-        ]);
-        // Marcar email como verificado desde el inicio (solo persistencia, no se usa para autorizar)
-        try { $user->email_verified_at = now(); $user->save(); } catch (\Throwable $e) { /* noop */ }
-        // Establecer rol por fuera del fillable
-        try { $user->role = 'waiter'; $user->save(); } catch (\Throwable $e) { /* noop */ }
+        try {
+            // Usar transacción para evitar condiciones de carrera
+            $user = \DB::transaction(function () use ($request) {
+                // Verificar una vez más si el usuario existe (por si acaso)
+                $existingUser = User::where('email', $request->email)->first();
+                if ($existingUser) {
+                    throw new \Exception('El usuario ya existe');
+                }
 
-        // Crear perfil básico del mozo
-        if (method_exists($user, 'waiterProfile')) {
-            $user->waiterProfile()->create([
-                'display_name' => $user->name,
-            ]);
+                // Crear usuario SIN observer para evitar duplicados
+                $user = new User();
+                $user->name = $request->name;
+                $user->email = $request->email;
+                $user->password = Hash::make($request->password);
+                $user->email_verified_at = now();
+                $user->role = 'waiter';
+                $user->saveQuietly(); // Sin disparar events/observers
+
+                // Crear WaiterProfile manualmente de forma segura
+                \App\Models\WaiterProfile::firstOrCreate(
+                    ['user_id' => $user->id],
+                    [
+                        'display_name' => $user->name,
+                        'is_available' => true,
+                        'is_available_for_hire' => true,
+                    ]
+                );
+
+                return $user;
+            });
+        } catch (\Exception $e) {
+            // Si hay error de duplicados, intentar encontrar el usuario existente
+            if (str_contains($e->getMessage(), 'Duplicate') || str_contains($e->getMessage(), 'already exists')) {
+                $user = User::where('email', $request->email)->first();
+                if (!$user) {
+                    return response()->json(['message' => 'Error al crear la cuenta. El email ya existe.'], 422);
+                }
+            } else {
+                \Log::error('Error en registro API', [
+                    'error' => $e->getMessage(),
+                    'email' => $request->email,
+                    'trace' => $e->getTraceAsString()
+                ]);
+                return response()->json(['message' => 'Error al crear la cuenta. Intenta nuevamente.'], 500);
+            }
         }
 
         $staffRequestCreated = false;
