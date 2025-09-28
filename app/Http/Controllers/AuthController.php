@@ -593,39 +593,27 @@ class AuthController extends Controller
             return response()->json($validator->errors(), 422);
         }
 
-        // Variable para almacenar el usuario
-        $user = null;
+        // Desactivar temporalmente el observer para evitar duplicados
+        User::unsetEventDispatcher();
 
         try {
-            // Usar transacción para evitar condiciones de carrera
-            $user = \DB::transaction(function () use ($request) {
-                // Verificar una vez más si el usuario existe (por si acaso)
-                $existingUser = User::where('email', $request->email)->first();
-                if ($existingUser) {
-                    throw new \Exception('El usuario ya existe');
-                }
+            // Crear usuario directamente
+            $user = User::create([
+                'name' => $request->name,
+                'email' => $request->email,
+                'password' => Hash::make($request->password),
+                'email_verified_at' => now(),
+                'role' => 'waiter',
+            ]);
 
-                // Crear usuario SIN observer para evitar duplicados
-                $user = new User();
-                $user->name = $request->name;
-                $user->email = $request->email;
-                $user->password = Hash::make($request->password);
-                $user->email_verified_at = now();
-                $user->role = 'waiter';
-                $user->saveQuietly(); // Sin disparar events/observers
+            // Crear WaiterProfile directamente sin duplicados
+            \App\Models\WaiterProfile::create([
+                'user_id' => $user->id,
+                'display_name' => $user->name,
+                'is_available' => true,
+                'is_available_for_hire' => true,
+            ]);
 
-                // Crear WaiterProfile manualmente de forma segura
-                \App\Models\WaiterProfile::firstOrCreate(
-                    ['user_id' => $user->id],
-                    [
-                        'display_name' => $user->name,
-                        'is_available' => true,
-                        'is_available_for_hire' => true,
-                    ]
-                );
-
-                return $user;
-            });
         } catch (\Exception $e) {
             \Log::error('Error en registro API', [
                 'error' => $e->getMessage(),
@@ -633,20 +621,10 @@ class AuthController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
 
-            // Si hay error de duplicados, intentar encontrar el usuario existente
-            if (str_contains($e->getMessage(), 'Duplicate') || str_contains($e->getMessage(), 'already exists')) {
-                $user = User::where('email', $request->email)->first();
-                if (!$user) {
-                    return response()->json(['message' => 'Error al crear la cuenta. El email ya existe.'], 422);
-                }
-            } else {
-                return response()->json(['message' => 'Error al crear la cuenta. Intenta nuevamente.'], 500);
-            }
-        }
-
-        // Verificar que tenemos un usuario válido
-        if (!$user) {
-            return response()->json(['message' => 'Error al crear la cuenta. Usuario no encontrado.'], 500);
+            return response()->json([
+                'message' => 'Error al crear la cuenta. Intenta nuevamente.',
+                'error' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
         }
 
         $staffRequestCreated = false;
