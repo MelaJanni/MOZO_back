@@ -35,7 +35,8 @@
       "Bash(tasklist)",
       "Bash(ssh:*)",
       "WebSearch",
-      "Bash(unzip:*)"
+      "Bash(unzip:*)",
+      "Bash(sshpass:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",
