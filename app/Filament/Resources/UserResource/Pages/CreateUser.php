@@ -86,7 +86,10 @@ class CreateUser extends CreateRecord
             }, ARRAY_FILTER_USE_BOTH);
             $payload['user_id'] = $user->id;
             if (!empty($payload)) {
-                WaiterProfile::create($payload);
+                WaiterProfile::firstOrCreate(
+                    ['user_id' => $user->id],
+                    $payload
+                );
             }
         }
 

@@ -17,15 +17,17 @@ class UserObserver
     {
         // Solo crear WaiterProfile si no es un super admin del sistema
         if (!$user->is_system_super_admin) {
-            // Usar firstOrCreate para evitar duplicados de forma más segura
-            WaiterProfile::firstOrCreate(
-                ['user_id' => $user->id],
-                [
-                    'display_name' => $user->name,
-                    'is_available' => true,
-                    'is_available_for_hire' => true,
-                ]
-            );
+            // Verificar con transacción para evitar condiciones de carrera
+            \DB::transaction(function () use ($user) {
+                WaiterProfile::firstOrCreate(
+                    ['user_id' => $user->id],
+                    [
+                        'display_name' => $user->name,
+                        'is_available' => true,
+                        'is_available_for_hire' => true,
+                    ]
+                );
+            });
         }
     }
 
