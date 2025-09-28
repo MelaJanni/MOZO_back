@@ -73,7 +73,8 @@ class DiagnoseDuplicateProfiles extends Command
             foreach ($duplicates as $dup) {
                 $profiles = WaiterProfile::where('user_id', $dup->user_id)->get();
                 $user = User::find($dup->user_id);
-                $this->line("      - User ID: {$dup->user_id} ({$user->email ?? 'N/A'}) - {$dup->count} perfiles:");
+                $email = $user ? $user->email : 'N/A';
+                $this->line("      - User ID: {$dup->user_id} ({$email}) - {$dup->count} perfiles:");
                 foreach ($profiles as $profile) {
                     $this->line("        * Profile ID: {$profile->id}, Created: {$profile->created_at}");
                 }
