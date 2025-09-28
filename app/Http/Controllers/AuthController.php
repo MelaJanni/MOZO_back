@@ -593,6 +593,9 @@ class AuthController extends Controller
             return response()->json($validator->errors(), 422);
         }
 
+        // Variable para almacenar el usuario
+        $user = null;
+
         try {
             // Usar transacción para evitar condiciones de carrera
             $user = \DB::transaction(function () use ($request) {
@@ -624,6 +627,12 @@ class AuthController extends Controller
                 return $user;
             });
         } catch (\Exception $e) {
+            \Log::error('Error en registro API', [
+                'error' => $e->getMessage(),
+                'email' => $request->email,
+                'trace' => $e->getTraceAsString()
+            ]);
+
             // Si hay error de duplicados, intentar encontrar el usuario existente
             if (str_contains($e->getMessage(), 'Duplicate') || str_contains($e->getMessage(), 'already exists')) {
                 $user = User::where('email', $request->email)->first();
@@ -631,13 +640,13 @@ class AuthController extends Controller
                     return response()->json(['message' => 'Error al crear la cuenta. El email ya existe.'], 422);
                 }
             } else {
-                \Log::error('Error en registro API', [
-                    'error' => $e->getMessage(),
-                    'email' => $request->email,
-                    'trace' => $e->getTraceAsString()
-                ]);
                 return response()->json(['message' => 'Error al crear la cuenta. Intenta nuevamente.'], 500);
             }
+        }
+
+        // Verificar que tenemos un usuario válido
+        if (!$user) {
+            return response()->json(['message' => 'Error al crear la cuenta. Usuario no encontrado.'], 500);
         }
 
         $staffRequestCreated = false;
