@@ -17,12 +17,17 @@ class UserObserver
     {
         // Solo crear WaiterProfile si no es un super admin del sistema
         if (!$user->is_system_super_admin) {
-            WaiterProfile::create([
-                'user_id' => $user->id,
-                'display_name' => $user->name,
-                'is_available' => true,
-                'is_available_for_hire' => true,
-            ]);
+            // Verificar si ya existe un WaiterProfile para este usuario
+            $existingProfile = WaiterProfile::where('user_id', $user->id)->first();
+
+            if (!$existingProfile) {
+                WaiterProfile::create([
+                    'user_id' => $user->id,
+                    'display_name' => $user->name,
+                    'is_available' => true,
+                    'is_available_for_hire' => true,
+                ]);
+            }
         }
     }
 
