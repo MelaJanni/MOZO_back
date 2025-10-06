@@ -114,7 +114,7 @@ class DemoDataSeeder extends Seeder
                 ['business_id' => $business->id, 'is_default' => true],
                 [
                     'name' => 'Menú Principal',
-                    'file_path' => 'menus/demo-' . $business->id . '.pdf',
+                    'file_path' => 'menus/676b846ee428a8ff4c3cf5df5c717112.pdf',
                     'is_default' => true,
                     'display_order' => 1,
                 ]
