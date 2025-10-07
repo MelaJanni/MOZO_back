@@ -131,7 +131,8 @@ class StaffNotificationService
                 ]
             ];
 
-            return $this->writeToPath("businesses_staff/{$staff->business_id}", $businessData);
+            // Usar prefijo para forzar que Firebase trate el ID como string, no como índice de array
+            return $this->writeToPath("businesses_staff/business_{$staff->business_id}", $businessData);
 
         } catch (\Exception $e) {
             Log::warning("Failed to update business staff index", [
