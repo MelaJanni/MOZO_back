@@ -835,7 +835,10 @@ class AdminController extends Controller
                 }
 
                 return [
-                    'id' => (int) $req->id,
+                    'id' => (int) $req->id, // ID del registro staff
+                    'status' => $req->status,
+                    'position' => $req->position,
+                    'created_at' => $req->created_at,
                     'user' => $userData,
                     'user_profile' => $profileData,
                 ];
@@ -1006,6 +1009,10 @@ class AdminController extends Controller
                 }
 
                 return [
+                    'id' => $staffMember->id, // ID del registro staff
+                    'status' => $staffMember->status,
+                    'position' => $staffMember->position,
+                    'hire_date' => $staffMember->hire_date,
                     'user' => $userData,
                 ];
             }),
