@@ -328,12 +328,17 @@ class AuthController extends Controller
                 ]);
 
             } catch (\Exception $e) {
-                // Log only critical errors to avoid permission issues
-                error_log('Google login error: ' . $e->getMessage());
+                \Log::error('Google login error', [
+                    'message' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'trace' => $e->getTraceAsString()
+                ]);
 
                 return response()->json([
                     'success' => false,
-                    'message' => 'Error al autenticar con Google'
+                    'message' => 'Error al autenticar con Google',
+                    'error' => config('app.debug') ? $e->getMessage() : null
                 ], 500);
             }
         });
