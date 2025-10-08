@@ -212,15 +212,21 @@ class StaffNotificationService
                     'source' => 'staff_system',
                 ];
                 try {
-                    // Notify the staff user if present
-                    if ($staff->user_id && ($user = \App\Models\User::find($staff->user_id))) {
-                        $user->notify(new \App\Notifications\GenericDataNotification($payload));
-                    }
-                    // Notify business admins
+                    // Notify business admins (no notificar al staff de su propia solicitud)
                     $admins = \App\Models\Business::find($staff->business_id)?->admins()->where('business_admins.is_active', true)->get();
                     if ($admins) {
                         foreach ($admins as $admin) {
-                            $admin->notify(new \App\Notifications\GenericDataNotification($payload));
+                            // Solo notificar si el admin NO es el mismo staff que aplicó
+                            if ($admin->id !== $staff->user_id) {
+                                $admin->notify(new \App\Notifications\GenericDataNotification($payload));
+                            }
+                        }
+                    }
+
+                    // Notify the staff user SOLO si es evento de confirmación/rechazo (no cuando crea su propia solicitud)
+                    if (in_array($data['event_type'], ['confirmed', 'rejected']) && $staff->user_id) {
+                        if ($user = \App\Models\User::find($staff->user_id)) {
+                            $user->notify(new \App\Notifications\GenericDataNotification($payload));
                         }
                     }
                 } catch (\Throwable $e) {

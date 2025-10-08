@@ -602,7 +602,7 @@ class AdminController extends Controller
             case 'confirm':
                 $staff->status = 'confirmed';
                 $staff->save();
-                
+
                 if ($request->has('create_user') && $request->create_user) {
                     User::create([
                         'name' => $staff->name,
@@ -612,16 +612,36 @@ class AdminController extends Controller
                         'business_id' => $user->business_id,
                     ]);
                 }
-                
+
+                // Actualizar Firebase y notificaciones
+                try {
+                    app(\App\Services\StaffNotificationService::class)->writeStaffRequest($staff, 'confirmed');
+                } catch (\Throwable $e) {
+                    \Log::warning('Failed to update Firebase after confirm', ['error' => $e->getMessage()]);
+                }
+
+                // Actualizar notificaciones existentes con el nuevo status
+                $this->updateStaffNotificationsStatus($staff->id, 'confirmed');
+
                 return response()->json([
                     'message' => 'Solicitud de personal confirmada',
                     'staff' => $staff
                 ]);
-                
+
             case 'reject':
                 $staff->status = 'rejected';
                 $staff->save();
-                
+
+                // Actualizar Firebase y notificaciones
+                try {
+                    app(\App\Services\StaffNotificationService::class)->writeStaffRequest($staff, 'rejected');
+                } catch (\Throwable $e) {
+                    \Log::warning('Failed to update Firebase after reject', ['error' => $e->getMessage()]);
+                }
+
+                // Actualizar notificaciones existentes con el nuevo status
+                $this->updateStaffNotificationsStatus($staff->id, 'rejected');
+
                 return response()->json([
                     'message' => 'Solicitud de personal rechazada',
                     'staff' => $staff
@@ -1402,6 +1422,32 @@ class AdminController extends Controller
         $path = 'avatars/' . $businessId . '/' . $filename;
         Storage::disk('public')->put($path, $imageData);
         return $path;
+    }
+
+    /**
+     * Actualizar el status en todas las notificaciones relacionadas con un staff
+     */
+    private function updateStaffNotificationsStatus(int $staffId, string $newStatus): void
+    {
+        try {
+            $notifications = \DB::table('notifications')
+                ->whereRaw("JSON_EXTRACT(data, '$.staff_id') = ?", [(string)$staffId])
+                ->get();
+
+            foreach ($notifications as $notification) {
+                $data = json_decode($notification->data, true);
+                $data['status'] = $newStatus;
+
+                \DB::table('notifications')
+                    ->where('id', $notification->id)
+                    ->update(['data' => json_encode($data)]);
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('Failed to update notifications status', [
+                'staff_id' => $staffId,
+                'error' => $e->getMessage()
+            ]);
+        }
     }
 
     /**
