@@ -16,9 +16,9 @@ class DatabaseSeeder extends Seeder
             RoleSeeder::class,
             BillingSeeder::class, // planes definitivos
             CouponSeeder::class,  // cupones base
-            SystemSuperAdminSeeder::class, // crea usuario dedicado del panel
-            DemoDataSeeder::class,   // datos demo: negocios, usuarios, mesas, suscripciones y pagos
+            // SystemSuperAdminSeeder::class, // DESHABILITADO - No crear usuarios
+            // DemoDataSeeder::class, // DESHABILITADO - No crear datos demo
         ]);
-        echo "\n🎉 SEEDER COMPLETADO\n";
+        echo "\n🎉 BASE DE DATOS LIMPIA - Sin usuarios de prueba\n";
     }
 }
