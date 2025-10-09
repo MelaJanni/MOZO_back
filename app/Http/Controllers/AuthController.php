@@ -350,43 +350,55 @@ class AuthController extends Controller
     private function verifyGoogleToken(string $token): ?array
     {
         try {
-            // Verificar el token con Google con reintentos
-            $response = \Illuminate\Support\Facades\Http::retry(2, 1000)
+            // Primero verificar el token
+            $verifyResponse = \Illuminate\Support\Facades\Http::retry(2, 1000)
                 ->timeout(15)
                 ->get('https://oauth2.googleapis.com/tokeninfo', [
                     'id_token' => $token
                 ]);
 
-            if (!$response->successful()) {
+            if (!$verifyResponse->successful()) {
                 \Log::warning('Google token verification failed', [
-                    'status' => $response->status(),
-                    'body' => $response->body(),
-                    'attempt' => 'with_retry'
+                    'status' => $verifyResponse->status(),
+                    'body' => $verifyResponse->body()
                 ]);
                 return null;
             }
 
-            $data = $response->json();
+            $verifyData = $verifyResponse->json();
 
             // Verificar que el token sea válido
-            if (!isset($data['aud']) || !isset($data['email'])) {
-                \Log::warning('Invalid Google token data', ['data' => $data]);
+            if (!isset($verifyData['aud']) || !isset($verifyData['email'])) {
+                \Log::warning('Invalid Google token data', ['data' => $verifyData]);
                 return null;
             }
 
-            // Opcional: Verificar audience (client ID)
+            // Verificar audience (client ID)
             $expectedAudience = config('services.google.client_id');
-            if ($expectedAudience && $data['aud'] !== $expectedAudience) {
+            if ($expectedAudience && $verifyData['aud'] !== $expectedAudience) {
                 \Log::warning('Google token audience mismatch', [
                     'expected' => $expectedAudience,
-                    'received' => $data['aud']
+                    'received' => $verifyData['aud']
                 ]);
                 return null;
             }
 
-            // Google token verified successfully
+            // Ahora obtener información completa del usuario incluyendo avatar
+            $userInfoResponse = \Illuminate\Support\Facades\Http::withToken($token)
+                ->timeout(15)
+                ->get('https://www.googleapis.com/oauth2/v2/userinfo');
 
-            return $data;
+            if ($userInfoResponse->successful()) {
+                $userInfo = $userInfoResponse->json();
+                // Combinar datos de verificación con info de usuario
+                return array_merge($verifyData, [
+                    'picture' => $userInfo['picture'] ?? null,
+                    'name' => $userInfo['name'] ?? $verifyData['name'] ?? null,
+                ]);
+            }
+
+            // Si falla userinfo, usar solo datos de verificación
+            return $verifyData;
 
         } catch (\Exception $e) {
             error_log('Error verifying Google token: ' . $e->getMessage());
