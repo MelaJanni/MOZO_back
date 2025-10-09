@@ -125,6 +125,7 @@ class AuthController extends Controller
     {
         $request->validate([
             'google_token' => 'required|string',
+            'google_avatar' => 'sometimes|string|url',
             'fcm_token' => 'sometimes|string',
             'platform' => 'sometimes|string|in:android,ios,web',
             'business_invitation_code' => 'sometimes|string'
@@ -157,21 +158,25 @@ class AuthController extends Controller
                     ]);
 
                     // Usuario existente - actualizar información de Google si es necesario
-                    if (!$user->google_id || $user->google_id !== $googleUser['sub']) {
+                    $avatarUrl = $request->google_avatar ?? $googleUser['picture'] ?? null;
+
+                    if (!$user->google_id || $user->google_id !== $googleUser['sub'] || $user->google_avatar !== $avatarUrl) {
                         $user->update([
                             'google_id' => $googleUser['sub'],
-                            'google_avatar' => $googleUser['picture'] ?? null
+                            'google_avatar' => $avatarUrl
                         ]);
                         \Log::info('Google login: Updated user Google info', ['user_id' => $user->id]);
                     }
                 } else {
                     // Crear nuevo usuario dentro de la transacción con manejo de duplicados
                     try {
+                        $avatarUrl = $request->google_avatar ?? $googleUser['picture'] ?? null;
+
                         $user = User::create([
                             'name' => $googleUser['name'],
                             'email' => $normalizedEmail, // Usar email normalizado
                             'google_id' => $googleUser['sub'],
-                            'google_avatar' => $googleUser['picture'] ?? null,
+                            'google_avatar' => $avatarUrl,
                             'email_verified_at' => now(),
                             'password' => Hash::make(Str::random(32)), // Contraseña aleatoria
                         ]);
@@ -210,10 +215,12 @@ class AuthController extends Controller
                             }
 
                             // Actualizar información de Google si es necesario
+                            $avatarUrl = $request->google_avatar ?? $googleUser['picture'] ?? null;
+
                             if (!$user->google_id || $user->google_id !== $googleUser['sub']) {
                                 $user->update([
                                     'google_id' => $googleUser['sub'],
-                                    'google_avatar' => $googleUser['picture'] ?? null
+                                    'google_avatar' => $avatarUrl
                                 ]);
                             }
 
