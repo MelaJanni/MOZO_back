@@ -255,14 +255,23 @@ class AuthController extends Controller
 
                         // Role set successfully
 
-                        // Crear perfil básico de mozo
+                        // Crear perfil básico de mozo si no existe (el observer lo crea, pero evitamos duplicados)
                         if (method_exists($user, 'waiterProfile')) {
                             try {
-                                $user->waiterProfile()->create([
-                                    'display_name' => $user->name,
-                                ]);
-                                // Waiter profile created successfully
+                                $hasWaiterProfile = $user->waiterProfile()->exists();
+
+                                if (!$hasWaiterProfile) {
+                                    $user->waiterProfile()->create([
+                                        'display_name' => $user->name,
+                                    ]);
+                                    // Waiter profile created successfully
+                                }
                             } catch (\Exception $e) {
+                                \Log::warning('Error creating waiter profile during Google signup', [
+                                    'user_id' => $user->id ?? null,
+                                    'email' => $user->email ?? null,
+                                    'error' => $e->getMessage(),
+                                ]);
                                 // Failed to create waiter profile, continue with login
                             }
                         }
