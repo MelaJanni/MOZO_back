@@ -157,24 +157,29 @@ class AuthController extends Controller
                         'has_google_id' => !empty($user->google_id)
                     ]);
 
-                    // Usuario existente - actualizar información de Google si es necesario
+                    // Usuario existente - actualizar información de Google
                     $avatarUrl = $request->google_avatar ?? $googleUser['picture'] ?? null;
 
-                    $needsUpdate = !$user->google_id ||
-                                   $user->google_id !== $googleUser['sub'] ||
-                                   ($avatarUrl && $user->google_avatar !== $avatarUrl);
+                    \Log::info('Google login: Checking update needs', [
+                        'user_id' => $user->id,
+                        'current_google_id' => $user->google_id,
+                        'new_google_id' => $googleUser['sub'],
+                        'current_avatar' => $user->google_avatar,
+                        'new_avatar' => $avatarUrl,
+                        'request_has_avatar' => $request->has('google_avatar')
+                    ]);
 
-                    if ($needsUpdate) {
-                        $user->update([
-                            'google_id' => $googleUser['sub'],
-                            'google_avatar' => $avatarUrl
-                        ]);
-                        \Log::info('Google login: Updated user Google info', [
-                            'user_id' => $user->id,
-                            'avatar_updated' => $avatarUrl ? 'yes' : 'no',
-                            'new_avatar' => $avatarUrl
-                        ]);
-                    }
+                    // Siempre actualizar si hay información de Google
+                    $user->update([
+                        'google_id' => $googleUser['sub'],
+                        'google_avatar' => $avatarUrl
+                    ]);
+
+                    \Log::info('Google login: Updated user Google info', [
+                        'user_id' => $user->id,
+                        'avatar_updated' => $avatarUrl ? 'yes' : 'no',
+                        'new_avatar' => $avatarUrl
+                    ]);
                 } else {
                     // Crear nuevo usuario dentro de la transacción con manejo de duplicados
                     try {
