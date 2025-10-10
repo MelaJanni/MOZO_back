@@ -175,10 +175,14 @@ class AuthController extends Controller
                         'google_avatar' => $avatarUrl
                     ]);
 
+                    // Refrescar el modelo para obtener los datos actualizados
+                    $user->refresh();
+
                     \Log::info('Google login: Updated user Google info', [
                         'user_id' => $user->id,
                         'avatar_updated' => $avatarUrl ? 'yes' : 'no',
-                        'new_avatar' => $avatarUrl
+                        'new_avatar' => $avatarUrl,
+                        'user_avatar_after_refresh' => $user->google_avatar
                     ]);
                 } else {
                     // Crear nuevo usuario dentro de la transacción con manejo de duplicados
