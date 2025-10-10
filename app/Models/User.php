@@ -21,10 +21,12 @@ class User extends Authenticatable implements FilamentUser
         'email',
         'password',
         'google_id',
+        'google_avatar',
         'avatar_url',
         'is_system_super_admin',
         'is_lifetime_paid',
         'membership_expires_at',
+        'email_verified_at',
     ];
 
     protected $hidden = [
