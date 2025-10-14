@@ -13,6 +13,7 @@ use App\Models\Review;
 use App\Models\WaiterCall;
 use App\Notifications\GenericDataNotification;
 use App\Services\FirebaseService;
+use App\Services\StaffNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -472,6 +473,14 @@ class AdminController extends Controller
             ], 404);
         }
 
+        // Marcar como desvinculado antes de limpiar referencias para que las sincronizaciones reflejen el evento
+        if ($staff->status !== 'unlinked') {
+            $staff->status = 'unlinked';
+            $staff->save();
+            $staff->refresh();
+        }
+        $staffSnapshot = clone $staff;
+
         // Ejecutar desvinculación completa (desasignar mesas, cancelar llamadas, revocar pivot, notificar)
         try {
             $this->performWaiterUnlink($staff, (int)$businessId);
@@ -485,9 +494,21 @@ class AdminController extends Controller
 
         $staff->delete();
 
+        // Sincronizar estado final en Firebase para despejar listeners del front
+        try {
+            app(StaffNotificationService::class)->markStaffUnlinked($staffSnapshot);
+        } catch (\Throwable $e) {
+            \Log::warning('No se pudo notificar desvinculación en Firebase', [
+                'staff_id' => $staffSnapshot->id,
+                'business_id' => (int)$businessId,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
         return response()->json([
             'message' => 'Personal eliminado exitosamente',
-            'staff_id' => (int)$staffId
+            'staff_id' => (int)$staffId,
+            'status' => 'unlinked',
         ]);
     }
     
@@ -648,8 +669,17 @@ class AdminController extends Controller
                 ]);
                 
             case 'archive':
+                $originalStatus = $staff->status;
+                $originalData = $staff->toArray();
                 // Efectos de desvinculación antes de archivar
                 try { $this->performWaiterUnlink($staff, (int)$activeBusinessId); } catch (\Throwable $e) { /* noop */ }
+
+                if ($staff->status !== 'unlinked') {
+                    $staff->status = 'unlinked';
+                    $staff->save();
+                    $staff->refresh();
+                }
+                $staffSnapshot = clone $staff;
 
                 ArchivedStaff::create([
                     'business_id' => $staff->business_id,
@@ -663,9 +693,9 @@ class AdminController extends Controller
                     'termination_date' => now(),
                     'termination_reason' => $request->termination_reason ?? null,
                     'last_salary' => $staff->salary ?? null,
-                    'status' => $staff->status,
+                    'status' => $originalStatus,
                     'notes' => $staff->notes,
-                    'original_data' => $staff->toArray(),
+                    'original_data' => $originalData,
                     'archived_by' => $user->id,
                     'archive_reason' => $request->archive_reason ?? 'Archived from admin panel',
                     'archived_at' => now(),
@@ -673,13 +703,26 @@ class AdminController extends Controller
 
                 $staff->delete();
 
+                try {
+                    app(StaffNotificationService::class)->markStaffUnlinked($staffSnapshot);
+                } catch (\Throwable $e) { /* noop */ }
+
                 return response()->json([
                     'message' => 'Solicitud de personal archivada',
                 ]);
 
             case 'archived':
+                $originalStatus = $staff->status;
+                $originalData = $staff->toArray();
                 // Efectos de desvinculación antes de archivar (bulk)
                 try { $this->performWaiterUnlink($staff, (int)$activeBusinessId); } catch (\Throwable $e) { /* noop */ }
+
+                if ($staff->status !== 'unlinked') {
+                    $staff->status = 'unlinked';
+                    $staff->save();
+                    $staff->refresh();
+                }
+                $staffSnapshot = clone $staff;
 
                 ArchivedStaff::create([
                     'business_id' => $staff->business_id,
@@ -693,15 +736,19 @@ class AdminController extends Controller
                     'termination_date' => now(),
                     'termination_reason' => $request->termination_reason ?? null,
                     'last_salary' => $staff->salary ?? null,
-                    'status' => $staff->status,
+                    'status' => $originalStatus,
                     'notes' => $staff->notes,
-                    'original_data' => $staff->toArray(),
+                    'original_data' => $originalData,
                     'archived_by' => $user->id,
                     'archive_reason' => $request->archive_reason ?? 'Bulk/archive action',
                     'archived_at' => now(),
                 ]);
 
                 $staff->delete();
+
+                try {
+                    app(StaffNotificationService::class)->markStaffUnlinked($staffSnapshot);
+                } catch (\Throwable $e) { /* noop */ }
 
                 return response()->json([
                     'message' => 'Solicitud de personal archivada',

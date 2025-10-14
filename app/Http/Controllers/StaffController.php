@@ -182,7 +182,7 @@ class StaffController extends Controller
         $user = $request->user();
 
         $request->validate([
-            'status' => 'sometimes|in:pending,confirmed,rejected',
+            'status' => 'sometimes|in:pending,confirmed,rejected,unlinked',
             'business_id' => 'sometimes|integer',
         ]);
 
@@ -211,6 +211,7 @@ class StaffController extends Controller
             'pending' => 0,
             'confirmed' => 0,
             'rejected' => 0,
+            'unlinked' => 0,
         ];
         foreach ($requests as $r) {
             $status = $r->status;

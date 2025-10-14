@@ -98,21 +98,28 @@ class StaffNotificationService
     /**
      * 🏢 ACTUALIZAR ÍNDICE DE STAFF DEL NEGOCIO
      */
-    private function updateBusinessStaffIndex(Staff $staff): string
+    private function updateBusinessStaffIndex(Staff $staff, ?string $overrideStatus = null, ?int $excludeStaffId = null): string
     {
         try {
+            $baseQuery = \App\Models\Staff::where('business_id', $staff->business_id);
+            if ($excludeStaffId) {
+                $baseQuery->where('id', '!=', $excludeStaffId);
+            }
+
             // Obtener todas las solicitudes del negocio
-            $allRequests = \App\Models\Staff::where('business_id', $staff->business_id)
+            $allRequests = (clone $baseQuery)
                 ->pluck('id')
                 ->map(fn($id) => (string)$id)
                 ->toArray();
-            
+
             // Contar por estado
-            $statusCounts = \App\Models\Staff::where('business_id', $staff->business_id)
+            $statusCounts = (clone $baseQuery)
                 ->groupBy('status')
                 ->selectRaw('status, count(*) as count')
                 ->pluck('count', 'status')
                 ->toArray();
+
+            $currentStatus = $overrideStatus ?? $staff->status;
 
             $businessData = [
                 'all_requests' => array_values($allRequests),
@@ -122,11 +129,13 @@ class StaffNotificationService
                     'confirmed_count' => $statusCounts['confirmed'] ?? 0,
                     'rejected_count' => $statusCounts['rejected'] ?? 0,
                     'invited_count' => $statusCounts['invited'] ?? 0,
+                    'unlinked_count' => $statusCounts['unlinked'] ?? 0,
                     'last_update' => now()->timestamp * 1000
                 ],
                 'recent_activity' => [
                     'last_request_id' => (string)$staff->id,
-                    'last_request_status' => $staff->status,
+                    'last_request_status' => $currentStatus,
+                    'event_type' => $currentStatus,
                     'last_update' => now()->timestamp * 1000
                 ]
             ];
@@ -146,7 +155,7 @@ class StaffNotificationService
     /**
      * 👤 ACTUALIZAR ÍNDICE DE STAFF DEL USUARIO
      */
-    private function updateUserStaffIndex(Staff $staff): string
+    private function updateUserStaffIndex(Staff $staff, ?string $overrideStatus = null, ?int $excludeStaffId = null): string
     {
         if (!$staff->user_id) {
             return "skipped"; // No hay usuario asociado
@@ -154,10 +163,17 @@ class StaffNotificationService
 
         try {
             // Obtener todas las solicitudes del usuario
-            $userRequests = \App\Models\Staff::where('user_id', $staff->user_id)
+            $baseQuery = \App\Models\Staff::where('user_id', $staff->user_id);
+            if ($excludeStaffId) {
+                $baseQuery->where('id', '!=', $excludeStaffId);
+            }
+
+            $userRequests = (clone $baseQuery)
                 ->pluck('id')
                 ->map(fn($id) => (string)$id)
                 ->toArray();
+
+            $currentStatus = $overrideStatus ?? $staff->status;
 
             $userData = [
                 'user_requests' => array_values($userRequests),
@@ -168,8 +184,10 @@ class StaffNotificationService
                 'current_request' => [
                     'id' => (string)$staff->id,
                     'business_id' => (string)$staff->business_id,
-                    'status' => $staff->status,
-                    'position' => $staff->position
+                    'status' => $currentStatus,
+                    'event_type' => $currentStatus,
+                    'position' => $staff->position,
+                    'last_update' => now()->timestamp * 1000
                 ]
             ];
 
@@ -607,9 +625,12 @@ class StaffNotificationService
         try {
             $promises = [
                 $this->deleteFromPath("staff_requests/{$staff->id}"),
-                $this->updateBusinessStaffIndex($staff),
-                $this->updateUserStaffIndex($staff)
+                $this->updateBusinessStaffIndex($staff, null, $staff->id),
             ];
+
+            if ($staff->user_id) {
+                $promises[] = $this->updateUserStaffIndex($staff, null, $staff->id);
+            }
 
             $this->executeParallel($promises);
             
@@ -626,7 +647,43 @@ class StaffNotificationService
     }
 
     /**
-     * 🗑️ ELIMINAR DE FIREBASE
+     * � MARCAR DESVINCULACIÓN DEL STAFF EN FIREBASE
+     */
+    public function markStaffUnlinked(Staff $staff): bool
+    {
+        try {
+            $promises = [
+                $this->deleteFromPath("staff_requests/{$staff->id}"),
+                $this->updateBusinessStaffIndex($staff, 'unlinked', $staff->id),
+            ];
+
+            if ($staff->user_id) {
+                $promises[] = $this->updateUserStaffIndex($staff, 'unlinked', $staff->id);
+            }
+
+            $this->executeParallel($promises);
+
+            Log::info('Staff unlink propagated to Firebase', [
+                'staff_id' => $staff->id,
+                'business_id' => $staff->business_id,
+                'user_id' => $staff->user_id,
+            ]);
+
+            return true;
+        } catch (\Exception $e) {
+            Log::error('Failed to propagate staff unlink to Firebase', [
+                'staff_id' => $staff->id,
+                'business_id' => $staff->business_id,
+                'user_id' => $staff->user_id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
+    }
+
+    /**
+     * �🗑️ ELIMINAR DE FIREBASE
      */
     private function deleteFromPath(string $path): string
     {
