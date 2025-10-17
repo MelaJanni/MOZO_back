@@ -34,9 +34,9 @@ class WaiterController extends Controller
     }
 
     /**
-     * Auto-corregir business_id faltante
+     * Auto-corregir business_id faltante, pero respetando desvinculaciones recientes
      */
-    private function ensureBusinessId($waiter)
+    private function ensureBusinessId($waiter, bool $allowStaffCreation = true)
     {
         if (!$waiter->business_id) {
             $staffRecord = Staff::where('user_id', $waiter->id)
@@ -44,7 +44,7 @@ class WaiterController extends Controller
                 ->with('business')
                 ->first();
             
-            if ($staffRecord) {
+            if ($staffRecord && $allowStaffCreation) {
                 // Persistir negocio activo usando la columna disponible
                 if (Schema::hasColumn('users', 'active_business_id')) {
                     $waiter->update(['active_business_id' => $staffRecord->business_id]);
@@ -611,7 +611,7 @@ class WaiterController extends Controller
                 ->with('business')
                 ->get();
 
-            // AUTO-CORRECCIÓN: Si no tiene business_id pero tiene registros staff, asignar el primero
+            // AUTO-CORRECCIÓN: Si no tiene business_id pero tiene registros staff, asignar el primero (sin crear staff)
             if (!$waiter->business_id && $staffRecords->isNotEmpty()) {
                 $firstBusiness = $staffRecords->first()->business;
                 $waiter->update(['business_id' => $firstBusiness->id]);
@@ -2149,8 +2149,8 @@ class WaiterController extends Controller
         $waiter = Auth::user();
         
         try {
-            // AUTO-CORRECCIÓN: Asegurar business_id
-            $businessId = $this->ensureBusinessId($waiter);
+            // AUTO-CORRECCIÓN: Asegurar business_id (sin auto-crear staff para evitar reestablecer conexiones)
+            $businessId = $this->ensureBusinessId($waiter, false);
 
             if (!$businessId) {
                 return response()->json([
