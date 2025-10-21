@@ -254,27 +254,8 @@ class AuthController extends Controller
                         $user->save();
 
                         // Role set successfully
-
-                        // Crear perfil básico de mozo si no existe (el observer lo crea, pero evitamos duplicados)
-                        if (method_exists($user, 'waiterProfile')) {
-                            try {
-                                $hasWaiterProfile = $user->waiterProfile()->exists();
-
-                                if (!$hasWaiterProfile) {
-                                    $user->waiterProfile()->create([
-                                        'display_name' => $user->name,
-                                    ]);
-                                    // Waiter profile created successfully
-                                }
-                            } catch (\Exception $e) {
-                                \Log::warning('Error creating waiter profile during Google signup', [
-                                    'user_id' => $user->id ?? null,
-                                    'email' => $user->email ?? null,
-                                    'error' => $e->getMessage(),
-                                ]);
-                                // Failed to create waiter profile, continue with login
-                            }
-                        }
+                        // NOTA: El UserObserver creará automáticamente el WaiterProfile
+                        // usando DB::afterCommit para evitar problemas de transacciones anidadas
                     } else {
                         // Skipping profile creation for existing user
                     }
@@ -313,6 +294,12 @@ class AuthController extends Controller
                     }
                 }
 
+                // Refrescar el modelo para obtener todos los datos actualizados
+                $user->refresh();
+
+                // Crear token de autenticación
+                $token = $user->createToken('auth_token')->plainTextToken;
+
                 // Registrar token FCM si se proporciona (no crítico para el login)
                 \DB::afterCommit(function () use ($user, $request) {
                     if ($request->has('fcm_token') && $request->fcm_token) {
@@ -332,8 +319,6 @@ class AuthController extends Controller
                         }
                     }
                 });
-
-                $token = $user->createToken('auth_token')->plainTextToken;
 
                 // Return minimal user data to avoid serialization issues
                 $userData = [

@@ -17,28 +17,28 @@ class UserObserver
     {
         // Solo crear WaiterProfile si no es un super admin del sistema
         if (!$user->is_system_super_admin) {
-            try {
-                // Verificar con transacción para evitar condiciones de carrera
-                \DB::transaction(function () use ($user) {
-                    // Verificar explícitamente si ya existe
-                    $existing = WaiterProfile::where('user_id', $user->id)->exists();
-                    if (!$existing) {
-                        WaiterProfile::create([
-                            'user_id' => $user->id,
+            // Usar afterCommit para evitar transacciones anidadas y condiciones de carrera
+            // Esto garantiza que el perfil se crea DESPUÉS de que el usuario sea confirmado en la BD
+            \DB::afterCommit(function () use ($user) {
+                try {
+                    // Usar firstOrCreate para evitar duplicados (manejo atómico)
+                    WaiterProfile::firstOrCreate(
+                        ['user_id' => $user->id],
+                        [
                             'display_name' => $user->name,
                             'is_available' => true,
                             'is_available_for_hire' => true,
-                        ]);
-                    }
-                });
-            } catch (\Exception $e) {
-                // Log el error pero no fallar la creación del usuario
-                \Log::warning('Error creando WaiterProfile para usuario ' . $user->id, [
-                    'error' => $e->getMessage(),
-                    'user_id' => $user->id,
-                    'email' => $user->email
-                ]);
-            }
+                        ]
+                    );
+                } catch (\Exception $e) {
+                    // Log el error pero no fallar la creación del usuario
+                    \Log::warning('Error creando WaiterProfile para usuario ' . $user->id, [
+                        'error' => $e->getMessage(),
+                        'user_id' => $user->id,
+                        'email' => $user->email ?? 'unknown'
+                    ]);
+                }
+            });
         }
     }
 
