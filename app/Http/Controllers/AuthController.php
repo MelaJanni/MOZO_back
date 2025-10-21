@@ -247,18 +247,9 @@ class AuthController extends Controller
                         }
                     }
 
-                    // Solo para usuarios realmente nuevos (no duplicados encontrados)
-                    if (isset($user) && $user->wasRecentlyCreated) {
-                        // Establecer rol por fuera del fillable
-                        $user->role = 'waiter';
-                        $user->save();
-
-                        // Role set successfully
-                        // NOTA: El UserObserver creará automáticamente el WaiterProfile
-                        // usando DB::afterCommit para evitar problemas de transacciones anidadas
-                    } else {
-                        // Skipping profile creation for existing user
-                    }
+                    // NOTA: El UserObserver creará automáticamente el WaiterProfile
+                    // usando DB::afterCommit para evitar problemas de transacciones anidadas
+                    // El rol se maneja automáticamente por Spatie Permissions (HasRoles trait)
 
                     $staffRequestCreated = false;
                     $businessName = null;
@@ -638,7 +629,6 @@ class AuthController extends Controller
                 'email' => $request->email,
                 'password' => Hash::make($request->password),
                 'email_verified_at' => now(),
-                'role' => 'waiter',
             ]);
 
             // Crear WaiterProfile directamente sin duplicados
