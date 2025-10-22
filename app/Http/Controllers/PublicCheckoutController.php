@@ -51,18 +51,27 @@ class PublicCheckoutController extends Controller
 
     public function subscribe(Request $request)
     {
-        Log::info('Subscribe method called', [
+        Log::info('🔵 Subscribe method called', [
             'user_id' => auth()->id(),
             'request_data' => $request->all(),
+            'timestamp' => now()->toDateTimeString(),
         ]);
 
-        $request->validate([
-            'plan_id' => 'required|exists:plans,id',
-            'billing_period' => 'required|in:monthly,quarterly,yearly',
-            'payment_method' => 'required|in:mercadopago,bank_transfer',
-            'coupon_code' => 'nullable|string',
-            'terms' => 'required|accepted',
-        ]);
+        try {
+            $request->validate([
+                'plan_id' => 'required|exists:plans,id',
+                'billing_period' => 'required|in:monthly,quarterly,yearly',
+                'payment_method' => 'required|in:mercadopago,bank_transfer',
+                'coupon_code' => 'nullable|string',
+                'terms' => 'required|accepted',
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('❌ Validation failed in subscribe', [
+                'errors' => $e->errors(),
+                'request_data' => $request->all(),
+            ]);
+            throw $e;
+        }
 
         $plan = Plan::findOrFail($request->plan_id);
         $user = auth()->user();
@@ -133,14 +142,35 @@ class PublicCheckoutController extends Controller
 
             // Procesar pago según método
             if ($request->payment_method === 'mercadopago') {
+                Log::info('🔵 START: Processing MercadoPago payment', [
+                    'subscription_id' => $subscription->id,
+                    'price' => $subscription->price_at_creation,
+                    'user_id' => $user->id,
+                ]);
+
                 $paymentResult = $this->processMercadoPago($subscription, $request);
+
+                Log::info('🔵 RESULT: MercadoPago payment processed', [
+                    'success' => $paymentResult['success'] ?? false,
+                    'has_checkout_url' => isset($paymentResult['checkout_url']),
+                    'has_message' => isset($paymentResult['message']),
+                    'full_result' => $paymentResult,
+                ]);
 
                 if (!$paymentResult['success']) {
                     DB::rollBack();
-                    return back()->withErrors(['payment' => $paymentResult['message']]);
+                    Log::error('❌ FAIL: MercadoPago payment failed', [
+                        'message' => $paymentResult['message'] ?? 'No message provided',
+                        'subscription_id' => $subscription->id,
+                        'full_result' => $paymentResult,
+                    ]);
+                    return back()->withErrors(['payment' => $paymentResult['message'] ?? 'Error desconocido']);
                 }
 
                 DB::commit();
+                Log::info('✅ SUCCESS: Redirecting to MercadoPago', [
+                    'checkout_url' => $paymentResult['checkout_url'],
+                ]);
                 return redirect($paymentResult['checkout_url']);
             }
 
@@ -156,9 +186,11 @@ class PublicCheckoutController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error en suscripción de usuario autenticado', [
+            Log::error('💥 EXCEPTION in subscribe method', [
                 'user_id' => $user->id,
-                'error' => $e->getMessage(),
+                'error_message' => $e->getMessage(),
+                'error_file' => $e->getFile(),
+                'error_line' => $e->getLine(),
                 'trace' => $e->getTraceAsString(),
             ]);
 
