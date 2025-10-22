@@ -32,6 +32,15 @@ class MercadoPagoService
             throw new \Exception('MercadoPago no está configurado correctamente. Por favor verifica las credenciales.');
         }
 
+        // Validar que el precio sea mayor a 0
+        if (!isset($data['unit_price']) || $data['unit_price'] <= 0) {
+            Log::error('MercadoPagoService: Invalid price - must be greater than 0', [
+                'unit_price' => $data['unit_price'] ?? 'not set',
+                'data' => $data,
+            ]);
+            throw new \Exception('El precio debe ser mayor a cero. Por favor verifica la configuración del plan.');
+        }
+
         Log::info('MercadoPagoService: Starting createPreference', [
             'access_token_length' => strlen($this->accessToken),
             'access_token_start' => substr($this->accessToken, 0, 10) . '...',
