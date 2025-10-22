@@ -20,11 +20,21 @@ class MercadoPagoProvider implements PaymentProviderInterface
     public function __construct()
     {
         $this->isSandbox = config('services.mercado_pago.environment', 'sandbox') === 'sandbox';
-        $this->accessToken = config('services.mercado_pago.access_token');
+        $this->accessToken = config('services.mercado_pago.access_token') 
+            ?? config('services.mercadopago.access_token')
+            ?? env('MERCADO_PAGO_ACCESS_TOKEN');
 
         $this->baseUrl = $this->isSandbox
             ? 'https://api.mercadopago.com'
             : 'https://api.mercadopago.com';
+
+        // Log para debugging
+        if (!$this->accessToken) {
+            Log::warning('MercadoPago access token no configurado', [
+                'config_mercado_pago' => config('services.mercado_pago'),
+                'env_token' => env('MERCADO_PAGO_ACCESS_TOKEN') ? 'exists' : 'missing',
+            ]);
+        }
     }
 
     public function createCheckout(
@@ -34,6 +44,16 @@ class MercadoPagoProvider implements PaymentProviderInterface
         array $metadata = []
     ): array {
         try {
+            // Verificar que el access token esté configurado
+            if (!$this->accessToken) {
+                Log::error('MercadoPago access token no configurado');
+                return [
+                    'success' => false,
+                    'error' => 'Payment provider not configured',
+                    'message' => 'La pasarela de pagos no está configurada correctamente. Por favor contacta al administrador.',
+                ];
+            }
+
             $amount = $plan->price_cents;
 
             // Apply coupon discount if provided

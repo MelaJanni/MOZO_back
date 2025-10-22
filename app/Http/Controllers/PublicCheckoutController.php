@@ -387,6 +387,15 @@ class PublicCheckoutController extends Controller
         ]);
 
         try {
+            // Verificar que el servicio de MercadoPago esté disponible
+            if (!$this->mercadoPagoService) {
+                Log::error('MercadoPagoService not available');
+                return [
+                    'success' => false,
+                    'message' => 'El servicio de pagos no está disponible en este momento. Por favor intenta más tarde.',
+                ];
+            }
+
             $preference = $this->mercadoPagoService->createPreference([
                 'title' => "Suscripción {$subscription->plan->name}",
                 'quantity' => 1,
@@ -428,11 +437,12 @@ class PublicCheckoutController extends Controller
             Log::error('Error creando preferencia MercadoPago', [
                 'subscription_id' => $subscription->id,
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return [
                 'success' => false,
-                'message' => 'Error procesando el pago. Intenta nuevamente.',
+                'message' => 'Error procesando el pago. Por favor intenta nuevamente o contacta a soporte.',
             ];
         }
     }

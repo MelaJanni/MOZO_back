@@ -14,10 +14,24 @@ class MercadoPagoService
     {
         $this->accessToken = config('services.mercado_pago.access_token', env('MERCADO_PAGO_ACCESS_TOKEN'));
         $this->baseUrl = 'https://api.mercadopago.com';
+
+        // Log para debugging
+        if (!$this->accessToken) {
+            Log::warning('MercadoPagoService: Access token no configurado', [
+                'config_value' => config('services.mercado_pago.access_token'),
+                'env_value' => env('MERCADO_PAGO_ACCESS_TOKEN') ? 'exists' : 'missing',
+            ]);
+        }
     }
 
     public function createPreference(array $data)
     {
+        // Validar que el access token esté configurado
+        if (!$this->accessToken) {
+            Log::error('MercadoPagoService: Cannot create preference - access token not configured');
+            throw new \Exception('MercadoPago no está configurado correctamente. Por favor verifica las credenciales.');
+        }
+
         Log::info('MercadoPagoService: Starting createPreference', [
             'access_token_length' => strlen($this->accessToken),
             'access_token_start' => substr($this->accessToken, 0, 10) . '...',
