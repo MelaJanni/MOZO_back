@@ -86,24 +86,40 @@ class MercadoPagoService
         }
 
         // Agregar configuración para ambiente de prueba
-        if (config('services.mercado_pago.environment') === 'sandbox') {
+        $isSandbox = config('services.mercado_pago.environment') === 'sandbox';
+        
+        if ($isSandbox) {
             $preferenceData['marketplace'] = 'NONE';
             $preferenceData['binary_mode'] = false;
         }
+        
+        // CRÍTICO: Indicar a MercadoPago si es sandbox o producción
+        $preferenceData['sandbox_init_point'] = $isSandbox;
+        $preferenceData['notification_url'] = $data['notification_url'] ?? null;
 
+        // Preparar headers
+        $headers = [
+            'Authorization' => 'Bearer ' . $this->accessToken,
+            'Content-Type' => 'application/json',
+        ];
+        
+        // Agregar header de sandbox si corresponde
+        if ($isSandbox) {
+            $headers['X-Test-Scope-Enabled'] = 'true';
+        }
+        
         Log::info('MercadoPagoService: Sending request to MercadoPago', [
             'url' => $this->baseUrl . '/checkout/preferences',
             'preference_data' => $preferenceData,
+            'is_sandbox' => $isSandbox,
             'headers' => [
                 'Authorization' => 'Bearer ' . substr($this->accessToken, 0, 10) . '...',
                 'Content-Type' => 'application/json',
+                'X-Test-Scope-Enabled' => $isSandbox ? 'true' : 'false',
             ],
         ]);
 
-        $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . $this->accessToken,
-            'Content-Type' => 'application/json',
-        ])->post($this->baseUrl . '/checkout/preferences', $preferenceData);
+        $response = Http::withHeaders($headers)->post($this->baseUrl . '/checkout/preferences', $preferenceData);
 
         Log::info('MercadoPagoService: Received response from MercadoPago', [
             'status_code' => $response->status(),
