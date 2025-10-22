@@ -63,8 +63,32 @@ class MercadoPagoService
             'notification_url' => $data['notification_url'] ?? null,
         ];
 
+        // Agregar información del pagador
         if (isset($data['payer'])) {
-            $preferenceData['payer'] = $data['payer'];
+            $preferenceData['payer'] = [
+                'name' => $data['payer']['name'] ?? null,
+                'surname' => $data['payer']['surname'] ?? null,
+                'email' => $data['payer']['email'] ?? null,
+                'phone' => $data['payer']['phone'] ?? [
+                    'area_code' => '',
+                    'number' => ''
+                ],
+                'identification' => $data['payer']['identification'] ?? [
+                    'type' => 'DNI',
+                    'number' => '12345678'
+                ],
+                'address' => $data['payer']['address'] ?? [
+                    'zip_code' => '',
+                    'street_name' => '',
+                    'street_number' => null
+                ]
+            ];
+        }
+
+        // Agregar configuración para ambiente de prueba
+        if (config('services.mercado_pago.environment') === 'sandbox') {
+            $preferenceData['marketplace'] = 'NONE';
+            $preferenceData['binary_mode'] = false;
         }
 
         Log::info('MercadoPagoService: Sending request to MercadoPago', [
