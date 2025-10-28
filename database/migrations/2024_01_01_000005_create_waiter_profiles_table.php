@@ -26,7 +26,7 @@ return new class extends Migration
             $table->decimal('height', 3, 2)->nullable();
             $table->integer('weight')->nullable();
             $table->enum('gender', ['masculino', 'femenino', 'otro'])->nullable();
-            $table->integer('experience_years')->default(0);
+            $table->integer('experience_years')->nullable()->default(0);
             
             // Ubicación y disponibilidad general
             $table->string('current_location')->nullable();
