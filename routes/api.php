@@ -179,9 +179,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
         // 🔥 GESTIÓN DE LLAMADAS CON FIREBASE REAL-TIME
         Route::get('/calls/pending', [WaiterController::class, 'getPendingCalls']);
         Route::get('/calls/recent', [WaiterController::class, 'getRecentCalls']);
-        Route::post('/calls/{call}/acknowledge', [WaiterController::class, 'acknowledgeCall']);
-        Route::post('/calls/{call}/complete', [WaiterController::class, 'completeCall']);
-    Route::post('/calls/{call}/resync', [WaiterController::class, 'resyncCall']);
+        Route::post('/calls/{callId}/acknowledge', [WaiterController::class, 'acknowledgeCall']);
+        Route::post('/calls/{callId}/complete', [WaiterController::class, 'completeCall']);
+        Route::post('/calls/{callId}/resync', [WaiterController::class, 'resyncCall']);
         
         // Historial (sin tiempo real)
         Route::get('/calls/history', [WaiterCallController::class, 'getCallHistory']);
