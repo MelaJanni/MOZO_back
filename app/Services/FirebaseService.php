@@ -781,16 +781,25 @@ class FirebaseService
             }
         }
 
+        // 🎯 IMPORTANTE: Para que las notificaciones lleguen en background/cerrada,
+        // FCM requiere AMBOS: notification Y data
+        $title = $data['title'] ?? 'Nueva notificación';
+        $body = $data['message'] ?? $data['body'] ?? '';
+
         $message = [
             'message' => [
                 'token' => $token,
-                // 🎯 SOLO DATA - Sin notification para forzar service worker
+                // ✅ INCLUIR notification para que llegue en background/cerrada
+                'notification' => [
+                    'title' => $title,
+                    'body' => $body
+                ],
+                // ✅ Incluir data para que service worker tenga acceso a toda la info
                 'data' => $formattedData,
                 'webpush' => [
                     'headers' => [
                         'Urgency' => 'high'
                     ],
-                    // 🎯 SIN notification en webpush tampoco
                     'fcm_options' => [
                         'link' => rtrim(config('app.url', '/'), '/') . '/'
                     ]
