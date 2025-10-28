@@ -10,106 +10,125 @@ on:
       - '.env.example'
   pull_request:
     branches: [ main ]
-  workflow_dispatch: # Allows manual triggering
+  workflow_dispatch:
 
 jobs:
   firebase-test:
     runs-on: ubuntu-latest
-    
+
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Setup PHP
-      uses: shivammathur/setup-php@v2
-      with:
-        php-version: '8.3'
-        extensions: mbstring, xml, ctype, iconv, intl, pdo, pdo_mysql, dom, filter, gd, iconv, json, mbstring, openssl
-    
-    - name: Cache Composer packages
-      id: composer-cache
-      uses: actions/cache@v3
-      with:
-        path: vendor
-        key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-php-
-    
-    - name: Install dependencies
-      run: composer install --prefer-dist --no-progress
-    
-    - name: Create Firebase directory
-      run: mkdir -p storage/app/firebase
-    
-    - name: Create Firebase service account (mock for testing)
-      run: |
-        cat > storage/app/firebase/firebase.json << 'EOF'
-        {
-          "type": "service_account",
-          "project_id": "mozoqr-7d32c",
-          "private_key_id": "test-key-id",
-          "private_key": "-----BEGIN PRIVATE KEY-----\nMOCK_PRIVATE_KEY_FOR_TESTING\n-----END PRIVATE KEY-----\n",
-          "client_email": "firebase-adminsdk-test@mozoqr-7d32c.iam.gserviceaccount.com",
-          "client_id": "123456789",
-          "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-          "token_uri": "https://oauth2.googleapis.com/token",
-          "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-          "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-test%40mozoqr-7d32c.iam.gserviceaccount.com",
-          "universe_domain": "googleapis.com"
-        }
-        EOF
-    
-    - name: Create .env file
-      run: |
-        cp .env.example .env
-        echo "FIREBASE_PROJECT_ID=mozoqr-7d32c" >> .env
-        echo "FIREBASE_SERVER_KEY=AIzaSyCecfSTfyxk3D2X4XsLaSGkckvf-OvhFZA" >> .env
-        echo "FIREBASE_SERVICE_ACCOUNT_PATH=$(pwd)/storage/app/firebase/firebase.json" >> .env
-        echo "FIREBASE_API_KEY=AIzaSyCecfSTfyxk3D2X4XsLaSGkckvf-OvhFZA" >> .env
-        echo "FIREBASE_AUTH_DOMAIN=mozoqr-7d32c.firebaseapp.com" >> .env
-        echo "FIREBASE_STORAGE_BUCKET=mozoqr-7d32c.appspot.com" >> .env
-        echo "FIREBASE_MESSAGING_SENDER_ID=test-sender-id" >> .env
-        echo "FIREBASE_APP_ID=test-app-id" >> .env
-    
-    - name: Generate application key
-      run: php artisan key:generate
-    
-    - name: Run Firebase Setup Test
-      run: |
-        echo "🔥 Running Firebase Configuration Test..."
-        php artisan firebase:setup --test || echo "⚠️  Firebase test completed with warnings (expected without real credentials)"
-    
-    - name: Test Firebase Endpoints (Configuration Check)
-      run: |
-        echo "🌐 Testing Firebase configuration detection..."
-        php artisan serve &
-        sleep 5
-        
-        # Test configuration endpoint
-        curl -f http://localhost:8000/api/firebase/status || echo "Firebase status endpoint test completed"
-        curl -f http://localhost:8000/api/firebase/config || echo "Firebase config endpoint test completed"
-        
-        # Stop server
-        pkill -f "php artisan serve"
-    
-    - name: Verify Firebase Service Files
-      run: |
-        echo "📋 Verifying Firebase-related files exist..."
-        ls -la app/Services/Firebase*
-        ls -la app/Console/Commands/SetupFirebase.php
-        ls -la public/js/firebase-realtime.js
-        ls -la storage/app/firebase/
-        echo "✅ All Firebase files present"
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer:v2
+          extensions: mbstring, xml, ctype, intl, pdo, pdo_mysql, dom, filter, gd, json, openssl
+
+      - name: Debug PHP & Composer
+        run: |
+          php -v
+          which php
+          composer --version
+          echo "---- composer platform (local & global) ----"
+          composer config --list | sed -n '/^config.platform/p; /platform.php/p' || true
+          composer config --global --list | sed -n '/^config.platform/p; /platform.php/p' || true
+
+      # Quita override de plataforma si existiera (no modifica tu repo, solo el entorno del runner)
+      - name: Remove platform.php override if present
+        run: |
+          set -e
+          if composer config --list | grep -q 'platform.php'; then
+            composer config --unset platform.php
+            echo "Removed project platform.php override"
+          fi
+          if composer config --global --list | grep -q 'platform.php'; then
+            composer config --global --unset platform.php
+            echo "Removed GLOBAL platform.php override"
+          fi
+          # Falla si sigue apuntando a 8.2
+          composer config --list | grep 'platform.php' && { echo "platform.php still set!"; exit 1; } || true
+
+      - name: Cache Composer packages
+        uses: actions/cache@v3
+        with:
+          path: vendor
+          key: ${{ runner.os }}-php83-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-php83-
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Create Firebase directory
+        run: mkdir -p storage/app/firebase
+
+      - name: Create Firebase service account (mock for testing)
+        run: |
+          cat > storage/app/firebase/firebase.json << 'EOF'
+          {
+            "type": "service_account",
+            "project_id": "mozoqr-7d32c",
+            "private_key_id": "test-key-id",
+            "private_key": "-----BEGIN PRIVATE KEY-----\nMOCK_PRIVATE_KEY_FOR_TESTING\n-----END PRIVATE KEY-----\n",
+            "client_email": "firebase-adminsdk-test@mozoqr-7d32c.iam.gserviceaccount.com",
+            "client_id": "123456789",
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token",
+            "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+            "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-test%40mozoqr-7d32c.iam.gserviceaccount.com",
+            "universe_domain": "googleapis.com"
+          }
+          EOF
+
+      - name: Create .env file
+        run: |
+          cp .env.example .env
+          echo "FIREBASE_PROJECT_ID=mozoqr-7d32c" >> .env
+          echo "FIREBASE_SERVER_KEY=AIzaSyCecfSTfyxk3D2X4XsLaSGkckvf-OvhFZA" >> .env
+          echo "FIREBASE_SERVICE_ACCOUNT_PATH=$(pwd)/storage/app/firebase/firebase.json" >> .env
+          echo "FIREBASE_API_KEY=AIzaSyCecfSTfyxk3D2X4XsLaSGkckvf-OvhFZA" >> .env
+          echo "FIREBASE_AUTH_DOMAIN=mozoqr-7d32c.firebaseapp.com" >> .env
+          echo "FIREBASE_STORAGE_BUCKET=mozoqr-7d32c.appspot.com" >> .env
+          echo "FIREBASE_MESSAGING_SENDER_ID=test-sender-id" >> .env
+          echo "FIREBASE_APP_ID=test-app-id" >> .env
+
+      - name: Generate application key
+        run: php artisan key:generate
+
+      - name: Run Firebase Setup Test
+        run: |
+          echo "🔥 Running Firebase Configuration Test..."
+          php artisan firebase:setup --test || echo "⚠️  Firebase test completed with warnings (expected without real credentials)"
+
+      - name: Test Firebase Endpoints (Configuration Check)
+        run: |
+          echo "🌐 Testing Firebase configuration detection..."
+          php artisan serve &
+          sleep 5
+          curl -f http://localhost:8000/api/firebase/status || echo "Firebase status endpoint test completed"
+          curl -f http://localhost:8000/api/firebase/config || echo "Firebase config endpoint test completed"
+          pkill -f "php artisan serve"
+
+      - name: Verify Firebase Service Files
+        run: |
+          echo "📋 Verifying Firebase-related files exist..."
+          ls -la app/Services/Firebase* || true
+          ls -la app/Console/Commands/SetupFirebase.php || true
+          ls -la public/js/firebase-realtime.js || true
+          ls -la storage/app/firebase/
+          echo "✅ All Firebase files present"
 
   notify:
     needs: firebase-test
     runs-on: ubuntu-latest
     if: always()
-    
     steps:
-    - name: Report Results
-      run: |
-        if [ "${{ needs.firebase-test.result }}" == "success" ]; then
-          echo "🎉 Firebase configuration test passed!"
-        else  
-          echo "⚠️  Firebase configuration test had issues - check logs"
-        fi
+      - name: Report Results
+        run: |
+          if [ "${{ needs.firebase-test.result }}" == "success" ]; then
+            echo "🎉 Firebase configuration test passed!"
+          else
+            echo "⚠️  Firebase configuration test had issues - check logs"
+          fi
