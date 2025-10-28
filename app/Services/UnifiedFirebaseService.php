@@ -518,4 +518,152 @@ class UnifiedFirebaseService
             ]);
         }
     }
+
+    /**
+     * 🗑️ ELIMINAR TODOS LOS DATOS DE FIREBASE DE UN NEGOCIO
+     * 
+     * Se ejecuta cuando se elimina un negocio desde el panel de admin.
+     * Elimina los datos de Firebase Realtime Database para evitar datos huérfanos.
+     * 
+     * Rutas eliminadas según el frontend:
+     * - businesses_staff/business_{businessId}
+     * - users_staff/{userId} (para cada usuario del negocio)
+     * - active_calls/{callId} (para cada llamada activa del negocio)
+     * - waiters/{waiterId} (para cada mozo del negocio)
+     * - tables/{tableId} (para cada mesa del negocio)
+     * - businesses/{businessId} (índice del negocio)
+     */
+    public function deleteBusinessData(int $businessId): array
+    {
+        $deletedPaths = [];
+        $errors = [];
+        
+        try {
+            Log::info('Starting Firebase cleanup for business', ['business_id' => $businessId]);
+
+            // 1. Eliminar datos principales del negocio en businesses_staff
+            try {
+                $result = $this->deleteFromPath("businesses_staff/business_{$businessId}");
+                $deletedPaths[] = "businesses_staff/business_{$businessId}";
+                Log::info('Deleted businesses_staff path', [
+                    'path' => "businesses_staff/business_{$businessId}",
+                    'result' => $result
+                ]);
+            } catch (\Exception $e) {
+                $errors[] = "businesses_staff/business_{$businessId}: " . $e->getMessage();
+            }
+
+            // 2. Eliminar índice del negocio en businesses
+            try {
+                $result = $this->deleteFromPath("businesses/{$businessId}");
+                $deletedPaths[] = "businesses/{$businessId}";
+                Log::info('Deleted businesses index', [
+                    'path' => "businesses/{$businessId}",
+                    'result' => $result
+                ]);
+            } catch (\Exception $e) {
+                $errors[] = "businesses/{$businessId}: " . $e->getMessage();
+            }
+
+            // 3. Obtener y eliminar datos de staff del negocio
+            $staffUsers = \App\Models\Staff::where('business_id', $businessId)
+                ->pluck('user_id')
+                ->unique();
+            
+            foreach ($staffUsers as $userId) {
+                try {
+                    $result = $this->deleteFromPath("users_staff/{$userId}");
+                    $deletedPaths[] = "users_staff/{$userId}";
+                    Log::info('Deleted user_staff path', [
+                        'user_id' => $userId,
+                        'result' => $result
+                    ]);
+                } catch (\Exception $e) {
+                    $errors[] = "users_staff/{$userId}: " . $e->getMessage();
+                }
+
+                // También eliminar índice de mozo (waiters)
+                try {
+                    $result = $this->deleteFromPath("waiters/{$userId}");
+                    $deletedPaths[] = "waiters/{$userId}";
+                    Log::info('Deleted waiter index', [
+                        'user_id' => $userId,
+                        'result' => $result
+                    ]);
+                } catch (\Exception $e) {
+                    $errors[] = "waiters/{$userId}: " . $e->getMessage();
+                }
+            }
+
+            // 4. Obtener y eliminar llamadas activas del negocio
+            $activeCalls = \App\Models\WaiterCall::whereHas('table', function($query) use ($businessId) {
+                $query->where('business_id', $businessId);
+            })->pluck('id');
+
+            foreach ($activeCalls as $callId) {
+                try {
+                    $result = $this->deleteFromPath("active_calls/{$callId}");
+                    $deletedPaths[] = "active_calls/{$callId}";
+                    Log::info('Deleted active call', [
+                        'call_id' => $callId,
+                        'result' => $result
+                    ]);
+                } catch (\Exception $e) {
+                    $errors[] = "active_calls/{$callId}: " . $e->getMessage();
+                }
+            }
+
+            // 5. Obtener y eliminar índices de mesas
+            $tables = \App\Models\Table::where('business_id', $businessId)->pluck('id');
+            
+            foreach ($tables as $tableId) {
+                try {
+                    $result = $this->deleteFromPath("tables/{$tableId}");
+                    $deletedPaths[] = "tables/{$tableId}";
+                    Log::info('Deleted table index', [
+                        'table_id' => $tableId,
+                        'result' => $result
+                    ]);
+                } catch (\Exception $e) {
+                    $errors[] = "tables/{$tableId}: " . $e->getMessage();
+                }
+            }
+
+            Log::info('Firebase cleanup completed', [
+                'business_id' => $businessId,
+                'deleted_paths' => count($deletedPaths),
+                'errors' => count($errors),
+                'paths' => $deletedPaths
+            ]);
+
+            return [
+                'success' => true,
+                'business_id' => $businessId,
+                'deleted_paths' => $deletedPaths,
+                'errors' => $errors,
+                'summary' => [
+                    'total_deleted' => count($deletedPaths),
+                    'total_errors' => count($errors)
+                ]
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('Firebase cleanup failed critically', [
+                'business_id' => $businessId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return [
+                'success' => false,
+                'business_id' => $businessId,
+                'deleted_paths' => $deletedPaths,
+                'errors' => array_merge($errors, [$e->getMessage()]),
+                'summary' => [
+                    'total_deleted' => count($deletedPaths),
+                    'total_errors' => count($errors) + 1
+                ]
+            ];
+        }
+    }
 }

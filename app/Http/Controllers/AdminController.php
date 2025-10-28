@@ -14,6 +14,7 @@ use App\Models\WaiterCall;
 use App\Notifications\GenericDataNotification;
 use App\Services\FirebaseService;
 use App\Services\StaffNotificationService;
+use App\Services\UnifiedFirebaseService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -208,6 +209,26 @@ class AdminController extends Controller
 
         \DB::beginTransaction();
         try {
+            // 🔥 PUNTO 9: Eliminar datos de Firebase ANTES de eliminar de BBDD
+            // Esto se hace primero para tener acceso a las relaciones (staff, tables, etc)
+            $firebaseCleanup = null;
+            try {
+                $firebaseService = app(UnifiedFirebaseService::class);
+                $firebaseCleanup = $firebaseService->deleteBusinessData($businessId);
+                
+                \Log::info('Firebase cleanup result', [
+                    'business_id' => $businessId,
+                    'cleanup_result' => $firebaseCleanup
+                ]);
+            } catch (\Throwable $firebaseError) {
+                // ⚠️ NO FALLAR la eliminación de BBDD si Firebase falla
+                \Log::error('Firebase cleanup failed but continuing with BBDD deletion', [
+                    'business_id' => $businessId,
+                    'firebase_error' => $firebaseError->getMessage(),
+                    'trace' => $firebaseError->getTraceAsString()
+                ]);
+            }
+
             // Eliminar dependencias conocidas
             if (\Schema::hasTable('tables')) {
                 Table::where('business_id', $businessId)->each(function ($table) {
@@ -251,9 +272,33 @@ class AdminController extends Controller
             $business->delete();
 
             \DB::commit();
-            return response()->json([
+            
+            // Preparar respuesta con información de limpieza de Firebase
+            $response = [
                 'message' => 'Negocio eliminado correctamente'
-            ]);
+            ];
+            
+            if ($firebaseCleanup && $firebaseCleanup['success']) {
+                $response['firebase_cleanup'] = [
+                    'status' => 'success',
+                    'deleted_paths' => $firebaseCleanup['summary']['total_deleted'],
+                    'errors' => $firebaseCleanup['summary']['total_errors']
+                ];
+            } elseif ($firebaseCleanup && !$firebaseCleanup['success']) {
+                $response['firebase_cleanup'] = [
+                    'status' => 'partial_failure',
+                    'deleted_paths' => $firebaseCleanup['summary']['total_deleted'],
+                    'errors' => $firebaseCleanup['summary']['total_errors'],
+                    'warning' => 'Algunos datos de Firebase no se pudieron eliminar'
+                ];
+            } else {
+                $response['firebase_cleanup'] = [
+                    'status' => 'failed',
+                    'warning' => 'No se pudo limpiar Firebase pero la BBDD se eliminó correctamente'
+                ];
+            }
+            
+            return response()->json($response);
         } catch (\Throwable $e) {
             \DB::rollBack();
             \Log::error('Error eliminando negocio', [
@@ -456,19 +501,26 @@ class AdminController extends Controller
     }
 
     
-    public function removeStaff($staffId)
+    /**
+     * 🔥 PUNTO 10: Eliminar staff por user_id
+     * 
+     * El frontend envía user_id en la ruta, no staff.id
+     * Endpoint: DELETE /api/admin/staff/{userId}
+     */
+    public function removeStaff($userId)
     {
         $user = Auth::user();
         $businessId = $this->activeBusinessId($user, 'admin');
 
-        $staff = Staff::where('id', $staffId)
+        // 🔥 CAMBIO: Buscar por user_id en vez de id
+        $staff = Staff::where('user_id', $userId)
             ->where('business_id', $businessId)
             ->first();
 
         if (!$staff) {
             return response()->json([
                 'message' => 'El miembro de personal no existe o no pertenece a tu negocio activo',
-                'staff_id' => (int)$staffId,
+                'user_id' => (int)$userId, // 🔥 CAMBIO: Devolver user_id
                 'active_business_id' => (int)$businessId,
             ], 404);
         }
@@ -487,6 +539,7 @@ class AdminController extends Controller
         } catch (\Throwable $e) {
             \Log::warning('Fallo en efectos colaterales al desvincular staff', [
                 'staff_id' => $staff->id,
+                'user_id' => $staff->user_id, // 🔥 Log user_id también
                 'business_id' => (int)$businessId,
                 'error' => $e->getMessage(),
             ]);
@@ -500,6 +553,7 @@ class AdminController extends Controller
         } catch (\Throwable $e) {
             \Log::warning('No se pudo notificar desvinculación en Firebase', [
                 'staff_id' => $staffSnapshot->id,
+                'user_id' => $staffSnapshot->user_id, // 🔥 Log user_id también
                 'business_id' => (int)$businessId,
                 'error' => $e->getMessage(),
             ]);
@@ -507,7 +561,8 @@ class AdminController extends Controller
 
         return response()->json([
             'message' => 'Personal eliminado exitosamente',
-            'staff_id' => (int)$staffId,
+            'user_id' => (int)$userId, // 🔥 CAMBIO: Devolver user_id en vez de staff_id
+            'staff_id' => (int)$staff->id, // Mantener para compatibilidad
             'status' => 'unlinked',
         ]);
     }
@@ -1077,6 +1132,7 @@ class AdminController extends Controller
 
                 return [
                     'id' => $staffMember->id, // ID del registro staff
+                    'user_id' => $staffMember->user_id, // 🔥 PUNTO 10: ID del usuario (usado por frontend)
                     'status' => $staffMember->status,
                     'position' => $staffMember->position,
                     'hire_date' => $staffMember->hire_date,
@@ -1088,6 +1144,12 @@ class AdminController extends Controller
         ]);
     }
 
+    /**
+     * 🔥 PUNTO 10: Obtener staff member por user_id
+     * 
+     * El frontend envía user_id en la ruta, no staff.id
+     * Endpoint: GET /api/admin/staff/{userId}
+     */
     public function getStaffMember(Request $request, $id)
     {
         $user = $request->user();
@@ -1120,15 +1182,16 @@ class AdminController extends Controller
         if (!is_numeric($id)) {
             return response()->json([
                 'message' => 'ID de staff inválido',
-                'staff_id' => $id,
+                'user_id' => $id, // 🔥 CAMBIO: Referencia como user_id
             ], 400);
         }
 
         // Permitir consultar no confirmados sólo si include_unconfirmed=true
         $includeUnconfirmed = filter_var($request->query('include_unconfirmed', false), FILTER_VALIDATE_BOOLEAN);
 
+        // 🔥 CAMBIO: Buscar por user_id en vez de id
         $query = Staff::with('reviews')
-            ->where('id', (int)$id)
+            ->where('user_id', (int)$id)
             ->where('business_id', $activeBusinessId);
 
         if (!$includeUnconfirmed) {
@@ -1140,7 +1203,7 @@ class AdminController extends Controller
         if (!$staff) {
             return response()->json([
                 'message' => 'Staff no encontrado o no confirmado para el negocio activo',
-                'staff_id' => (int)$id,
+                'user_id' => (int)$id, // 🔥 CAMBIO: Referencia como user_id
                 'active_business_id' => (int)$activeBusinessId,
                 'include_unconfirmed' => $includeUnconfirmed,
             ], 404);
@@ -1152,6 +1215,12 @@ class AdminController extends Controller
         ]);
     }
 
+    /**
+     * 🔥 PUNTO 10: Actualizar staff member por user_id
+     * 
+     * El frontend envía user_id en la ruta, no staff.id
+     * Endpoint: PUT/PATCH /api/admin/staff/{userId}
+     */
     public function updateStaffMember(Request $request, $id)
     {
         $request->validate([
@@ -1177,7 +1246,9 @@ class AdminController extends Controller
 
         $user = $request->user();
         $activeBusinessId = $this->activeBusinessId($user, 'admin');
-        $staff = Staff::where('id', $id)
+        
+        // 🔥 CAMBIO: Buscar por user_id en vez de id
+        $staff = Staff::where('user_id', $id)
             ->where('business_id', $activeBusinessId)
             ->firstOrFail();
 
@@ -1305,7 +1376,10 @@ class AdminController extends Controller
         ], 201);
     }
 
-    public function addReview(Request $request, $staffId)
+    /**
+     * 🔥 PUNTO 10: Agregar review por user_id
+     */
+    public function addReview(Request $request, $userId)
     {
         $request->validate([
             'rating' => 'required|integer|min:1|max:5',
@@ -1314,7 +1388,9 @@ class AdminController extends Controller
 
         $user = $request->user();
         $activeBusinessId = $this->activeBusinessId($user, 'admin');
-        $staff = Staff::where('id', $staffId)
+        
+        // 🔥 CAMBIO: Buscar por user_id
+        $staff = Staff::where('user_id', $userId)
             ->where('business_id', $activeBusinessId)
             ->firstOrFail();
 
@@ -1331,11 +1407,16 @@ class AdminController extends Controller
         ], 201);
     }
 
-    public function deleteReview(Request $request, $staffId, $id)
+    /**
+     * 🔥 PUNTO 10: Eliminar review por user_id
+     */
+    public function deleteReview(Request $request, $userId, $id)
     {
         $user = $request->user();
         $activeBusinessId = $this->activeBusinessId($user, 'admin');
-        $staff = Staff::where('id', $staffId)
+        
+        // 🔥 CAMBIO: Buscar por user_id
+        $staff = Staff::where('user_id', $userId)
             ->where('business_id', $activeBusinessId)
             ->firstOrFail();
 
@@ -1773,13 +1854,14 @@ class AdminController extends Controller
     }
 
     /**
-     * Generar enlace directo a WhatsApp para contactar al mozo
+     * 🔥 PUNTO 10: Generar enlace directo a WhatsApp para contactar al mozo (por user_id)
      */
-    public function getWhatsAppLink(Request $request, $staffId)
+    public function getWhatsAppLink(Request $request, $userId)
     {
         $user = Auth::user();
         
-        $staff = Staff::where('id', $staffId)
+        // 🔥 CAMBIO: Buscar por user_id
+        $staff = Staff::where('user_id', $userId)
             ->where('business_id', $user->business_id)
             ->firstOrFail();
 

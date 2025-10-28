@@ -237,7 +237,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Rutas de ADMIN: acceso completo sin restricciones de plan (temporal)
     Route::prefix('admin')->group(function () {
-        Route::delete('/staff/{staffId}', [AdminController::class, 'removeStaff']);
+        // 🔥 PUNTO 10: Rutas de staff usan user_id (no staff.id)
+        Route::delete('/staff/{userId}', [AdminController::class, 'removeStaff']);
         Route::post('/staff/request/{requestId}', [AdminController::class, 'handleStaffRequest']);
     Route::get('/staff/requests', [AdminController::class, 'fetchStaffRequests']);
     Route::get('/staff/requests/archived', [AdminController::class, 'fetchArchivedRequests']);
@@ -283,15 +284,15 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::delete('/tables/{table}/silence', [WaiterCallController::class, 'unsilenceTable']);
 
         Route::get('/staff', [AdminController::class, 'getStaff']);
-        Route::get('/staff/{id}', [AdminController::class, 'getStaffMember']);
-        Route::put('/staff/{id}', [AdminController::class, 'updateStaffMember']);
+        Route::get('/staff/{userId}', [AdminController::class, 'getStaffMember']); // 🔥 PUNTO 10: user_id
+        Route::put('/staff/{userId}', [AdminController::class, 'updateStaffMember']); // 🔥 PUNTO 10: user_id
         Route::post('/staff/invite', [AdminController::class, 'inviteStaff']);
-        Route::post('/staff/{id}/reviews', [AdminController::class, 'addReview']);
-        Route::delete('/staff/{staffId}/reviews/{id}', [AdminController::class, 'deleteReview']);
+        Route::post('/staff/{userId}/reviews', [AdminController::class, 'addReview']); // 🔥 PUNTO 10: user_id
+        Route::delete('/staff/{userId}/reviews/{id}', [AdminController::class, 'deleteReview']); // 🔥 PUNTO 10: user_id
         
         // Funcionalidades adicionales para el admin
         Route::post('/staff/bulk-process', [AdminController::class, 'bulkProcessRequests']);
-        Route::get('/staff/{id}/whatsapp', [AdminController::class, 'getWhatsAppLink']);
+        Route::get('/staff/{userId}/whatsapp', [AdminController::class, 'getWhatsAppLink']); // 🔥 PUNTO 10: user_id
         Route::get('/profile', [AdminController::class, 'getAdminProfile']);
         Route::post('/profile/update', [AdminController::class, 'updateAdminProfile']);
 
