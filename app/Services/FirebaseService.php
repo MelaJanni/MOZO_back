@@ -800,6 +800,14 @@ class FirebaseService
                     'headers' => [
                         'Urgency' => 'high'
                     ],
+                    // ✅ IMPORTANTE: Incluir notification en webpush para Web Push API
+                    'notification' => [
+                        'title' => $title,
+                        'body' => $body,
+                        'icon' => '/logo192.png',
+                        'badge' => '/badge-72x72.png',
+                        'requireInteraction' => true
+                    ],
                     'fcm_options' => [
                         'link' => rtrim(config('app.url', '/'), '/') . '/'
                     ]
