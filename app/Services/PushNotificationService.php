@@ -164,7 +164,7 @@ class PushNotificationService
                 'android' => [
                     'priority' => 'high',
                     'notification' => [
-                        'channel_id' => 'waiter_calls',
+                        'channel_id' => 'waiter_urgent',
                         'sound' => 'default'
                     ]
                 ],

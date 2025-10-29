@@ -128,9 +128,9 @@ class FirebaseService
         // 🚀 OPTIMIZACIÓN: Configuración de prioridad para delivery inmediato
         $isHighPriority = $priority === 'high';
         
-    // Detectar si es notificación unified para forzar canal estándar
+    // Detectar si es notificación unified para forzar canal urgente (llamadas de mesa)
     $isUnified = isset($data['type']) && $data['type'] === 'unified';
-    $forcedChannel = $isUnified ? 'mozo_waiter' : null;
+    $forcedChannel = $isUnified ? 'waiter_urgent' : null;
 
     $message = [
             'message' => [
@@ -164,7 +164,7 @@ class FirebaseService
                     'notification' => [
                         'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
                         'sound' => 'default',
-                        // Canal unificado para type=unified; mantiene compatibilidad waiter_* para resto
+                        // Usa waiter_urgent para llamadas de mesa urgentes, waiter_normal para notificaciones normales
                         'channel_id' => $forcedChannel ?? (isset($data['channel_id']) ? $data['channel_id'] : ($isHighPriority ? 'waiter_urgent' : 'waiter_normal')),
                         'tag' => isset($data['notification_id']) ? $data['notification_id'] : (isset($data['call_id']) ? $data['call_id'] : null)
                     ],
@@ -573,7 +573,7 @@ class FirebaseService
             'message' => $body,
             'table_number' => (string)$tableNumber,
             'timestamp' => (string) now()->timestamp,
-            'channel_id' => 'mozo_waiter',
+            'channel_id' => 'waiter_urgent',
         ];
         
         $data = array_merge($baseData, $extraData);
@@ -692,7 +692,7 @@ class FirebaseService
             'title' => $title,
             'message' => $body,
             'timestamp' => (string) now()->timestamp,
-            'channel_id' => $data['channel_id'] ?? 'mozo_waiter',
+            'channel_id' => $data['channel_id'] ?? 'waiter_normal',
         ];
         $mergedData = array_merge($baseData, $data);
 
