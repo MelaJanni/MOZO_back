@@ -38,18 +38,22 @@ class WaiterController extends Controller
      */
     private function ensureBusinessId($waiter, bool $allowStaffCreation = true)
     {
-        if (!$waiter->business_id) {
+        $businessId = $waiter->business_id;
+        
+        if (!$businessId) {
             $staffRecord = Staff::where('user_id', $waiter->id)
                 ->where('status', 'confirmed')
                 ->with('business')
                 ->first();
             
             if ($staffRecord && $allowStaffCreation) {
+                $businessId = $staffRecord->business_id;
+                
                 // Persistir negocio activo usando la columna disponible
                 if (Schema::hasColumn('users', 'active_business_id')) {
-                    $waiter->update(['active_business_id' => $staffRecord->business_id]);
+                    $waiter->update(['active_business_id' => $businessId]);
                 } elseif (Schema::hasColumn('users', 'business_id')) {
-                    $waiter->update(['business_id' => $staffRecord->business_id]);
+                    $waiter->update(['business_id' => $businessId]);
                 } else {
                     Log::warning('No columns to store active business on users table');
                 }
@@ -57,15 +61,48 @@ class WaiterController extends Controller
                 
                 Log::info('Auto-fixed missing business_id', [
                     'waiter_id' => $waiter->id,
-                    'assigned_business_id' => $staffRecord->business_id,
+                    'assigned_business_id' => $businessId,
                     'method' => debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1]['function'] ?? 'unknown'
                 ]);
-                
-                return $staffRecord->business_id;
             }
         }
         
-        return $waiter->business_id;
+        // 🔧 FIX: Asegurar que exista el registro en user_active_roles para persistencia
+        if ($businessId) {
+            try {
+                $existingRole = $waiter->activeRoles()
+                    ->where('business_id', $businessId)
+                    ->where('active_role', 'waiter')
+                    ->first();
+                
+                if (!$existingRole) {
+                    // Crear el registro para persistir la sesión
+                    $waiter->activeRoles()->updateOrCreate(
+                        [
+                            'business_id' => $businessId,
+                        ],
+                        [
+                            'active_role' => 'waiter',
+                            'switched_at' => now()
+                        ]
+                    );
+                    
+                    Log::info('Auto-created user_active_role for waiter persistent session', [
+                        'user_id' => $waiter->id,
+                        'business_id' => $businessId,
+                        'role' => 'waiter'
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                Log::warning('Failed to create user_active_role for waiter', [
+                    'user_id' => $waiter->id,
+                    'business_id' => $businessId,
+                    'error' => $e->getMessage()
+                ]);
+            }
+        }
+        
+        return $businessId;
     }
 
     public function onboardBusiness(Request $request)

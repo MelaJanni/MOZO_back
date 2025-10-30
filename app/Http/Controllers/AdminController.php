@@ -57,6 +57,40 @@ class AdminController extends Controller
             ], 200);
         }
 
+        // 🔧 FIX: Asegurar que exista el registro en user_active_roles
+        // Si el usuario tiene un business activo pero no tiene registro en user_active_roles, crearlo
+        try {
+            $existingRole = $user->activeRoles()
+                ->where('business_id', $activeBusinessId)
+                ->where('active_role', 'admin')
+                ->first();
+            
+            if (!$existingRole) {
+                // Crear el registro para persistir la sesión
+                $user->activeRoles()->updateOrCreate(
+                    [
+                        'business_id' => $activeBusinessId,
+                    ],
+                    [
+                        'active_role' => 'admin',
+                        'switched_at' => now()
+                    ]
+                );
+                
+                \Log::info('Auto-created user_active_role for persistent session', [
+                    'user_id' => $user->id,
+                    'business_id' => $activeBusinessId,
+                    'role' => 'admin'
+                ]);
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('Failed to create user_active_role', [
+                'user_id' => $user->id,
+                'business_id' => $activeBusinessId,
+                'error' => $e->getMessage()
+            ]);
+        }
+
     // Eager load solo si las tablas existen para evitar 500 en entornos sin migraciones completas
     $with = [];
     if (Schema::hasTable('tables')) { $with[] = 'tables'; }
