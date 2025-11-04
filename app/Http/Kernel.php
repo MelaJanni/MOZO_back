@@ -77,5 +77,6 @@ class Kernel extends HttpKernel
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'membership' => \App\Http\Middleware\EnsureActiveMembership::class, // TEMPORAL: Modificado para dar acceso completo a admin
         'detect.mobile.app' => \App\Http\Middleware\DetectMobileAppSession::class,
+        'business' => \App\Http\Middleware\EnsureActiveBusiness::class, // ✨ Resuelve business_id activo
     ];
 }
