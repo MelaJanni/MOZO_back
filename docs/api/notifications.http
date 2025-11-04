@@ -1,0 +1,293 @@
+# Notification Endpoints Documentation
+# Base URL: https://mozoqr.com/api
+
+@baseUrl = https://mozoqr.com/api
+@token = user_token_here
+@notificationId = notification_uuid_here
+
+###############################################
+# 1. Registrar Token FCM (Device Token)
+###############################################
+
+### Register FCM Token
+# POST /api/device-token
+# Descripción: Registra token FCM para recibir push notifications
+POST {{baseUrl}}/device-token
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "token": "fcm_token_here_very_long_string",
+  "device_type": "android"
+}
+
+### Response (Success): 200 OK
+# {
+#   "success": true,
+#   "message": "Token registrado correctamente"
+# }
+
+### Register iOS Token
+POST {{baseUrl}}/device-token
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "token": "ios_fcm_token_here",
+  "device_type": "ios"
+}
+
+### Register Web Token
+POST {{baseUrl}}/device-token
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "token": "web_fcm_token_here",
+  "device_type": "web"
+}
+
+###############################################
+# 2. Eliminar Token FCM
+###############################################
+
+### Delete FCM Token
+# DELETE /api/device-token
+# Descripción: Elimina token al cerrar sesión o desinstalar app
+DELETE {{baseUrl}}/device-token
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "token": "fcm_token_to_delete"
+}
+
+### Response: 200 OK
+# {
+#   "success": true,
+#   "message": "Token eliminado"
+# }
+
+###############################################
+# 3. Obtener Notificaciones del Usuario
+###############################################
+
+### Get User Notifications
+# GET /api/user/notifications
+# Descripción: Lista todas las notificaciones del usuario
+GET {{baseUrl}}/user/notifications
+Authorization: Bearer {{token}}
+
+### Response: 200 OK
+# {
+#   "success": true,
+#   "notifications": [
+#     {
+#       "id": "uuid-1234",
+#       "type": "WaiterCallNotification",
+#       "data": {
+#         "title": "Nueva llamada - Mesa 5",
+#         "body": "Cliente solicita atención",
+#         "call_id": 123
+#       },
+#       "read_at": null,
+#       "created_at": "2025-11-04T20:30:00Z"
+#     },
+#     {
+#       "id": "uuid-5678",
+#       "type": "StaffRequestNotification",
+#       "data": {
+#         "title": "Nueva solicitud de staff",
+#         "body": "Juan Pérez quiere unirse"
+#       },
+#       "read_at": "2025-11-04T20:35:00Z",
+#       "created_at": "2025-11-04T19:00:00Z"
+#     }
+#   ]
+# }
+
+### Get Unread Notifications Only
+GET {{baseUrl}}/user/notifications?unread=true
+Authorization: Bearer {{token}}
+
+###############################################
+# 4. Marcar Notificación como Leída
+###############################################
+
+### Mark Notification as Read
+# POST /api/user/notifications/{notificationId}/read
+POST {{baseUrl}}/user/notifications/{{notificationId}}/read
+Authorization: Bearer {{token}}
+
+### Response: 200 OK
+# {
+#   "success": true,
+#   "message": "Notificación marcada como leída"
+# }
+
+###############################################
+# 5. Enviar Notificación a Usuario Específico (Admin)
+###############################################
+
+### Send Notification to Specific User
+# POST /api/admin/notifications/send-to-user
+# Descripción: Admin envía notificación a un usuario específico
+POST {{baseUrl}}/admin/notifications/send-to-user
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "user_id": 10,
+  "title": "Mensaje importante",
+  "body": "Recuerda tu turno mañana a las 10:00",
+  "data": {
+    "type": "reminder",
+    "action": "open_schedule"
+  }
+}
+
+### Response: 200 OK
+# {
+#   "success": true,
+#   "message": "Notificación enviada",
+#   "sent_to_devices": 2
+# }
+
+###############################################
+# 6. Enviar Notificación a Todos (Admin)
+###############################################
+
+### Send Notification to All Users
+# POST /api/admin/notifications/send-to-all
+# Descripción: Broadcast a todos los usuarios del negocio
+POST {{baseUrl}}/admin/notifications/send-to-all
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Anuncio importante",
+  "body": "El restaurante cerrará temprano hoy",
+  "data": {
+    "type": "announcement"
+  }
+}
+
+### Response: 200 OK
+# {
+#   "success": true,
+#   "message": "Notificación enviada a todos",
+#   "sent_count": 15
+# }
+
+###############################################
+# 7. Test Notification (Admin)
+###############################################
+
+### Send Test Notification
+# POST /api/admin/send-test-notification
+# Descripción: Enviar notificación de prueba
+POST {{baseUrl}}/admin/send-test-notification
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Test Notification",
+  "body": "This is a test message"
+}
+
+### Response: 200 OK
+# {
+#   "success": true,
+#   "message": "Test notification sent"
+# }
+
+###############################################
+# 8. Obtener Tokens de Usuario (Debug)
+###############################################
+
+### Get User Device Tokens
+# GET /api/device-tokens/{userId}
+# Descripción: Ver todos los tokens FCM de un usuario
+GET {{baseUrl}}/device-tokens/10
+Authorization: Bearer {{token}}
+
+### Response: 200 OK
+# {
+#   "success": true,
+#   "tokens": [
+#     {
+#       "id": 1,
+#       "token": "fcm_token_android",
+#       "device_type": "android",
+#       "is_active": true,
+#       "last_used_at": "2025-11-04T20:30:00Z"
+#     },
+#     {
+#       "id": 2,
+#       "token": "fcm_token_ios",
+#       "device_type": "ios",
+#       "is_active": true,
+#       "last_used_at": "2025-11-04T19:00:00Z"
+#     }
+#   ]
+# }
+
+###############################################
+# NOTAS IMPORTANTES
+###############################################
+
+# 1. FCM Tokens expiran automáticamente después de 60 días de inactividad
+# 2. Un usuario puede tener múltiples tokens (Android + iOS + Web)
+# 3. Notificaciones se envían de forma asíncrona vía Queue Jobs
+# 4. Firebase Cloud Messaging requiere configuración en .env:
+#    - FIREBASE_SERVER_KEY
+#    - FIREBASE_PROJECT_ID
+# 5. Las notificaciones tienen dos tipos:
+#    - Notification: Mostradas por el sistema (título + cuerpo)
+#    - Data: Procesadas por la app (custom payload)
+# 6. Priority: "high" para notificaciones críticas (llamadas de mozo)
+# 7. TTL (Time To Live): 24 horas por defecto
+
+###############################################
+# ESTRUCTURA DE PAYLOAD FCM
+###############################################
+
+# Ejemplo de payload completo enviado a FCM:
+# {
+#   "message": {
+#     "token": "device_fcm_token",
+#     "notification": {
+#       "title": "Nueva llamada - Mesa 5",
+#       "body": "Cliente solicita atención"
+#     },
+#     "data": {
+#       "call_id": "123",
+#       "table_id": "5",
+#       "business_id": "1",
+#       "type": "waiter_call",
+#       "action": "open_call_detail"
+#     },
+#     "android": {
+#       "priority": "high",
+#       "notification": {
+#         "sound": "default",
+#         "click_action": "FLUTTER_NOTIFICATION_CLICK"
+#       }
+#     },
+#     "apns": {
+#       "headers": {
+#         "apns-priority": "10"
+#       },
+#       "payload": {
+#         "aps": {
+#           "alert": {
+#             "title": "Nueva llamada - Mesa 5",
+#             "body": "Cliente solicita atención"
+#           },
+#           "sound": "default",
+#           "badge": 1
+#         }
+#       }
+#     }
+#   }
+# }

@@ -1,0 +1,156 @@
+# Staff Management Endpoints Documentation
+# Base URL: https://mozoqr.com/api
+
+@baseUrl = https://mozoqr.com/api
+@adminToken = admin_token_here
+@waiterToken = waiter_token_here
+@requestId = 1
+@userId = 5
+
+###############################################
+# 1. Unirse a Negocio (Mozo)
+###############################################
+
+### Join Business with Invitation Code
+# POST /api/waiter/join-business
+POST {{baseUrl}}/waiter/join-business
+Authorization: Bearer {{waiterToken}}
+Content-Type: application/json
+
+{
+  "invitation_code": "INVITE123"
+}
+
+### Response (Success): 200 OK
+# {
+#   "success": true,
+#   "request": {
+#     "id": 45,
+#     "status": "pending",
+#     "message": "Solicitud enviada al administrador"
+#   }
+# }
+
+###############################################
+# 2. Ver Solicitudes de Staff (Admin)
+###############################################
+
+### Get Pending Staff Requests
+# GET /api/admin/staff/requests?status=pending
+GET {{baseUrl}}/admin/staff/requests?status=pending
+Authorization: Bearer {{adminToken}}
+
+### Response: 200 OK
+# {
+#   "success": true,
+#   "requests": [
+#     {
+#       "id": 45,
+#       "user_id": 10,
+#       "user_name": "Juan Pérez",
+#       "status": "pending",
+#       "created_at": "2025-11-04T20:00:00Z"
+#     }
+#   ]
+# }
+
+###############################################
+# 3. Aprobar Solicitud (Admin)
+###############################################
+
+### Approve Staff Request
+# POST /api/admin/staff/request/{requestId}
+POST {{baseUrl}}/admin/staff/request/{{requestId}}
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "action": "approve"
+}
+
+### Response: 200 OK
+# {
+#   "success": true,
+#   "message": "Mozo aprobado y agregado al equipo"
+# }
+
+###############################################
+# 4. Rechazar Solicitud (Admin)
+###############################################
+
+### Reject Staff Request
+# POST /api/admin/staff/request/{requestId}}
+POST {{baseUrl}}/admin/staff/request/{{requestId}}
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "action": "reject",
+  "reason": "No estamos contratando en este momento"
+}
+
+### Response: 200 OK
+# {
+#   "success": true,
+#   "message": "Solicitud rechazada"
+# }
+
+###############################################
+# 5. Listar Staff (Admin)
+###############################################
+
+### Get Business Staff
+# GET /api/admin/staff
+GET {{baseUrl}}/admin/staff
+Authorization: Bearer {{adminToken}}
+
+### Response: 200 OK
+# {
+#   "success": true,
+#   "staff": [
+#     {
+#       "user_id": 5,
+#       "name": "María García",
+#       "phone": "123456789",
+#       "status": "active",
+#       "joined_at": "2025-10-01T00:00:00Z"
+#     }
+#   ]
+# }
+
+###############################################
+# 6. Remover Staff (Admin)
+###############################################
+
+### Remove Staff Member
+# DELETE /api/admin/staff/{userId}
+DELETE {{baseUrl}}/admin/staff/{{userId}}
+Authorization: Bearer {{adminToken}}
+
+### Response: 200 OK
+# {
+#   "success": true,
+#   "message": "Mozo removido del equipo"
+# }
+
+###############################################
+# 7. Invitar Staff (Admin)
+###############################################
+
+### Invite Staff
+# POST /api/admin/staff/invite
+POST {{baseUrl}}/admin/staff/invite
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "email": "nuevo@mozo.com",
+  "name": "Nuevo Mozo",
+  "phone": "987654321"
+}
+
+### Response: 200 OK
+# {
+#   "success": true,
+#   "message": "Invitación enviada"
+# }

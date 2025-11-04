@@ -36,7 +36,9 @@
       "Bash(ssh:*)",
       "WebSearch",
       "Bash(unzip:*)",
-      "Bash(sshpass:*)"
+      "Bash(sshpass:*)",
+      "Bash(echo:*)",
+      "Bash(test:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",

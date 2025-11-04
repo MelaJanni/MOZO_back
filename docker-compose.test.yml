@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  mysql_test:
+    image: mysql:8.0
+    container_name: mozo_mysql_test
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: mozo_db_test
+      MYSQL_USER: mozo_test
+      MYSQL_PASSWORD: mozo_test_pass
+    ports:
+      - "3308:3306"
+    volumes:
+      - mysql_test_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - mozo_test_network
+
+volumes:
+  mysql_test_data:
+    driver: local
+
+networks:
+  mozo_test_network:
+    driver: bridge

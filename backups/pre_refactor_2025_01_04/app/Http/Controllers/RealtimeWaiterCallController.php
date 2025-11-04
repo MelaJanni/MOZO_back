@@ -1,0 +1,355 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\WaiterCall;
+use App\Models\Table;
+use App\Services\UnifiedFirebaseService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+
+class RealtimeWaiterCallController extends Controller
+{
+    private $unifiedFirebaseService;
+
+    public function __construct(
+        UnifiedFirebaseService $unifiedFirebaseService
+    ) {
+        $this->unifiedFirebaseService = $unifiedFirebaseService;
+    }
+
+    /**
+     * 🚀 CREAR LLAMADA CON NOTIFICACIÓN EN TIEMPO REAL
+     */
+    public function createCall(Request $request, Table $table)
+    {
+        $request->validate([
+            'message' => 'nullable|string|max:255',
+            'urgency' => 'nullable|in:normal,high'
+        ]);
+
+        $startTime = microtime(true);
+
+        try {
+            // Verificar que la mesa tenga mozo
+            if (!$table->activeWaiter) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Mesa sin mozo asignado'
+                ], 400);
+            }
+
+            // 1. 💾 CREAR EN BASE DE DATOS
+            $call = WaiterCall::create([
+                'table_id' => $table->id,
+                // active_waiter_id referencia a users.id; asegurar consistencia
+                'waiter_id' => $table->activeWaiter->id,
+                'business_id' => $table->business_id,
+                'restaurant_id' => $table->restaurant_id,
+                'status' => 'pending',
+                'message' => $request->message ?? "Mesa {$table->number} solicita atención",
+                'called_at' => now(),
+                'metadata' => [
+                    'urgency' => $request->urgency ?? 'normal',
+                    'source' => 'api',
+                    'ip' => $request->ip()
+                ]
+            ]);
+
+            // 2. 🔥 ESTRUCTURA UNIFICADA - Una sola escritura para todas las vistas (sin fallback legacy)
+            $realtimeSuccess = $this->unifiedFirebaseService->writeCall($call, 'created');
+
+            $totalTime = (microtime(true) - $startTime) * 1000;
+
+            Log::info("Waiter call created", [
+                'call_id' => $call->id,
+                'table_id' => $table->id,
+                'waiter_id' => $table->activeWaiter->id,
+                'realtime_success' => $realtimeSuccess,
+                'duration_ms' => round($totalTime, 2)
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Llamada creada exitosamente',
+                'data' => [
+                    'call_id' => $call->id,
+                    'status' => 'pending',
+                    'waiter' => [
+                        'id' => $table->activeWaiter->id,
+                        'name' => $table->activeWaiter->name
+                    ],
+                    'realtime_enabled' => $realtimeSuccess,
+                    'performance_ms' => round($totalTime, 2)
+                ]
+            ], 201);
+
+        } catch (\Exception $e) {
+            Log::error('Error creating waiter call', [
+                'error' => $e->getMessage(),
+                'table_id' => $table->id
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al crear llamada',
+                'error' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
+        }
+    }
+
+    /**
+     * ✅ RECONOCER LLAMADA - CON REAL-TIME AL CLIENTE
+     */
+    public function acknowledgeCall(Request $request, $callId)
+    {
+        try {
+            $call = WaiterCall::with(['table', 'waiter'])->findOrFail($callId);
+            
+            // Actualizar en BD
+            $call->update([
+                'status' => 'acknowledged',
+                'acknowledged_at' => now()
+            ]);
+
+            // 🔥 ESTRUCTURA UNIFICADA - Una sola actualización para todas las vistas
+            $this->unifiedFirebaseService->writeCall($call, 'acknowledged');
+
+            // 🔥 NO PUSH NOTIFICATION - Solo actualización en tiempo real
+            // El cliente verá el cambio via Firebase Realtime Database listener
+
+            // 📋 MARCAR NOTIFICACIONES RELACIONADAS COMO LEÍDAS
+            $this->markRelatedNotificationsAsRead($call);
+
+            Log::info("Call acknowledged with real-time updates", ['call_id' => $callId]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Llamada reconocida - Cliente notificado en tiempo real'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error acknowledging call', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al reconocer llamada'
+            ], 500);
+        }
+    }
+
+    /**
+     * ✅ COMPLETAR LLAMADA - CON REAL-TIME AL CLIENTE
+     */
+    public function completeCall(Request $request, $callId)
+    {
+        try {
+            $call = WaiterCall::with(['table', 'waiter'])->findOrFail($callId);
+            
+            // Actualizar en BD
+            $call->update([
+                'status' => 'completed',
+                'completed_at' => now()
+            ]);
+
+            // 🔥 ESTRUCTURA UNIFICADA - Marcar como completada y remover automáticamente
+            $this->unifiedFirebaseService->removeCall($call);
+
+            // 🔥 NO PUSH NOTIFICATION - Solo actualización en tiempo real
+            // El cliente verá el cambio via Firebase Realtime Database listener
+
+            // 📋 MARCAR NOTIFICACIONES RELACIONADAS COMO LEÍDAS
+            $this->markRelatedNotificationsAsRead($call);
+
+            // 🕒 AUTO-CLEANUP: Programar eliminación automática después de 30 segundos
+            $this->scheduleCallCleanup($call->table_id, $call->id, 30);
+
+            Log::info("Call completed with real-time updates", ['call_id' => $callId]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Servicio completado - Cliente notificado en tiempo real'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error completing call', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al completar llamada'
+            ], 500);
+        }
+    }
+
+    /**
+     * 📋 OBTENER LLAMADAS PENDIENTES DEL MOZO
+     */
+    public function getPendingCalls(Request $request)
+    {
+        try {
+            $waiterId = $request->user()->id;
+            
+            $calls = WaiterCall::with(['table'])
+                ->where('waiter_id', $waiterId)
+                ->where('status', 'pending')
+                ->orderBy('called_at', 'desc')
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'data' => $calls->map(function($call) {
+                    return [
+                        'id' => $call->id,
+                        'table_number' => $call->table->number,
+                        'table_name' => $call->table->name,
+                        'message' => $call->message,
+                        'urgency' => $call->metadata['urgency'] ?? 'normal',
+                        'called_at' => $call->called_at,
+                        'status' => $call->status
+                    ];
+                })
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * 🧪 TEST DE CONEXIÓN FIREBASE
+     */
+    public function testFirebase()
+    {
+        $result = $this->unifiedFirebaseService->testConnection();
+        return response()->json([
+            'firebase_status' => $result,
+            'timestamp' => now()
+        ]);
+    }
+
+    /**
+     * 🔍 DEBUG: OBTENER LLAMADAS RECIENTES PARA TESTING
+     */
+    public function getRecentCalls()
+    {
+        try {
+            $recentCalls = WaiterCall::with(['table', 'waiter'])
+                ->orderBy('created_at', 'desc')
+                ->take(10)
+                ->get()
+                ->map(function($call) {
+                    return [
+                        'id' => $call->id,
+                        'table_id' => $call->table_id,
+                        'table_number' => $call->table->number ?? 'N/A',
+                        'waiter_id' => $call->waiter_id,
+                        'waiter_name' => $call->waiter->name ?? 'N/A',
+                        'status' => $call->status,
+                        'message' => $call->message,
+                        'created_at' => $call->created_at,
+                        'acknowledged_at' => $call->acknowledged_at,
+                        'completed_at' => $call->completed_at
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'recent_calls' => $recentCalls,
+                'total_found' => $recentCalls->count()
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * 🔔 ENVIAR NOTIFICACIÓN PUSH AL CLIENTE
+     */
+
+    /**
+     * 🕒 PROGRAMAR LIMPIEZA AUTOMÁTICA DE LLAMADA COMPLETADA
+     */
+    private function scheduleCallCleanup($tableId, $callId, $delaySeconds = 30)
+    {
+        try {
+            // Usar dispatch con delay para programar eliminación
+            dispatch(function() use ($tableId, $callId) {
+                try {
+                    // Eliminar de Firebase después del delay
+                    \Illuminate\Support\Facades\Http::timeout(3)->delete(
+                        "https://mozoqr-7d32c-default-rtdb.firebaseio.com/tables/call_status/{$callId}.json"
+                    );
+                    
+                    Log::info("Auto-cleanup completed for call", [
+                        'table_id' => $tableId,
+                        'call_id' => $callId,
+                        'cleanup_delay_seconds' => 30
+                    ]);
+                    
+                } catch (\Exception $e) {
+                    Log::warning('Auto-cleanup failed', [
+                        'table_id' => $tableId,
+                        'call_id' => $callId,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            })->delay(now()->addSeconds($delaySeconds));
+            
+            Log::info("Auto-cleanup scheduled", [
+                'table_id' => $tableId,
+                'call_id' => $callId,
+                'delay_seconds' => $delaySeconds
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Failed to schedule auto-cleanup', [
+                'table_id' => $tableId,
+                'call_id' => $callId,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * 📋 MARCAR NOTIFICACIONES RELACIONADAS COMO LEÍDAS
+     */
+    private function markRelatedNotificationsAsRead($call)
+    {
+        try {
+            // Buscar notificaciones del mozo relacionadas con esta llamada
+            $waiter = \App\Models\User::find($call->waiter_id);
+            
+            if ($waiter) {
+                // Buscar notificaciones no leídas que contengan el ID de la llamada o mesa
+                $notifications = $waiter->unreadNotifications()
+                    ->where(function($query) use ($call) {
+                        $query->where('data->call_id', $call->id)
+                              ->orWhere('data->table_id', $call->table_id)
+                              ->orWhere('data->table_number', $call->table->number ?? null);
+                    })
+                    ->get();
+
+                foreach ($notifications as $notification) {
+                    $notification->markAsRead();
+                }
+
+                Log::info("Marked notifications as read", [
+                    'call_id' => $call->id,
+                    'waiter_id' => $call->waiter_id,
+                    'notifications_marked' => $notifications->count()
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            Log::warning('Failed to mark notifications as read', [
+                'call_id' => $call->id,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+}

@@ -1,0 +1,317 @@
+# Waiter Call Endpoints Documentation
+# Base URL: https://mozoqr.com/api
+# Variables se pueden configurar en settings de VS Code REST Client
+
+@baseUrl = https://mozoqr.com/api
+@token = your_auth_token_here
+@tableId = 1
+@callId = 1
+
+###############################################
+# 1. Llamar al Mozo (Público desde QR)
+###############################################
+
+### Call Waiter from QR Code
+# POST /api/qr/table/{tableId}/call
+# Descripción: Cliente escanea QR y llama al mozo
+# Auth: No requiere (público)
+# Respuesta esperada: 200 OK
+POST {{baseUrl}}/qr/table/{{tableId}}/call
+Content-Type: application/json
+
+{
+  "message": "Necesito la cuenta, por favor",
+  "urgency": "normal"
+}
+
+### Response Example (Success)
+# Status: 200 OK
+# {
+#   "success": true,
+#   "call": {
+#     "id": 123,
+#     "table_id": 1,
+#     "waiter_id": 5,
+#     "status": "pending",
+#     "message": "Necesito la cuenta, por favor",
+#     "called_at": "2025-11-04T20:30:00Z",
+#     "firebase_path": "calls/business_1/call_123"
+#   }
+# }
+
+### Response Example (IP Bloqueada)
+# Status: 403 Forbidden
+# {
+#   "success": false,
+#   "message": "Tu IP ha sido bloqueada por spam"
+# }
+
+### Response Example (Mesa Silenciada)
+# Status: 400 Bad Request
+# {
+#   "success": false,
+#   "message": "Esta mesa está temporalmente silenciada"
+# }
+
+###############################################
+# 2. Ver Llamadas Pendientes (Mozo Autenticado)
+###############################################
+
+### Get Pending Calls
+# GET /api/waiter/calls/pending
+# Descripción: Mozo ve llamadas pendientes en tiempo real
+# Auth: Requiere token Sanctum
+# Respuesta esperada: 200 OK
+GET {{baseUrl}}/waiter/calls/pending
+Authorization: Bearer {{token}}
+
+### Response Example
+# Status: 200 OK
+# {
+#   "success": true,
+#   "calls": [
+#     {
+#       "id": 123,
+#       "table_id": 1,
+#       "table_number": "Mesa 1",
+#       "status": "pending",
+#       "message": "Necesito la cuenta",
+#       "called_at": "2025-11-04T20:30:00Z",
+#       "waiting_time": "2 minutos"
+#     },
+#     {
+#       "id": 124,
+#       "table_id": 5,
+#       "table_number": "Mesa 5",
+#       "status": "pending",
+#       "message": "Más agua, por favor",
+#       "called_at": "2025-11-04T20:28:00Z",
+#       "waiting_time": "4 minutos"
+#     }
+#   ],
+#   "count": 2
+# }
+
+###############################################
+# 3. Aceptar Llamada (Mozo)
+###############################################
+
+### Acknowledge Call
+# POST /api/waiter/calls/{callId}/acknowledge
+# Descripción: Mozo acepta la llamada y se dirige a la mesa
+# Auth: Requiere token Sanctum
+# Respuesta esperada: 200 OK
+POST {{baseUrl}}/waiter/calls/{{callId}}/acknowledge
+Authorization: Bearer {{token}}
+
+### Response Example
+# Status: 200 OK
+# {
+#   "success": true,
+#   "call": {
+#     "id": 123,
+#     "status": "acknowledged",
+#     "acknowledged_at": "2025-11-04T20:32:00Z",
+#     "acknowledged_by": 5
+#   },
+#   "message": "Llamada aceptada"
+# }
+
+###############################################
+# 4. Completar Llamada (Mozo)
+###############################################
+
+### Complete Call
+# POST /api/waiter/calls/{callId}/complete
+# Descripción: Mozo marca la llamada como completada
+# Auth: Requiere token Sanctum
+# Respuesta esperada: 200 OK
+POST {{baseUrl}}/waiter/calls/{{callId}}/complete
+Authorization: Bearer {{token}}
+
+### Response Example
+# Status: 200 OK
+# {
+#   "success": true,
+#   "call": {
+#     "id": 123,
+#     "status": "completed",
+#     "completed_at": "2025-11-04T20:35:00Z"
+#   },
+#   "message": "Llamada completada"
+# }
+
+###############################################
+# 5. Historial de Llamadas (Mozo)
+###############################################
+
+### Get Call History
+# GET /api/waiter/calls/history?page=1&per_page=20
+# Descripción: Historial de llamadas completadas
+# Auth: Requiere token Sanctum
+# Respuesta esperada: 200 OK
+GET {{baseUrl}}/waiter/calls/history?page=1&per_page=20
+Authorization: Bearer {{token}}
+
+### Response Example
+# Status: 200 OK
+# {
+#   "success": true,
+#   "calls": {
+#     "data": [
+#       {
+#         "id": 120,
+#         "table_number": "Mesa 3",
+#         "message": "La cuenta",
+#         "called_at": "2025-11-04T19:00:00Z",
+#         "completed_at": "2025-11-04T19:05:00Z",
+#         "response_time": "5 minutos"
+#       }
+#     ],
+#     "current_page": 1,
+#     "total": 150,
+#     "per_page": 20,
+#     "last_page": 8
+#   }
+# }
+
+###############################################
+# 6. Silenciar Mesa (Mozo)
+###############################################
+
+### Silence Table
+# POST /api/waiter/tables/{tableId}/silence
+# Descripción: Silenciar mesa temporalmente (anti-spam)
+# Auth: Requiere token Sanctum
+# Respuesta esperada: 200 OK
+POST {{baseUrl}}/waiter/tables/{{tableId}}/silence
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "duration": 15,
+  "reason": "Cliente molesto - spam"
+}
+
+### Response Example
+# Status: 200 OK
+# {
+#   "success": true,
+#   "silence": {
+#     "table_id": 1,
+#     "silenced_until": "2025-11-04T20:50:00Z",
+#     "reason": "Cliente molesto - spam"
+#   },
+#   "message": "Mesa silenciada por 15 minutos"
+# }
+
+###############################################
+# 7. Activar/Desactivar Mesa (Mozo)
+###############################################
+
+### Activate Table
+# POST /api/waiter/tables/{tableId}/activate
+# Descripción: Activar mesa para recibir llamadas
+# Auth: Requiere token Sanctum
+# Respuesta esperada: 200 OK
+POST {{baseUrl}}/waiter/tables/{{tableId}}/activate
+Authorization: Bearer {{token}}
+
+### Response Example
+# Status: 200 OK
+# {
+#   "success": true,
+#   "table": {
+#     "id": 1,
+#     "number": "Mesa 1",
+#     "status": "available",
+#     "active_waiter_id": 5
+#   },
+#   "message": "Mesa activada"
+# }
+
+### Deactivate Table
+# DELETE /api/waiter/tables/{tableId}/activate
+# Descripción: Desactivar mesa (cliente se fue)
+# Auth: Requiere token Sanctum
+# Respuesta esperada: 200 OK
+DELETE {{baseUrl}}/waiter/tables/{{tableId}}/activate
+Authorization: Bearer {{token}}
+
+### Response Example
+# Status: 200 OK
+# {
+#   "success": true,
+#   "table": {
+#     "id": 1,
+#     "status": "inactive"
+#   },
+#   "message": "Mesa desactivada"
+# }
+
+###############################################
+# 8. Bloquear IP (Anti-spam)
+###############################################
+
+### Block IP
+# POST /api/waiter/ip/block
+# Descripción: Bloquear IP por comportamiento abusivo
+# Auth: Requiere token Sanctum
+# Respuesta esperada: 200 OK
+POST {{baseUrl}}/waiter/ip/block
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "ip_address": "192.168.1.100",
+  "reason": "Spam - 20 llamadas en 5 minutos",
+  "duration_hours": 24
+}
+
+### Response Example
+# Status: 200 OK
+# {
+#   "success": true,
+#   "blocked_ip": {
+#     "ip_address": "192.168.1.100",
+#     "blocked_until": "2025-11-05T20:30:00Z",
+#     "reason": "Spam - 20 llamadas en 5 minutos"
+#   },
+#   "message": "IP bloqueada por 24 horas"
+# }
+
+###############################################
+# 9. Dashboard Mozo
+###############################################
+
+### Get Waiter Dashboard
+# GET /api/waiter/dashboard
+# Descripción: Dashboard con estadísticas del mozo
+# Auth: Requiere token Sanctum
+# Respuesta esperada: 200 OK
+GET {{baseUrl}}/waiter/dashboard
+Authorization: Bearer {{token}}
+
+### Response Example
+# Status: 200 OK
+# {
+#   "success": true,
+#   "dashboard": {
+#     "pending_calls": 3,
+#     "completed_today": 45,
+#     "avg_response_time": "3.5 minutos",
+#     "active_tables": 8,
+#     "silenced_tables": 1,
+#     "recent_calls": [...]
+#   }
+# }
+
+###############################################
+# NOTAS DE TESTING
+###############################################
+
+# 1. Para testing local, cambiar @baseUrl a http://localhost:8000/api
+# 2. Obtener token con POST /api/login
+# 3. Firebase Real-Time Database se actualiza automáticamente en cada operación
+# 4. Notificaciones FCM se envían de forma asíncrona (queue jobs)
+# 5. IP blocking se verifica antes de permitir llamadas desde QR
