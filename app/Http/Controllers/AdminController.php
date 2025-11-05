@@ -25,10 +25,11 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Concerns\ResolvesActiveBusiness;
+use App\Http\Controllers\Concerns\JsonResponses;
 
 class AdminController extends Controller
 {
-    use ResolvesActiveBusiness;
+    use ResolvesActiveBusiness, JsonResponses;
     public function getBusinessInfo(Request $request)
     {
         $user = $request->user();
@@ -38,8 +39,7 @@ class AdminController extends Controller
 
         // Si aún no hay negocio activo, significa que es un admin nuevo
         if (!$activeBusinessId) {
-            return response()->json([
-                'message' => 'No businesses found. Admin needs to create or join a business.',
+            return $this->success([
                 'requires_business_setup' => true,
                 'active_business_id' => null,
                 'available_businesses' => [],
@@ -53,7 +53,7 @@ class AdminController extends Controller
                     'create_business' => true,
                     'join_business' => true
                 ]
-            ], 200);
+            ], 'No businesses found. Admin needs to create or join a business.');
         }
 
         // 🔧 FIX: Asegurar que exista el registro en user_active_roles
