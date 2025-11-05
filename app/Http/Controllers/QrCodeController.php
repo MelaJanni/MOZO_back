@@ -41,7 +41,7 @@ class QrCodeController extends Controller
             $qrCodes = QrCode::all();
         }
         
-        return response()->json($qrCodes);
+        return $this->success(['qr_codes' => $qrCodes]);
     }
 
     public function store(Request $request)
@@ -57,12 +57,12 @@ class QrCodeController extends Controller
             'code_data' => $codeData,
         ]);
 
-        return response()->json($qrCode, 201);
+        return $this->created(['qr_code' => $qrCode]);
     }
 
     public function show(QrCode $qrCode)
     {
-        return response()->json($qrCode);
+        return $this->success(['qr_code' => $qrCode]);
     }
 
     public function update(Request $request, QrCode $qrCode)
@@ -81,13 +81,13 @@ class QrCodeController extends Controller
 
         $qrCode->save();
 
-        return response()->json($qrCode);
+        return $this->updated(['qr_code' => $qrCode]);
     }
 
     public function destroy(QrCode $qrCode)
     {
         $qrCode->delete();
-        return response()->json(null, 204);
+        return $this->noContent();
     }
 
     private function generateUniqueCode()
@@ -118,10 +118,9 @@ class QrCodeController extends Controller
             ->firstOrFail();
         $force = request()->boolean('regenerate', false);
         $qrCode = $this->service->generateForTable($table, $force);
-        return response()->json([
-            'message' => $force ? 'Código QR regenerado exitosamente' : 'Código QR generado/actualizado exitosamente',
+        return $this->success([
             'qr_code' => $qrCode,
-        ]);
+        ], $force ? 'Código QR regenerado exitosamente' : 'Código QR generado/actualizado exitosamente');
     }
 
     public function preview(Request $request, $tableId)
@@ -134,19 +133,18 @@ class QrCodeController extends Controller
         $qrCode = $table->qrCode;
 
         if (!$qrCode) {
-            return response()->json(['message' => 'Esta mesa aún no tiene un QR generado.'], 404);
+            return $this->notFound('Esta mesa aún no tiene un QR generado.');
         }
 
         try {
             $svg = $this->qrGenerator->generate($qrCode->url, 'svg', 300);
             return response($svg)->header('Content-Type', 'image/svg+xml');
         } catch (\Exception $e) {
-            return response()->json([
-                'error' => 'Failed to generate QR preview',
+            return $this->error('Failed to generate QR preview', 500, [
                 'message' => $e->getMessage(),
                 'imagick_available' => $this->qrGenerator->isImageMagickAvailable(),
                 'available_formats' => $this->qrGenerator->getAvailableFormats()
-            ], 500);
+            ]);
         }
     }
     
