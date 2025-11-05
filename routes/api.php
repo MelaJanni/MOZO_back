@@ -394,7 +394,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::delete('/delete-account', [AuthController::class, 'deleteAccount']);
 
     // Estadísticas de admin sin restricciones
-    Route::get('/admin/statistics', [AdminController::class, 'getStatistics']);
+    Route::get('/admin/statistics', [DashboardController::class, 'getStatistics']);
 });
 
 // Rutas públicas para QR codes y llamadas de mozo (sin autenticación)

@@ -449,4 +449,68 @@ class DashboardController extends Controller
             'fixed_automatically' => $fixed
         ]);
     }
+
+    /**
+     * Obtener estadísticas generales del negocio (admin)
+     * 
+     * Endpoint: GET /api/admin/statistics
+     * 
+     * Migrado desde AdminController para consolidar funciones de dashboard
+     */
+    public function getStatistics(Request $request): JsonResponse
+    {
+        // ✨ Middleware EnsureActiveBusiness ya inyectó business_id
+        $businessId = $request->business_id;
+
+        $warnings = [];
+
+        $tablesCount = 0;
+        if (\Schema::hasTable('tables')) {
+            $tablesCount = Table::where('business_id', $businessId)->count();
+        } else {
+            $warnings[] = 'Tabla tables no encontrada';
+        }
+
+        $menusCount = 0;
+        if (\Schema::hasTable('menus')) {
+            $menusCount = \App\Models\Menu::where('business_id', $businessId)->count();
+        } else {
+            $warnings[] = 'Tabla menus no encontrada';
+        }
+
+        $staffCount = 0;
+        $pendingRequests = 0;
+        if (\Schema::hasTable('staff')) {
+            $staffCount = \App\Models\Staff::where('business_id', $businessId)->count();
+            $pendingRequests = \App\Models\Staff::where('business_id', $businessId)
+                ->where('status', 'pending')->count();
+        } else {
+            $warnings[] = 'Tabla staff no encontrada';
+        }
+
+        $qrCodesCount = 0;
+        if (\Schema::hasTable('qr_codes')) {
+            $qrCodesCount = \App\Models\QrCode::where('business_id', $businessId)->count();
+        } else {
+            $warnings[] = 'Tabla qr_codes no encontrada';
+        }
+
+        $archivedStaffCount = 0;
+        if (\Schema::hasTable('archived_staff')) {
+            $archivedStaffCount = \App\Models\ArchivedStaff::where('business_id', $businessId)->count();
+        } else {
+            $warnings[] = 'Tabla archived_staff no encontrada';
+        }
+
+        return response()->json([
+            'active_business_id' => $businessId ? (int)$businessId : null,
+            'tables_count' => $tablesCount,
+            'menus_count' => $menusCount,
+            'staff_count' => $staffCount,
+            'pending_requests_count' => $pendingRequests,
+            'qr_codes_count' => $qrCodesCount,
+            'archived_staff_count' => $archivedStaffCount,
+            'warnings' => $warnings,
+        ]);
+    }
 }
