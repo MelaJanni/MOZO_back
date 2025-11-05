@@ -136,11 +136,10 @@ class MenuController extends Controller
         return response()->json(['message' => 'Menú eliminado correctamente.']);
     }
 
-    public function fetchMenus()
+    public function fetchMenus(Request $request)
     {
-    $user = Auth::user();
-    $activeBusinessId = $this->activeBusinessId($user, 'admin');
-    $menus = Menu::where('business_id', $activeBusinessId)
+    // ✨ Middleware EnsureActiveBusiness ya inyectó business_id
+    $menus = Menu::where('business_id', $request->business_id)
             ->orderBy('display_order', 'asc')
             ->orderBy('created_at', 'desc')
             ->get();
@@ -207,19 +206,18 @@ class MenuController extends Controller
             return response()->json(['errors' => $errors], 422);
         }
         
-    $user = Auth::user();
-    $activeBusinessId = $this->activeBusinessId($user, 'admin');
-    $path = $request->file('file')->store('menus/' . $activeBusinessId, 'public');
+    // ✨ Middleware EnsureActiveBusiness ya inyectó business_id
+    $path = $request->file('file')->store('menus/' . $request->business_id, 'public');
         
         if ($request->has('is_default') && $request->is_default) {
-            Menu::where('business_id', $activeBusinessId)
+            Menu::where('business_id', $request->business_id)
                 ->update(['is_default' => false]);
         }
         
-    $maxOrder = Menu::where('business_id', $activeBusinessId)->max('display_order');
+    $maxOrder = Menu::where('business_id', $request->business_id)->max('display_order');
         
         $menu = Menu::create([
-            'business_id' => $activeBusinessId,
+            'business_id' => $request->business_id,
             'name' => $request->name,
             'file_path' => $path,
             'is_default' => $request->is_default ?? false,
@@ -246,13 +244,12 @@ class MenuController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
         
-        $user = Auth::user();
-        $activeBusinessId = $this->activeBusinessId($user, 'admin');
+        // ✨ Middleware EnsureActiveBusiness ya inyectó business_id
         $menu = Menu::where('id', $request->menu_id)
-            ->where('business_id', $activeBusinessId)
+            ->where('business_id', $request->business_id)
             ->firstOrFail();
             
-    Menu::where('business_id', $activeBusinessId)
+    Menu::where('business_id', $request->business_id)
             ->update(['is_default' => false]);
             
         $menu->is_default = true;
@@ -288,11 +285,11 @@ class MenuController extends Controller
             'menu_order.*' => 'integer|exists:menus,id',
         ]);
 
-        $user = Auth::user();
+        // ✨ Middleware EnsureActiveBusiness ya inyectó business_id
         $order = 0;
         foreach ($request->menu_order as $menuId) {
             Menu::where('id', $menuId)
-                ->where('business_id', $user->business_id)
+                ->where('business_id', $request->business_id)
                 ->update(['display_order' => $order++]);
         }
 
@@ -362,10 +359,11 @@ class MenuController extends Controller
         return Storage::disk('public')->download($menu->file_path, $fileName);
     }
 
-    private function authorizeBusinessOwnership(int $businessId): void
+    private function authorizeBusinessOwnership(int $businessId, Request $request = null): void
     {
-        $user = Auth::user();
-        $userBusinessId = $this->activeBusinessId($user, 'admin');
+        // ✨ Middleware EnsureActiveBusiness ya validó el business_id
+        // Si se proporciona request, usarlo; sino, obtenerlo del contexto global
+        $userBusinessId = $request ? $request->business_id : request()->business_id;
         if ($userBusinessId !== $businessId) {
             abort(403, 'No tienes permiso para realizar esta acción');
         }

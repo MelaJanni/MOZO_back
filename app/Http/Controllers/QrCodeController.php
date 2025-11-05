@@ -109,12 +109,11 @@ class QrCodeController extends Controller
         return app(QrCodeService::class)->generateForTable($table);
     }
 
-    public function generateQRCode($tableId)
+    public function generateQRCode(Request $request, $tableId)
     {
-        $user = Auth::user();
-        $businessId = $this->activeBusinessId($user, 'admin');
+        // ✨ Middleware EnsureActiveBusiness ya inyectó business_id
         $table = Table::where('id', $tableId)
-            ->where('business_id', $businessId)
+            ->where('business_id', $request->business_id)
             ->firstOrFail();
         $force = request()->boolean('regenerate', false);
         $qrCode = $this->service->generateForTable($table, $force);
@@ -124,12 +123,11 @@ class QrCodeController extends Controller
         ]);
     }
 
-    public function preview($tableId)
+    public function preview(Request $request, $tableId)
     {
-        $user = Auth::user();
-        $businessId = $this->activeBusinessId($user, 'admin');
+        // ✨ Middleware EnsureActiveBusiness ya inyectó business_id
         $table = Table::where('id', $tableId)
-            ->where('business_id', $businessId)
+            ->where('business_id', $request->business_id)
             ->firstOrFail();
 
         $qrCode = $table->qrCode;
@@ -162,9 +160,7 @@ class QrCodeController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $user = Auth::user();
-        $businessId = $this->activeBusinessId($user, 'admin');
-
+        // ✨ Middleware EnsureActiveBusiness ya inyectó business_id
         $tableIds = array_unique($request->table_ids);
         // Restringir a un tamaño razonable
         if (count($tableIds) > 200) {
@@ -174,7 +170,7 @@ class QrCodeController extends Controller
         }
 
         $tables = Table::whereIn('id', $tableIds)
-            ->where('business_id', $businessId)
+            ->where('business_id', $request->business_id)
             ->get();
 
         if ($tables->isEmpty()) {
@@ -243,10 +239,9 @@ class QrCodeController extends Controller
             return response()->json(['errors' => $errors], 422);
         }
         
-        $user = Auth::user();
-        $businessId = $this->activeBusinessId($user, 'admin');
+        // ✨ Middleware EnsureActiveBusiness ya inyectó business_id
         $qrCodes = \App\Models\QrCode::whereIn('id', $request->qr_ids)
-            ->where('business_id', $businessId)
+            ->where('business_id', $request->business_id)
             ->with('table')
             ->get();
             
@@ -366,10 +361,9 @@ class QrCodeController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $user     = Auth::user();
-        $businessId = $this->activeBusinessId($user, 'admin');
+        // ✨ Middleware EnsureActiveBusiness ya inyectó business_id
         $qrCodes  = \App\Models\QrCode::whereIn('id', $request->qr_ids)
-            ->where('business_id', $businessId)
+            ->where('business_id', $request->business_id)
             ->with('table')
             ->get();
 
