@@ -10,10 +10,11 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use App\Http\Controllers\Concerns\ResolvesActiveBusiness;
+use App\Http\Controllers\Concerns\JsonResponses;
 
 class MenuController extends Controller
 {
-    use ResolvesActiveBusiness;
+    use ResolvesActiveBusiness, JsonResponses;
     public function index(Request $request)
     {
         $businessId = $request->query('business_id');
@@ -24,7 +25,7 @@ class MenuController extends Controller
             $menus = Menu::all();
         }
         
-        return response()->json($menus);
+        return $this->success(['menus' => $menus]);
     }
 
     public function store(Request $request)
@@ -49,12 +50,12 @@ class MenuController extends Controller
             'is_default' => $request->is_default ?? false,
         ]);
 
-        return response()->json($menu, 201);
+        return $this->created(['menu' => $menu]);
     }
 
     public function show(Menu $menu)
     {
-        return response()->json($menu);
+        return $this->success(['menu' => $menu]);
     }
 
     public function update(Request $request, Menu $menu)
@@ -92,7 +93,7 @@ class MenuController extends Controller
 
         $menu->update($data);
 
-        return response()->json($menu);
+        return $this->updated(['menu' => $menu]);
     }
 
     public function destroy(Menu $menu)
@@ -103,7 +104,7 @@ class MenuController extends Controller
         $menuCount = Menu::where('business_id', $businessId)->count();
 
         if ($menuCount <= 1) {
-            return response()->json(['message' => 'No puedes eliminar el último menú.'], 422);
+            return $this->error('No puedes eliminar el último menú.', 422);
         }
 
         $newDefaultMenu = null;
@@ -127,13 +128,10 @@ class MenuController extends Controller
         $menu->delete();
 
         if ($newDefaultMenu) {
-            return response()->json([
-                'message' => 'Menú eliminado. Se ha establecido "' . $newDefaultMenu->name . '" como el nuevo menú predeterminado.',
-                'new_default_menu_id' => $newDefaultMenu->id,
-            ]);
+            return $this->deleted('Menú eliminado. Se ha establecido "' . $newDefaultMenu->name . '" como el nuevo menú predeterminado.');
         }
 
-        return response()->json(['message' => 'Menú eliminado correctamente.']);
+        return $this->deleted('Menú eliminado correctamente.');
     }
 
     public function fetchMenus(Request $request)
@@ -149,7 +147,7 @@ class MenuController extends Controller
             return $menu;
         });
         
-        return response()->json([
+        return $this->success([
             'menus' => $menus,
             'count' => $menus->count(),
             'default_menu' => $menus->where('is_default', true)->first()
