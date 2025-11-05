@@ -567,12 +567,11 @@ class AdminController extends Controller
             ]);
         }
 
-        return response()->json([
-            'message' => 'Personal eliminado exitosamente',
+        return $this->success([
             'user_id' => (int)$userId, // 🔥 CAMBIO: Devolver user_id en vez de staff_id
             'staff_id' => (int)$staff->id, // Mantener para compatibilidad
             'status' => 'unlinked',
-        ]);
+        ], 'Personal eliminado exitosamente');
     }
     
     public function handleStaffRequest(Request $request, $requestId)
@@ -582,7 +581,7 @@ class AdminController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
+            return $this->validationError($validator->errors()->toArray());
         }
         
         $user = Auth::user();
@@ -591,10 +590,7 @@ class AdminController extends Controller
 
         // Validación temprana de ID
         if (!is_numeric($requestId)) {
-            return response()->json([
-                'message' => 'ID de solicitud inválido',
-                'request_id' => $requestId,
-            ], 400);
+            return $this->error('ID de solicitud inválido', 400, ['request_id' => $requestId]);
         }
 
         // Si la acción es desarchivar, no requerimos un registro en staff
@@ -604,11 +600,7 @@ class AdminController extends Controller
                 ->first();
 
             if (!$archived) {
-                return response()->json([
-                    'message' => 'Registro archivado no encontrado para desarchivar',
-                    'archived_id' => (int)$requestId,
-                    'active_business_id' => (int)$activeBusinessId,
-                ], 404);
+                return $this->notFound('Registro archivado no encontrado para desarchivar');
             }
 
             // Si existe staff con mismo email en el negocio, lo reactivamos
@@ -664,10 +656,7 @@ class AdminController extends Controller
 
             $archived->delete();
 
-            return response()->json([
-                'message' => 'Solicitud desarchivada exitosamente',
-                'staff' => $restored,
-            ]);
+            return $this->success(['staff' => $restored], 'Solicitud desarchivada exitosamente');
         }
 
         // Para el resto de acciones, se requiere que exista el registro en staff
@@ -676,11 +665,7 @@ class AdminController extends Controller
             ->first();
 
         if (!$staff) {
-            return response()->json([
-                'message' => 'Solicitud no encontrada para el negocio activo',
-                'request_id' => (int)$requestId,
-                'active_business_id' => (int)$activeBusinessId,
-            ], 404);
+            return $this->notFound('Solicitud no encontrada para el negocio activo');
         }
 
         switch ($request->action) {
@@ -708,10 +693,7 @@ class AdminController extends Controller
                 // Actualizar notificaciones existentes con el nuevo status
                 $this->updateStaffNotificationsStatus($staff->id, 'confirmed');
 
-                return response()->json([
-                    'message' => 'Solicitud de personal confirmada',
-                    'staff' => $staff
-                ]);
+                return $this->success(['staff' => $staff], 'Solicitud de personal confirmada');
 
             case 'reject':
                 $staff->status = 'rejected';
@@ -727,10 +709,7 @@ class AdminController extends Controller
                 // Actualizar notificaciones existentes con el nuevo status
                 $this->updateStaffNotificationsStatus($staff->id, 'rejected');
 
-                return response()->json([
-                    'message' => 'Solicitud de personal rechazada',
-                    'staff' => $staff
-                ]);
+                return $this->success(['staff' => $staff], 'Solicitud de personal rechazada');
                 
             case 'archive':
                 $originalStatus = $staff->status;
@@ -771,9 +750,7 @@ class AdminController extends Controller
                     app(StaffNotificationService::class)->markStaffUnlinked($staffSnapshot);
                 } catch (\Throwable $e) { /* noop */ }
 
-                return response()->json([
-                    'message' => 'Solicitud de personal archivada',
-                ]);
+                return $this->success([], 'Solicitud de personal archivada');
 
             case 'archived':
                 $originalStatus = $staff->status;
@@ -814,9 +791,7 @@ class AdminController extends Controller
                     app(StaffNotificationService::class)->markStaffUnlinked($staffSnapshot);
                 } catch (\Throwable $e) { /* noop */ }
 
-                return response()->json([
-                    'message' => 'Solicitud de personal archivada',
-                ]);
+                return $this->success([], 'Solicitud de personal archivada');
 
             case 'unarchive':
                 // Permitir desarchivar desde archived_staff
@@ -825,11 +800,7 @@ class AdminController extends Controller
                     ->first();
 
                 if (!$archived) {
-                    return response()->json([
-                        'message' => 'Registro archivado no encontrado para desarchivar',
-                        'archived_id' => (int)$requestId,
-                        'active_business_id' => (int)$activeBusinessId,
-                    ], 404);
+                    return $this->notFound('Registro archivado no encontrado para desarchivar');
                 }
 
                 // Si existe staff con mismo email en el negocio, lo reactivamos
