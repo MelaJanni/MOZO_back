@@ -156,16 +156,14 @@ class QrCodeController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
+            return $this->validationError($validator->errors()->toArray());
         }
 
         // ✨ Middleware EnsureActiveBusiness ya inyectó business_id
         $tableIds = array_unique($request->table_ids);
         // Restringir a un tamaño razonable
         if (count($tableIds) > 200) {
-            return response()->json([
-                'message' => 'Demasiadas mesas solicitadas. Máximo 200 por solicitud.'
-            ], 422);
+            return $this->validationError([], 'Demasiadas mesas solicitadas. Máximo 200 por solicitud.');
         }
 
         $tables = Table::whereIn('id', $tableIds)
@@ -173,7 +171,7 @@ class QrCodeController extends Controller
             ->get();
 
         if ($tables->isEmpty()) {
-            return response()->json(['message' => 'No se encontraron mesas válidas para tu negocio.'], 404);
+            return $this->notFound('No se encontraron mesas válidas para tu negocio.');
         }
 
         $regenerated = [];
@@ -197,13 +195,12 @@ class QrCodeController extends Controller
             }
         }
 
-        return response()->json([
-            'message' => 'Proceso de regeneración en lote finalizado',
+        return $this->success([
             'regenerated_count' => count($regenerated),
             'failed_count' => count($failed),
             'regenerated' => $regenerated,
             'failed' => $failed,
-        ]);
+        ], 'Proceso de regeneración en lote finalizado');
     }
     
     public function exportQR(Request $request)
@@ -226,16 +223,18 @@ class QrCodeController extends Controller
             // Add helpful message about PNG capability if format is not allowed
             if ($errors->has('format') && !$this->qrGenerator->canGeneratePng()) {
                 $systemStatus = $this->qrGenerator->getSystemStatus();
-                return response()->json([
-                    'errors' => $errors,
-                    'message' => 'PNG generation not available. Only SVG format is supported.',
-                    'available_formats' => $allowedFormats,
-                    'system_status' => $systemStatus,
-                    'install_help' => 'Install ImageMagick or ensure GD extension is available for PNG/PDF support.'
-                ], 422);
+                return $this->validationError(
+                    $errors->toArray(),
+                    'PNG generation not available. Only SVG format is supported.',
+                    [
+                        'available_formats' => $allowedFormats,
+                        'system_status' => $systemStatus,
+                        'install_help' => 'Install ImageMagick or ensure GD extension is available for PNG/PDF support.'
+                    ]
+                );
             }
             
-            return response()->json(['errors' => $errors], 422);
+            return $this->validationError($errors->toArray());
         }
         
         // ✨ Middleware EnsureActiveBusiness ya inyectó business_id
@@ -245,7 +244,7 @@ class QrCodeController extends Controller
             ->get();
             
         if ($qrCodes->isEmpty() || $qrCodes->count() !== count($request->qr_ids)) {
-            return response()->json(['message' => 'Uno o más códigos QR no se encontraron o no pertenecen a tu negocio.'], 403);
+            return $this->forbidden('Uno o más códigos QR no se encontraron o no pertenecen a tu negocio.');
         }
         
         if ($qrCodes->count() === 1 && in_array($request->format, ['png', 'svg', 'pdf'])) {
@@ -314,7 +313,7 @@ class QrCodeController extends Controller
         }
 
         if ($zip->open($zipPath, ZipArchive::CREATE) !== TRUE) {
-            return response()->json(['message' => 'No se pudo crear el archivo ZIP.'], 500);
+            return $this->error('No se pudo crear el archivo ZIP.', 500);
         }
 
         foreach ($qrCodes as $qr) {
@@ -349,15 +348,17 @@ class QrCodeController extends Controller
             $errors = $validator->errors();
             
             if ($errors->has('format') && !$this->qrGenerator->canGeneratePng()) {
-                return response()->json([
-                    'errors' => $errors,
-                    'message' => 'PNG generation required for email QR functionality.',
-                    'system_status' => $this->qrGenerator->getSystemStatus(),
-                    'install_help' => 'Install ImageMagick or ensure GD extension is available.'
-                ], 422);
+                return $this->validationError(
+                    $errors->toArray(),
+                    'PNG generation required for email QR functionality.',
+                    [
+                        'system_status' => $this->qrGenerator->getSystemStatus(),
+                        'install_help' => 'Install ImageMagick or ensure GD extension is available.'
+                    ]
+                );
             }
             
-            return response()->json(['errors' => $validator->errors()], 422);
+            return $this->validationError($validator->errors()->toArray());
         }
 
         // ✨ Middleware EnsureActiveBusiness ya inyectó business_id
@@ -367,7 +368,7 @@ class QrCodeController extends Controller
             ->get();
 
         if ($qrCodes->isEmpty()) {
-            return response()->json(['message' => 'No se encontraron los códigos QR solicitados o no pertenecen a tu negocio.'], 403);
+            return $this->forbidden('No se encontraron los códigos QR solicitados o no pertenecen a tu negocio.');
         }
 
         $attachments = [];
@@ -422,7 +423,7 @@ class QrCodeController extends Controller
                 }
 
                 if ($zip->open($zipPath, ZipArchive::CREATE) !== TRUE) {
-                    return response()->json(['message' => 'No se pudo crear el archivo ZIP para adjuntar.'], 500);
+                    return $this->error('No se pudo crear el archivo ZIP para adjuntar.', 500);
                 }
 
                 foreach ($qrCodes as $qr) {
@@ -474,10 +475,9 @@ class QrCodeController extends Controller
             }
         });
 
-        return response()->json([
-            'message' => 'Correo(s) enviado(s) exitosamente',
+        return $this->success([
             'recipients' => $request->recipients,
-        ]);
+        ], 'Correo(s) enviado(s) exitosamente');
     }
 
     /**
@@ -487,7 +487,7 @@ class QrCodeController extends Controller
     {
         $systemStatus = $this->qrGenerator->getSystemStatus();
         
-        return response()->json([
+        return $this->success([
             'system_status' => $systemStatus,
             'available_formats' => [
                 'export' => $this->qrGenerator->canGeneratePng() 
