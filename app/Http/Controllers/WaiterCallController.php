@@ -32,10 +32,11 @@ use Carbon\Carbon;
  * - Table silence: Respeto de mesas silenciadas manualmente
  * - Duplicate prevention: Evita llamadas duplicadas <30 segundos
  * 
- * INTEGRACIONES FIREBASE:
- * - FirebaseService: Push notifications FCM a dispositivos de mozos
- * - UnifiedFirebaseService: Real-time Database para sincronización web
- * - Async queues: Procesamiento no-bloqueante para respuestas <200ms
+ * INTEGRACIONES FIREBASE V2:
+ * - WaiterCallNotificationService: Servicio unificado V2 para notificaciones
+ * - Procesamiento asíncrono vía queue (ProcessWaiterCallNotification job)
+ * - Fallback síncrono usando WaiterCallNotificationService directamente
+ * - Respuestas <200ms con procesamiento en background
  * 
  * 📊 CONTROLLERS ESPECIALIZADOS (funcionalidad migrada):
  * - CallHistoryController: Historial y consultas de llamadas
@@ -46,9 +47,7 @@ use Carbon\Carbon;
  * - IpBlockController: Bloqueo y gestión de IPs maliciosas
  * 
  * 🔧 MÉTODOS PRIVADOS:
- * - sendNotificationToWaiter(): FCM push con prioridad dinámica
  * - autoSilenceTable(): Auto-silence por spam detection
- * - writeImmediateFirebase(): Escritura directa a Firebase Realtime DB
  * 
  * 📏 MÉTRICAS:
  * - Tamaño: ~650 líneas (reducido desde 2,704 líneas)
@@ -59,18 +58,16 @@ use Carbon\Carbon;
  * @see routes/api.php - Rutas prefijo: waiter/calls
  * @see \App\Models\WaiterCall - Modelo principal con scopes y métodos
  * @see \App\Models\Table - Mesas con mozos asignados y silencios
- * @see \App\Services\FirebaseService - FCM push notifications
- * @see \App\Services\UnifiedFirebaseService - Firebase Realtime Database
+ * @see \App\Services\WaiterCallNotificationService - Servicio V2 de notificaciones
+ * @see \App\Jobs\ProcessWaiterCallNotification - Job asíncrono para processing
  */
 class WaiterCallController extends Controller
 {
-    private $firebaseService;
-    private $unifiedFirebaseService;
+    private $waiterCallService;
 
-    public function __construct(FirebaseService $firebaseService, UnifiedFirebaseService $unifiedFirebaseService)
+    public function __construct(\App\Services\WaiterCallNotificationService $waiterCallService)
     {
-        $this->firebaseService = $firebaseService;
-        $this->unifiedFirebaseService = $unifiedFirebaseService;
+        $this->waiterCallService = $waiterCallService;
     }
 
     /**
@@ -227,10 +224,9 @@ class WaiterCallController extends Controller
             // Queue asíncrono para respuesta ultra-rápida
             dispatch(new \App\Jobs\ProcessWaiterCallNotification($call))->onQueue('high-priority');
         } else {
-            // Fallback síncrono: enviar push + escribir Firebase
+            // Fallback síncrono: usar servicio V2
             try {
-                $this->sendNotificationToWaiter($call);
-                $this->unifiedFirebaseService->writeCall($call, 'created');
+                $this->waiterCallService->processNewCall($call);
             } catch (\Exception $e) {
                 Log::error('Sync notification failed', [
                     'call_id' => $call->id,
@@ -286,12 +282,8 @@ class WaiterCallController extends Controller
         // Marcar como reconocida
         $call->acknowledge();
 
-        // Cancelar notificación push (si existe)
-        $notificationId = 'waiter_call_' . $call->id;
-        $this->firebaseService->cancelNotification($call->waiter_id, $notificationId, $call->id);
-
-        // Actualizar Firebase Realtime DB
-        $this->unifiedFirebaseService->writeCall($call, 'acknowledged');
+        // Actualizar Firebase usando servicio V2
+        $this->waiterCallService->processAcknowledgedCall($call);
 
         return response()->json([
             'success' => true,
@@ -341,12 +333,8 @@ class WaiterCallController extends Controller
         // Marcar como completada
         $call->complete();
 
-        // Cancelar notificación push
-        $notificationId = 'waiter_call_' . $call->id;
-        $this->firebaseService->cancelNotification($call->waiter_id, $notificationId, $call->id);
-
-        // Eliminar de Firebase Realtime DB (ya no necesita estar visible)
-        $this->unifiedFirebaseService->removeCall($call);
+        // Procesar llamada completada usando servicio V2
+        $this->waiterCallService->processCompletedCall($call);
 
         return response()->json([
             'success' => true,
