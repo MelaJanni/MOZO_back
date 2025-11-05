@@ -33,12 +33,11 @@ class AdminController extends Controller
     {
         $user = $request->user();
 
-    // Determinar negocio activo para el rol admin usando el resolver unificado
-    // Prioriza: user_active_roles (admin) -> users.active_business_id -> users.business_id -> único negocio admin
-    $activeBusinessId = $this->activeBusinessId($user, 'admin');
+        // ✨ Middleware EnsureActiveBusiness ya inyectó business_id
+        $activeBusinessId = $request->business_id;
 
         // Si aún no hay negocio activo, significa que es un admin nuevo
-    if (!$activeBusinessId) {
+        if (!$activeBusinessId) {
             return response()->json([
                 'message' => 'No businesses found. Admin needs to create or join a business.',
                 'requires_business_setup' => true,
@@ -205,7 +204,8 @@ class AdminController extends Controller
     public function regenerateInvitationCode(Request $request)
     {
         $user = $request->user();
-        $businessId = $this->activeBusinessId($user, 'admin');
+        // ✨ Middleware EnsureActiveBusiness ya inyectó business_id
+        $businessId = $request->business_id;
         $business = Business::findOrFail($businessId);
         
         $business->regenerateInvitationCode();
@@ -541,10 +541,11 @@ class AdminController extends Controller
      * El frontend envía user_id en la ruta, no staff.id
      * Endpoint: DELETE /api/admin/staff/{userId}
      */
-    public function removeStaff($userId)
+    public function removeStaff(Request $request, $userId)
     {
         $user = Auth::user();
-        $businessId = $this->activeBusinessId($user, 'admin');
+        // ✨ Middleware EnsureActiveBusiness ya inyectó business_id
+        $businessId = $request->business_id;
 
         // 🔥 CAMBIO: Buscar por user_id en vez de id
         $staff = Staff::where('user_id', $userId)
@@ -612,7 +613,8 @@ class AdminController extends Controller
         }
         
         $user = Auth::user();
-        $activeBusinessId = $this->activeBusinessId($user, 'admin');
+        // ✨ Middleware EnsureActiveBusiness ya inyectó business_id
+        $activeBusinessId = $request->business_id;
 
         // Validación temprana de ID
         if (!is_numeric($requestId)) {
@@ -913,10 +915,11 @@ class AdminController extends Controller
         }
     }
     
-    public function fetchStaffRequests()
+    public function fetchStaffRequests(Request $request)
     {
         $user = Auth::user();
-        $activeBusinessId = $this->activeBusinessId($user, 'admin');
+        // ✨ Middleware EnsureActiveBusiness ya inyectó business_id
+        $activeBusinessId = $request->business_id;
 
         if (!Schema::hasTable('staff')) {
             return response()->json([
@@ -1003,11 +1006,12 @@ class AdminController extends Controller
         ]);
     }
     
-    public function fetchArchivedRequests()
+    public function fetchArchivedRequests(Request $request)
     {
         $user = Auth::user();
         
-        $activeBusinessId = $this->activeBusinessId($user, 'admin');
+        // ✨ Middleware EnsureActiveBusiness ya inyectó business_id
+        $activeBusinessId = $request->business_id;
 
         if (!Schema::hasTable('archived_staff')) {
             return response()->json([
@@ -1106,9 +1110,10 @@ class AdminController extends Controller
 
     public function getStaff(Request $request)
     {
-    $user = $request->user();
-    $activeBusinessId = $this->activeBusinessId($user, 'admin');
-    $query = Staff::where('business_id', $activeBusinessId)
+        $user = $request->user();
+        // ✨ Middleware EnsureActiveBusiness ya inyectó business_id
+        $activeBusinessId = $request->business_id;
+        $query = Staff::where('business_id', $activeBusinessId)
             ->when(!$request->filled('status'), function ($q) {
                 // Por defecto, solo personal confirmado (no incluye requests pending/invited)
                 $q->where('status', 'confirmed');
