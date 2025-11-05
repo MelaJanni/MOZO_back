@@ -6,6 +6,7 @@ use App\Models\Business;
 use App\Models\StaffRequest;
 use App\Models\User;
 use App\Models\WaiterProfile;
+use App\Services\BusinessResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -49,6 +50,10 @@ class StaffEndpointsTest extends TestCase
         $this->waiter = User::factory()->create([
             'email' => 'waiter@test.com'
         ]);
+
+        // Configurar business_id activo para evitar 403 del middleware
+        app(BusinessResolver::class)->setActiveBusiness($this->admin, $this->business->id);
+        app(BusinessResolver::class)->setActiveBusiness($this->waiter, $this->business->id);
     }
 
     /** @test */
