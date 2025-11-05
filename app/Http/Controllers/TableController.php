@@ -61,12 +61,12 @@ class TableController extends Controller
             'notifications_enabled' => $request->notifications_enabled ?? false,
         ]);
 
-        return response()->json($table, 201);
+        return $this->created(['table' => $table], 'Mesa creada exitosamente');
     }
 
     public function show(Table $table)
     {
-        return response()->json($table);
+        return $this->success(['table' => $table]);
     }
 
     public function update(Request $request, Table $table)
@@ -85,7 +85,7 @@ class TableController extends Controller
                         ->exists();
             
             if ($exists) {
-                return response()->json(['message' => 'Este número de mesa ya existe para este negocio'], 422);
+                return $this->validationError([], 'Este número de mesa ya existe para este negocio');
             }
         }
 
@@ -96,7 +96,7 @@ class TableController extends Controller
         }
         $table->update($data);
 
-        return response()->json($table);
+        return $this->success(['table' => $table]);
     }
 
     public function destroy(Table $table)
@@ -259,7 +259,7 @@ class TableController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
+            return $this->validationError($validator->errors()->toArray());
         }
 
         // ✨ Middleware EnsureActiveBusiness ya inyectó business_id
@@ -268,7 +268,7 @@ class TableController extends Controller
             ->firstOrFail();
 
         if (Table::where('business_id', $request->business_id)->where('number', $request->number)->exists()) {
-            return response()->json(['message' => 'Ya existe una mesa con ese número'], 422);
+            return $this->validationError([], 'Ya existe una mesa con ese número');
         }
 
         $newTable = Table::create([
@@ -291,10 +291,9 @@ class TableController extends Controller
             ]);
         }
 
-        return response()->json([
-            'message' => 'Mesa clonada exitosamente',
+        return $this->created([
             'table' => $newTable,
             'qr_generated' => isset($qrCode)
-        ], 201);
+        ], 'Mesa clonada exitosamente');
     }
 }
