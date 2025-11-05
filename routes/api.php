@@ -5,6 +5,7 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminNotificationsController;
 use App\Http\Controllers\AdminProfileController;
 use App\Http\Controllers\AdminSettingsController;
+use App\Http\Controllers\AdminStaffController;
 use App\Http\Controllers\ApiDocumentationController;
 use App\Http\Controllers\NotificationStreamController;
 use App\Http\Controllers\AuthController;
@@ -248,12 +249,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
     // Rutas de ADMIN: acceso completo sin restricciones de plan (temporal)
     Route::prefix('admin')->middleware('business:admin')->group(function () {
         // 🔥 PUNTO 10: Rutas de staff usan user_id (no staff.id)
-        Route::delete('/staff/{userId}', [AdminController::class, 'removeStaff']);
-        Route::post('/staff/request/{requestId}', [AdminController::class, 'handleStaffRequest']);
-    Route::get('/staff/requests', [AdminController::class, 'fetchStaffRequests']);
-    Route::get('/staff/requests/archived', [AdminController::class, 'fetchArchivedRequests']);
+        Route::delete('/staff/{userId}', [AdminStaffController::class, 'removeStaff']);
+        Route::post('/staff/request/{requestId}', [AdminStaffController::class, 'handleStaffRequest']);
+    Route::get('/staff/requests', [AdminStaffController::class, 'fetchStaffRequests']);
+    Route::get('/staff/requests/archived', [AdminStaffController::class, 'fetchArchivedRequests']);
     // Alias para compatibilidad: /staff/archived-requests
-    Route::get('/staff/archived-requests', [AdminController::class, 'fetchArchivedRequests']);
+    Route::get('/staff/archived-requests', [AdminStaffController::class, 'fetchArchivedRequests']);
         Route::post('/staff/onboard', [BusinessWaiterController::class, 'onboardBusiness']);
 
         Route::get('/business', [AdminBusinessController::class, 'getBusinessInfo']);
@@ -293,15 +294,15 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/tables/silenced', [TableSilenceController::class, 'getSilencedTables']);
         Route::delete('/tables/{table}/silence', [TableSilenceController::class, 'unsilenceTable']);
 
-        Route::get('/staff', [AdminController::class, 'getStaff']);
-        Route::get('/staff/{userId}', [AdminController::class, 'getStaffMember']); // 🔥 PUNTO 10: user_id
-        Route::put('/staff/{userId}', [AdminController::class, 'updateStaffMember']); // 🔥 PUNTO 10: user_id
-        Route::post('/staff/invite', [AdminController::class, 'inviteStaff']);
-        Route::post('/staff/{userId}/reviews', [AdminController::class, 'addReview']); // 🔥 PUNTO 10: user_id
-        Route::delete('/staff/{userId}/reviews/{id}', [AdminController::class, 'deleteReview']); // 🔥 PUNTO 10: user_id
+        Route::get('/staff', [AdminStaffController::class, 'getStaff']);
+        Route::get('/staff/{userId}', [AdminStaffController::class, 'getStaffMember']); // 🔥 PUNTO 10: user_id
+        Route::put('/staff/{userId}', [AdminStaffController::class, 'updateStaffMember']); // 🔥 PUNTO 10: user_id
+        Route::post('/staff/invite', [AdminStaffController::class, 'inviteStaff']);
+        Route::post('/staff/{userId}/reviews', [AdminStaffController::class, 'addReview']); // 🔥 PUNTO 10: user_id
+        Route::delete('/staff/{userId}/reviews/{id}', [AdminStaffController::class, 'deleteReview']); // 🔥 PUNTO 10: user_id
         
         // Funcionalidades adicionales para el admin
-        Route::post('/staff/bulk-process', [AdminController::class, 'bulkProcessRequests']);
+        Route::post('/staff/bulk-process', [AdminStaffController::class, 'bulkProcessRequests']);
         Route::get('/staff/{userId}/whatsapp', [AdminProfileController::class, 'getWhatsAppLink']); // 🔥 PUNTO 10: user_id
         Route::get('/profile', [AdminProfileController::class, 'getAdminProfile']);
         Route::post('/profile/update', [AdminProfileController::class, 'updateAdminProfile']);
