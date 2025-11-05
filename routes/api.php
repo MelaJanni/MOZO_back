@@ -18,6 +18,7 @@ use App\Http\Controllers\TableController;
 use App\Http\Controllers\TableSilenceController;
 use App\Http\Controllers\WaiterController;
 use App\Http\Controllers\WaiterCallController;
+use App\Http\Controllers\WaiterNotificationsController;
 use App\Http\Controllers\PublicQrController;
 use App\Http\Controllers\FirebaseConfigController;
 use App\Http\Controllers\RealtimeController;
@@ -348,32 +349,32 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/menus/upload-limits', [MenuController::class, 'uploadLimits']);
     });
     
-    // Notifications - Waiter operations (require business:waiter)
+    // Notifications - Waiter operations (require business:waiter) - WaiterNotificationsController
     Route::middleware('business:waiter')->group(function () {
-        Route::get('/notifications', [WaiterController::class, 'fetchWaiterNotifications']);
-        Route::post('/notifications/handle/{notificationId}', [WaiterController::class, 'handleNotification']);
+        Route::get('/notifications', [WaiterNotificationsController::class, 'fetchWaiterNotifications']);
+        Route::post('/notifications/handle/{notificationId}', [WaiterNotificationsController::class, 'handleNotification']);
         // Alias de compatibilidad: aceptar también /notifications/{id}/handle
-        Route::post('/notifications/{notificationId}/handle', [WaiterController::class, 'handleNotification']);
-        Route::post('/notifications/{notificationId}/read', [WaiterController::class, 'markNotificationAsRead']);
-        Route::post('/notifications/mark-multiple-read', [WaiterController::class, 'markMultipleNotificationsAsRead']);
-        Route::post('/notifications/global', [WaiterController::class, 'globalNotifications']);
-        Route::post('/tables/toggle-notifications/{tableId}', [WaiterController::class, 'toggleTableNotifications']);
+        Route::post('/notifications/{notificationId}/handle', [WaiterNotificationsController::class, 'handleNotification']);
+        Route::post('/notifications/{notificationId}/read', [WaiterNotificationsController::class, 'markNotificationAsRead']);
+        Route::post('/notifications/mark-multiple-read', [WaiterNotificationsController::class, 'markMultipleNotificationsAsRead']);
+        Route::post('/notifications/global', [WaiterNotificationsController::class, 'globalNotifications']);
+        Route::post('/tables/toggle-notifications/{tableId}', [WaiterNotificationsController::class, 'toggleTableNotifications']);
     });
 
     Route::prefix('waiter')->middleware('business:waiter')->group(function () {
         Route::post('/onboard', [BusinessWaiterController::class, 'onboardBusiness']);
 
-        Route::get('/tables', [WaiterController::class, 'fetchWaiterTables']);
-        Route::post('/tables/toggle-notifications/{tableId}', [WaiterController::class, 'toggleTableNotifications']);
+        Route::get('/tables', [WaiterNotificationsController::class, 'fetchWaiterTables']);
+        Route::post('/tables/toggle-notifications/{tableId}', [WaiterNotificationsController::class, 'toggleTableNotifications']);
         Route::post('/tables/clone/{tableId}', [TableController::class, 'cloneTable']);
 
-        Route::get('/notifications', [WaiterController::class, 'fetchWaiterNotifications']);
-    Route::post('/notifications/handle/{notificationId}', [WaiterController::class, 'handleNotification']);
-    // Alias de compatibilidad: aceptar también /waiter/notifications/{id}/handle
-    Route::post('/notifications/{notificationId}/handle', [WaiterController::class, 'handleNotification']);
-        Route::post('/notifications/{notificationId}/read', [WaiterController::class, 'markNotificationAsRead']);
-        Route::post('/notifications/mark-multiple-read', [WaiterController::class, 'markMultipleNotificationsAsRead']);
-        Route::post('/notifications/global', [WaiterController::class, 'globalNotifications']);
+        Route::get('/notifications', [WaiterNotificationsController::class, 'fetchWaiterNotifications']);
+        Route::post('/notifications/handle/{notificationId}', [WaiterNotificationsController::class, 'handleNotification']);
+        // Alias de compatibilidad: aceptar también /waiter/notifications/{id}/handle
+        Route::post('/notifications/{notificationId}/handle', [WaiterNotificationsController::class, 'handleNotification']);
+        Route::post('/notifications/{notificationId}/read', [WaiterNotificationsController::class, 'markNotificationAsRead']);
+        Route::post('/notifications/mark-multiple-read', [WaiterNotificationsController::class, 'markMultipleNotificationsAsRead']);
+        Route::post('/notifications/global', [WaiterNotificationsController::class, 'globalNotifications']);
 
     // Rutas de profiles removidas (legacy)
 
