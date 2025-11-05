@@ -16,7 +16,6 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\TableActivationController;
 use App\Http\Controllers\TableController;
 use App\Http\Controllers\TableSilenceController;
-use App\Http\Controllers\WaiterController;
 use App\Http\Controllers\WaiterCallController;
 use App\Http\Controllers\WaiterNotificationsController;
 use App\Http\Controllers\PublicQrController;
