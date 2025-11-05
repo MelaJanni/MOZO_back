@@ -5,11 +5,13 @@ use App\Http\Controllers\ApiDocumentationController;
 use App\Http\Controllers\NotificationStreamController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BusinessController;
+use App\Http\Controllers\CallHistoryController;
 use App\Http\Controllers\MenuController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\QrCodeController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\TableController;
+use App\Http\Controllers\TableSilenceController;
 use App\Http\Controllers\WaiterController;
 use App\Http\Controllers\WaiterCallController;
 use App\Http\Controllers\PublicQrController;
@@ -183,8 +185,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('/calls/{callId}/complete', [WaiterController::class, 'completeCall']);
         Route::post('/calls/{callId}/resync', [WaiterController::class, 'resyncCall']);
         
-        // Historial (sin tiempo real)
-        Route::get('/calls/history', [WaiterCallController::class, 'getCallHistory']);
+        // Historial (sin tiempo real) - CallHistoryController
+        Route::get('/calls/history', [CallHistoryController::class, 'getCallHistory']);
         
         // Dashboard y estado
         Route::get('/dashboard', [WaiterController::class, 'getDashboard']);
@@ -206,17 +208,17 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/tables/available', [WaiterController::class, 'getAvailableTables']);
         Route::post('/tables/{table}/activate', [WaiterController::class, 'activateTable']);
         Route::delete('/tables/{table}/activate', [WaiterController::class, 'deactivateTable']);
-        Route::post('/tables/{table}/silence', [WaiterCallController::class, 'silenceTable']);
-        Route::delete('/tables/{table}/silence', [WaiterCallController::class, 'unsilenceTable']);
+        Route::post('/tables/{table}/silence', [TableSilenceController::class, 'silenceTable']);
+        Route::delete('/tables/{table}/silence', [TableSilenceController::class, 'unsilenceTable']);
         
     // Gestión de mesas - Múltiples
         Route::post('/tables/activate/multiple', [WaiterController::class, 'activateMultipleTables']);
         Route::post('/tables/deactivate/multiple', [WaiterController::class, 'deactivateMultipleTables']);
-        Route::post('/tables/silence/multiple', [WaiterCallController::class, 'silenceMultipleTables']);
-        Route::post('/tables/unsilence/multiple', [WaiterCallController::class, 'unsilenceMultipleTables']);
+        Route::post('/tables/silence/multiple', [TableSilenceController::class, 'silenceMultipleTables']);
+        Route::post('/tables/unsilence/multiple', [TableSilenceController::class, 'unsilenceMultipleTables']);
         
-        // Estado de mesas
-        Route::get('/tables/silenced', [WaiterController::class, 'getSilencedTables']);
+        // Estado de mesas - TableSilenceController
+        Route::get('/tables/silenced', [TableSilenceController::class, 'getSilencedTables']);
         
         // Gestión de IPs bloqueadas (anti-spam)
         Route::post('/ip/block', [WaiterCallController::class, 'blockIp']);
@@ -279,9 +281,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('/notifications/subscribe-to-topic', [NotificationController::class, 'subscribeToTopic']);
 
         // Admin - Historial de llamadas y gestión
-        Route::get('/calls/history', [WaiterCallController::class, 'getCallHistory']);
-        Route::get('/tables/silenced', [WaiterController::class, 'getSilencedTables']);
-        Route::delete('/tables/{table}/silence', [WaiterCallController::class, 'unsilenceTable']);
+        Route::get('/calls/history', [CallHistoryController::class, 'getCallHistory']);
+        Route::get('/tables/silenced', [TableSilenceController::class, 'getSilencedTables']);
+        Route::delete('/tables/{table}/silence', [TableSilenceController::class, 'unsilenceTable']);
 
         Route::get('/staff', [AdminController::class, 'getStaff']);
         Route::get('/staff/{userId}', [AdminController::class, 'getStaffMember']); // 🔥 PUNTO 10: user_id
