@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AdminSettingsController;
 use App\Http\Controllers\ApiDocumentationController;
 use App\Http\Controllers\NotificationStreamController;
 use App\Http\Controllers\AuthController;
@@ -258,13 +259,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::delete('/business/{businessId}', [AdminController::class, 'deleteBusiness']);
     Route::get('/businesses', [AdminController::class, 'getBusinesses']);
         Route::post('/switch-view', [AdminController::class, 'switchView']);
-    Route::get('/settings', [AdminController::class, 'getSettings']);
-    Route::post('/settings', [AdminController::class, 'updateSettings']);
+    Route::get('/settings', [AdminSettingsController::class, 'getSettings']);
+    Route::post('/settings', [AdminSettingsController::class, 'updateSettings']);
     // Aceptar también PUT/PATCH para compatibilidad con clientes RESTful
-    Route::put('/settings', [AdminController::class, 'updateSettings']);
-    Route::patch('/settings', [AdminController::class, 'updateSettings']);
+    Route::put('/settings', [AdminSettingsController::class, 'updateSettings']);
+    Route::patch('/settings', [AdminSettingsController::class, 'updateSettings']);
     // Alias legacy solicitado por FE: /admin/business/settings
-    Route::put('/business/settings', [AdminController::class, 'updateSettings']);
+    Route::put('/business/settings', [AdminSettingsController::class, 'updateSettings']);
 
         Route::post('/qr/generate/{tableId}', [QrCodeController::class, 'generateQRCode']);
     Route::get('/qr/preview/{tableId}', [QrCodeController::class, 'preview']);
