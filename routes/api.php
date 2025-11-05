@@ -5,7 +5,9 @@ use App\Http\Controllers\ApiDocumentationController;
 use App\Http\Controllers\NotificationStreamController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BusinessController;
+use App\Http\Controllers\BusinessWaiterController;
 use App\Http\Controllers\CallHistoryController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MenuController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\QrCodeController;
@@ -189,16 +191,16 @@ Route::middleware(['auth:sanctum'])->group(function () {
         // Historial (sin tiempo real) - CallHistoryController
         Route::get('/calls/history', [CallHistoryController::class, 'getCallHistory']);
         
-        // Dashboard y estado
-        Route::get('/dashboard', [WaiterController::class, 'getDashboard']);
-        Route::get('/tables/status', [WaiterCallController::class, 'getTablesStatus']);
+        // Dashboard y estado - DashboardController
+        Route::get('/dashboard', [DashboardController::class, 'getDashboard']);
+        Route::get('/tables/status', [DashboardController::class, 'getTablesStatus']);
 
-        // Gestión de negocios múltiples
-        Route::get('/businesses', [WaiterController::class, 'getWaiterBusinesses']);
+        // Gestión de negocios múltiples - BusinessWaiterController
+        Route::get('/businesses', [BusinessWaiterController::class, 'getWaiterBusinesses']);
     Route::get('/businesses/active-today', [WaiterController::class, 'getActiveTodayBusinesses']);
-        Route::get('/businesses/{id}/tables', [WaiterController::class, 'getBusinessTables']);
-        Route::post('/join-business', [WaiterController::class, 'joinBusiness']);
-        Route::post('/set-active-business', [WaiterController::class, 'setActiveBusiness']);
+        Route::get('/businesses/{id}/tables', [BusinessWaiterController::class, 'getBusinessTables']);
+        Route::post('/join-business', [BusinessWaiterController::class, 'joinBusiness']);
+        Route::post('/set-active-business', [BusinessWaiterController::class, 'setActiveBusiness']);
     Route::post('/leave-business', [WaiterController::class, 'leaveBusiness']);
         
         // Diagnóstico de usuario
