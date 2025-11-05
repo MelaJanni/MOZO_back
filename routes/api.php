@@ -198,11 +198,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
         // Gestión de negocios múltiples - BusinessWaiterController
         Route::get('/businesses', [BusinessWaiterController::class, 'getWaiterBusinesses']);
-    Route::get('/businesses/active-today', [WaiterController::class, 'getActiveTodayBusinesses']);
+        Route::get('/businesses/active-today', [BusinessWaiterController::class, 'getActiveTodayBusinesses']);
         Route::get('/businesses/{id}/tables', [BusinessWaiterController::class, 'getBusinessTables']);
         Route::post('/join-business', [BusinessWaiterController::class, 'joinBusiness']);
         Route::post('/set-active-business', [BusinessWaiterController::class, 'setActiveBusiness']);
-    Route::post('/leave-business', [WaiterController::class, 'leaveBusiness']);
+        Route::post('/leave-business', [BusinessWaiterController::class, 'leaveBusiness']);
         
         // Diagnóstico de usuario
         Route::get('/diagnose', [WaiterController::class, 'diagnoseUser']);
@@ -250,7 +250,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/staff/requests/archived', [AdminController::class, 'fetchArchivedRequests']);
     // Alias para compatibilidad: /staff/archived-requests
     Route::get('/staff/archived-requests', [AdminController::class, 'fetchArchivedRequests']);
-        Route::post('/staff/onboard', [WaiterController::class, 'onboardBusiness']);
+        Route::post('/staff/onboard', [BusinessWaiterController::class, 'onboardBusiness']);
 
         Route::get('/business', [AdminController::class, 'getBusinessInfo']);
         Route::post('/business/create', [AdminController::class, 'createBusiness']);
@@ -361,7 +361,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     });
 
     Route::prefix('waiter')->middleware('business:waiter')->group(function () {
-        Route::post('/onboard', [WaiterController::class, 'onboardBusiness']);
+        Route::post('/onboard', [BusinessWaiterController::class, 'onboardBusiness']);
 
         Route::get('/tables', [WaiterController::class, 'fetchWaiterTables']);
         Route::post('/tables/toggle-notifications/{tableId}', [WaiterController::class, 'toggleTableNotifications']);
