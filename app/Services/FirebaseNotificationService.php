@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Services\Concerns\FirebaseHttpClient;
+use App\Services\Concerns\FirebaseIndexManager;
 use GuzzleHttp\Client;
 use GuzzleHttp\Pool;
 use GuzzleHttp\Exception\RequestException;
@@ -17,14 +19,17 @@ use App\Models\DeviceToken;
  * 2. Batch processing paralelo con Guzzle Pool
  * 3. Manejo automático de tokens inválidos (404/410)
  * 4. Operaciones Firebase Realtime Database (writeToPath, deleteFromPath)
+ * 
+ * V2: Usa traits FirebaseHttpClient y FirebaseIndexManager
  */
 class FirebaseNotificationService
 {
+    use FirebaseHttpClient, FirebaseIndexManager;
+
     private Client $client;
     private string $projectId;
     private ?string $accessToken = null;
     private ?\Carbon\Carbon $tokenExpiresAt = null;
-    private string $baseUrl = 'https://mozoqr-7d32c-default-rtdb.firebaseio.com';
     private TokenManager $tokenManager;
 
     public function __construct(TokenManager $tokenManager)
@@ -282,7 +287,7 @@ class FirebaseNotificationService
     // ========================================================================
 
     /**
-     * Escribir datos en Firebase Realtime Database
+     * Escribir datos en Firebase Realtime Database (delegado al trait)
      *
      * @param string $path Ruta en Firebase (ej: "active_calls/123")
      * @param array $data Datos a escribir
@@ -290,51 +295,18 @@ class FirebaseNotificationService
      */
     public function writeToPath(string $path, array $data): bool
     {
-        try {
-            $url = "{$this->baseUrl}/{$path}.json";
-            $response = Http::timeout(3)->put($url, $data);
-
-            $success = $response->successful();
-
-            if (!$success) {
-                Log::warning('Firebase RTDB write failed', [
-                    'path' => $path,
-                    'status' => $response->status()
-                ]);
-            }
-
-            return $success;
-
-        } catch (\Exception $e) {
-            Log::error('Firebase RTDB write error', [
-                'path' => $path,
-                'error' => $e->getMessage()
-            ]);
-            return false;
-        }
+        return $this->writeToFirebase($path, $data);
     }
 
     /**
-     * Eliminar datos de Firebase Realtime Database
+     * Eliminar datos de Firebase Realtime Database (delegado al trait)
      *
      * @param string $path Ruta en Firebase
      * @return bool
      */
     public function deleteFromPath(string $path): bool
     {
-        try {
-            $url = "{$this->baseUrl}/{$path}.json";
-            $response = Http::timeout(3)->delete($url);
-
-            return $response->successful();
-
-        } catch (\Exception $e) {
-            Log::error('Firebase RTDB delete error', [
-                'path' => $path,
-                'error' => $e->getMessage()
-            ]);
-            return false;
-        }
+        return $this->deleteFromFirebase($path);
     }
 
     /**
