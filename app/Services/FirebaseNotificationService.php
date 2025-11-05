@@ -318,7 +318,7 @@ class FirebaseNotificationService
     public function readFromPath(string $path): ?array
     {
         try {
-            $url = "{$this->baseUrl}/{$path}.json";
+            $url = $this->getFirebaseBaseUrl() . "/{$path}.json";
             $response = Http::timeout(3)->get($url);
 
             if ($response->successful()) {

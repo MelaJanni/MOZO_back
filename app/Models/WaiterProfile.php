@@ -46,6 +46,7 @@ class WaiterProfile extends Model
         'skills' => 'array',
         'is_active' => 'boolean',
         'is_available' => 'boolean',
+        'is_available_for_hire' => 'boolean',
     // Explicit string casts for enums stored as strings in DB
     'employment_type' => 'string',
     'current_schedule' => 'string',
