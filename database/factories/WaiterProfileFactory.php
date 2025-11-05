@@ -29,8 +29,9 @@ class WaiterProfileFactory extends Factory
             'longitude' => $this->faker->longitude(),
             'availability_hours' => ['09:00-17:00', '18:00-23:00'],
             'skills' => ['servicio_cliente', 'organizacion', 'trabajo_equipo'],
-            'is_active' => true,
+            // Removed 'is_active' - column does not exist in schema
             'is_available' => true,
+            'is_available_for_hire' => true,
             'rating' => $this->faker->randomFloat(1, 3.0, 5.0),
             'total_reviews' => $this->faker->numberBetween(0, 100),
             'avatar' => null,
@@ -40,8 +41,9 @@ class WaiterProfileFactory extends Factory
     public function inactive(): static
     {
         return $this->state(fn (array $attributes) => [
-            'is_active' => false,
+            // Removed 'is_active' reference
             'is_available' => false,
+            'is_available_for_hire' => false,
         ]);
     }
 

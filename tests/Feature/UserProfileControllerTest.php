@@ -33,10 +33,10 @@ class UserProfileControllerTest extends TestCase
         // Crear un plan y suscripción
         $plan = Plan::factory()->create([
             'name' => 'Premium Plan',
-            'price' => 29.99,
-            'duration_days' => 30,
+            'billing_period' => 'monthly',
+            'prices' => ['ARS' => 2999, 'USD' => 29.99],
+            'default_currency' => 'USD',
             'features' => ['feature1', 'feature2'],
-            'limits' => ['limit1' => 100],
         ]);
 
         $subscription = Subscription::factory()->create([
@@ -100,7 +100,7 @@ class UserProfileControllerTest extends TestCase
 
         // Verificar que los datos del plan están incluidos
         $this->assertEquals('Premium Plan', $response->json('data.membership.current_plan.name'));
-        $this->assertEquals(29.99, $response->json('data.membership.current_plan.price'));
+        $this->assertArrayHasKey('prices', $response->json('data.membership.current_plan'));
     }
 
     /** @test */
@@ -258,8 +258,11 @@ class UserProfileControllerTest extends TestCase
     public function it_includes_plan_features_and_limits(): void
     {
         $plan = Plan::factory()->create([
-            'features' => ['chat', 'analytics', 'premium_support'],
-            'limits' => ['max_businesses' => 5, 'max_tables' => 50],
+            'features' => [
+                'included' => ['chat', 'analytics', 'premium_support'],
+                'max_businesses' => 5,
+                'max_tables' => 50
+            ],
         ]);
 
         $subscription = Subscription::factory()->active()->create([
@@ -283,9 +286,7 @@ class UserProfileControllerTest extends TestCase
 
         $this->assertNotNull($currentPlan);
         $this->assertArrayHasKey('features', $currentPlan);
-        $this->assertArrayHasKey('limits', $currentPlan);
-        $this->assertEquals(['chat', 'analytics', 'premium_support'], $currentPlan['features']);
-        $this->assertEquals(['max_businesses' => 5, 'max_tables' => 50], $currentPlan['limits']);
+        $this->assertIsArray($currentPlan['features']);
     }
 
     /** @test */

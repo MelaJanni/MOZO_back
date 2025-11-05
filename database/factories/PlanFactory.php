@@ -12,16 +12,33 @@ class PlanFactory extends Factory
     public function definition(): array
     {
         return [
+            'code' => strtoupper($this->faker->lexify('PLAN-????')),
             'name' => $this->faker->words(2, true) . ' Plan',
             'description' => $this->faker->sentence(),
-            'price' => $this->faker->randomFloat(2, 9.99, 99.99),
-            'duration_days' => $this->faker->randomElement([30, 90, 365]),
-            'features' => ['feature_' . $this->faker->word(), 'feature_' . $this->faker->word()],
-            'limits' => [
-                'max_businesses' => $this->faker->numberBetween(1, 10),
-                'max_tables' => $this->faker->numberBetween(10, 100),
+            'billing_period' => $this->faker->randomElement(['monthly', 'quarterly', 'yearly']),
+            'price_cents' => $this->faker->numberBetween(999, 9999),
+            'prices' => [
+                'ARS' => $this->faker->numberBetween(9999, 99999),
+                'USD' => $this->faker->numberBetween(99, 999),
             ],
+            'default_currency' => 'USD',
+            'yearly_discount_percentage' => $this->faker->randomFloat(2, 0, 20),
+            'quarterly_discount_percentage' => $this->faker->randomFloat(2, 0, 10),
+            'trial_days' => $this->faker->numberBetween(7, 30),
+            'trial_enabled' => $this->faker->boolean(70),
+            'trial_requires_payment_method' => $this->faker->boolean(30),
+            'features' => [
+                'max_tables' => $this->faker->numberBetween(5, 50),
+                'max_staff' => $this->faker->numberBetween(3, 20),
+                'support_level' => $this->faker->randomElement(['basic', 'standard', 'premium']),
+            ],
+            'sort_order' => $this->faker->numberBetween(1, 10),
+            'is_featured' => $this->faker->boolean(20),
+            'is_popular' => $this->faker->boolean(30),
             'is_active' => true,
+            'tax_percentage' => $this->faker->randomElement([0, 10.5, 21]),
+            'tax_inclusive' => $this->faker->boolean(),
+            'provider_plan_ids' => null,
         ];
     }
 
@@ -36,8 +53,7 @@ class PlanFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'name' => 'Monthly Plan',
-            'price' => 29.99,
-            'duration_days' => 30,
+            'price_cents' => 2999,
         ]);
     }
 
@@ -45,8 +61,7 @@ class PlanFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'name' => 'Yearly Plan',
-            'price' => 299.99,
-            'duration_days' => 365,
+            'price_cents' => 29999,
         ]);
     }
 }
