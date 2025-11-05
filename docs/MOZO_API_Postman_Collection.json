@@ -1,0 +1,1097 @@
+{
+	"info": {
+		"name": "MOZO Backend API - Complete Collection",
+		"description": "Colección completa de APIs del sistema MOZO refactorizado V2\n\n**Incluye:**\n- Autenticación (Login/Register/Logout)\n- Sistema de Notificaciones FCM V2\n- Llamadas de Mesas (WaiterCall)\n- Gestión de Staff\n- Admin Business Management\n- QR Codes\n\n**Variables requeridas:**\n- `{{base_url}}`: URL base del API (ej: http://localhost/api)\n- `{{auth_token}}`: Token Bearer de autenticación\n- `{{business_id}}`: ID del negocio activo\n- `{{table_id}}`: ID de una mesa de prueba\n- `{{waiter_id}}`: ID de un mozo de prueba",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "12345678"
+	},
+	"item": [
+		{
+			"name": "🔐 Autenticación",
+			"item": [
+				{
+					"name": "Login Google (Mozo)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"credential\": \"eyJhbGciOiJSUzI1NiIsImtpZCI6IjFmODhiODE0MjljYzQ1MWEzMzVjMmY1Y...\",\n    \"role\": \"waiter\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/google/login",
+							"host": ["{{base_url}}"],
+							"path": ["auth", "google", "login"]
+						},
+						"description": "Login con Google para mozos. Devuelve token Bearer y datos de usuario."
+					},
+					"response": [
+						{
+							"name": "Success",
+							"originalRequest": {
+								"method": "POST",
+								"url": {
+									"raw": "{{base_url}}/auth/google/login"
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"body": "{\n    \"success\": true,\n    \"token\": \"1|abcd1234...\",\n    \"user\": {\n        \"id\": 123,\n        \"name\": \"Juan Pérez\",\n        \"email\": \"juan@example.com\",\n        \"google_id\": \"1234567890\",\n        \"role\": \"waiter\"\n    }\n}"
+						}
+					]
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/auth/logout",
+							"host": ["{{base_url}}"],
+							"path": ["auth", "logout"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "📱 FCM Tokens (Sistema V2)",
+			"item": [
+				{
+					"name": "Registrar Token FCM",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"token\": \"fT8xK9mNQZG...FCM_TOKEN_HERE\",\n    \"platform\": \"android\",\n    \"device_info\": {\n        \"model\": \"Samsung Galaxy S21\",\n        \"os_version\": \"Android 13\",\n        \"app_version\": \"2.0.0\"\n    }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/mozo/fcm/register-token",
+							"host": ["{{base_url}}"],
+							"path": ["mozo", "fcm", "register-token"]
+						},
+						"description": "Registrar o actualizar token FCM del dispositivo.\n\n**Plataformas soportadas:** android, ios, web\n\n**Solo mozos** pueden registrar tokens (verificación en middleware)."
+					},
+					"response": [
+						{
+							"name": "Success",
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"body": "{\n    \"success\": true,\n    \"message\": \"Token FCM registrado correctamente\",\n    \"data\": {\n        \"user_id\": 123,\n        \"platform\": \"android\",\n        \"registered_at\": \"2025-11-05T10:30:00Z\",\n        \"will_receive_notifications\": true\n    }\n}"
+						},
+						{
+							"name": "Error - No es mozo",
+							"status": "Forbidden",
+							"code": 403,
+							"_postman_previewlanguage": "json",
+							"body": "{\n    \"success\": false,\n    \"message\": \"Solo los mozos pueden registrar tokens para notificaciones\"\n}"
+						}
+					]
+				},
+				{
+					"name": "Refrescar Token FCM",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"old_token\": \"OLD_FCM_TOKEN\",\n    \"new_token\": \"NEW_FCM_TOKEN\",\n    \"platform\": \"android\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/mozo/fcm/refresh-token",
+							"host": ["{{base_url}}"],
+							"path": ["mozo", "fcm", "refresh-token"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Estado de Tokens del Usuario",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/mozo/fcm/token-status",
+							"host": ["{{base_url}}"],
+							"path": ["mozo", "fcm", "token-status"]
+						},
+						"description": "Obtener todos los tokens FCM registrados del usuario actual."
+					},
+					"response": [
+						{
+							"name": "Success",
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"body": "{\n    \"success\": true,\n    \"tokens\": [\n        {\n            \"id\": 1,\n            \"platform\": \"android\",\n            \"device_type\": \"mobile\",\n            \"device_name\": \"Samsung Galaxy S21\",\n            \"last_used_at\": \"2025-11-05T09:15:00Z\",\n            \"expires_at\": \"2026-01-04T10:30:00Z\",\n            \"is_expired\": false\n        },\n        {\n            \"id\": 2,\n            \"platform\": \"web\",\n            \"device_type\": \"browser\",\n            \"device_name\": \"Chrome on Windows\",\n            \"last_used_at\": \"2025-11-04T14:20:00Z\",\n            \"expires_at\": \"2026-01-03T14:20:00Z\",\n            \"is_expired\": false\n        }\n    ],\n    \"total_tokens\": 2,\n    \"active_tokens\": 2\n}"
+						}
+					]
+				},
+				{
+					"name": "Eliminar Token FCM",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"token\": \"FCM_TOKEN_TO_DELETE\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/mozo/fcm/delete-token",
+							"host": ["{{base_url}}"],
+							"path": ["mozo", "fcm", "delete-token"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Test Notificación FCM",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Test de Notificación\",\n    \"body\": \"Esta es una notificación de prueba del sistema V2\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/mozo/fcm/test",
+							"host": ["{{base_url}}"],
+							"path": ["mozo", "fcm", "test"]
+						},
+						"description": "Enviar notificación de prueba a todos los dispositivos del mozo autenticado."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "🔔 Llamadas de Mesa (WaiterCall V2)",
+			"item": [
+				{
+					"name": "Mesa Llama al Mozo (desde QR)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"message\": \"Necesitamos la cuenta por favor\",\n    \"urgency\": \"normal\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/qr/table/{{table_id}}/call",
+							"host": ["{{base_url}}"],
+							"path": ["qr", "table", "{{table_id}}", "call"]
+						},
+						"description": "Endpoint público para que una mesa llame al mozo escaneando el QR.\n\n**Protecciones implementadas:**\n- IP blocking (rechazo silencioso)\n- Spam protection (auto-silence después de 3 llamadas en 10min)\n- Duplicate prevention (<30 segundos)\n- Table silence check\n\n**Procesamiento:**\n- Asíncrono vía queue (ProcessWaiterCallNotification job)\n- Fallback síncrono si queue=sync\n- Usa WaiterCallNotificationService V2"
+					},
+					"response": [
+						{
+							"name": "Success",
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"body": "{\n    \"success\": true,\n    \"message\": \"Llamada enviada al mozo exitosamente\",\n    \"call\": {\n        \"id\": 456,\n        \"table_number\": \"5\",\n        \"waiter_name\": \"Juan Pérez\",\n        \"status\": \"pending\",\n        \"called_at\": \"2025-11-05T10:45:00Z\",\n        \"message\": \"Necesitamos la cuenta por favor\",\n        \"urgency\": \"normal\"\n    },\n    \"estimated_response_time\": \"2-3 minutos\"\n}"
+						},
+						{
+							"name": "Error - Mesa sin mozo",
+							"status": "Unprocessable Entity",
+							"code": 422,
+							"body": "{\n    \"success\": false,\n    \"message\": \"Esta mesa no tiene un mozo asignado actualmente\"\n}"
+						},
+						{
+							"name": "Error - Spam protection",
+							"status": "Too Many Requests",
+							"code": 429,
+							"body": "{\n    \"success\": false,\n    \"message\": \"Has realizado demasiadas llamadas. La mesa ha sido temporalmente silenciada.\",\n    \"call_count\": 4\n}"
+						}
+					]
+				},
+				{
+					"name": "Mozo Responde Llamada (Acknowledge)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/waiter/calls/{{call_id}}/acknowledge",
+							"host": ["{{base_url}}"],
+							"path": ["waiter", "calls", "{{call_id}}", "acknowledge"]
+						},
+						"description": "El mozo reconoce que vio la llamada y está en camino.\n\nActualiza estado a 'acknowledged' y timestamp acknowledged_at.\n\nUsa WaiterCallNotificationService::processAcknowledgedCall()"
+					},
+					"response": [
+						{
+							"name": "Success",
+							"status": "OK",
+							"code": 200,
+							"body": "{\n    \"success\": true,\n    \"message\": \"Llamada reconocida\",\n    \"call\": {\n        \"id\": 456,\n        \"status\": \"acknowledged\",\n        \"acknowledged_at\": \"2025-11-05T10:46:30Z\",\n        \"response_time\": \"90 segundos\"\n    }\n}"
+						}
+					]
+				},
+				{
+					"name": "Mozo Completa Llamada",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/waiter/calls/{{call_id}}/complete",
+							"host": ["{{base_url}}"],
+							"path": ["waiter", "calls", "{{call_id}}", "complete"]
+						},
+						"description": "El mozo marca la llamada como completada.\n\nActualiza estado a 'completed', elimina de Firebase RTDB.\n\nUsa WaiterCallNotificationService::processCompletedCall()"
+					},
+					"response": []
+				},
+				{
+					"name": "Llamadas Pendientes del Mozo",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/waiter/calls/pending",
+							"host": ["{{base_url}}"],
+							"path": ["waiter", "calls", "pending"]
+						}
+					},
+					"response": [
+						{
+							"name": "Success",
+							"status": "OK",
+							"code": 200,
+							"body": "{\n    \"success\": true,\n    \"calls\": [\n        {\n            \"id\": 456,\n            \"table\": {\n                \"id\": 10,\n                \"number\": \"5\",\n                \"location\": \"Terraza\"\n            },\n            \"status\": \"pending\",\n            \"message\": \"Necesitamos la cuenta\",\n            \"urgency\": \"normal\",\n            \"called_at\": \"2025-11-05T10:45:00Z\",\n            \"time_elapsed\": \"3 minutos\"\n        }\n    ],\n    \"total\": 1\n}"
+						}
+					]
+				},
+				{
+					"name": "Historial de Llamadas del Mozo",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/waiter/calls/history?page=1&per_page=20&status=completed&date_from=2025-11-01&date_to=2025-11-05",
+							"host": ["{{base_url}}"],
+							"path": ["waiter", "calls", "history"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "per_page",
+									"value": "20"
+								},
+								{
+									"key": "status",
+									"value": "completed"
+								},
+								{
+									"key": "date_from",
+									"value": "2025-11-01"
+								},
+								{
+									"key": "date_to",
+									"value": "2025-11-05"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "👥 Gestión de Staff",
+			"item": [
+				{
+					"name": "Mozo Solicita Unirse a Negocio",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"invitation_code\": \"RESTO123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/waiter/join-business",
+							"host": ["{{base_url}}"],
+							"path": ["waiter", "join-business"]
+						},
+						"description": "Un mozo solicita unirse a un negocio usando el código de invitación.\n\nCrea registro Staff con status='pending' y notifica a admins del negocio."
+					},
+					"response": [
+						{
+							"name": "Success",
+							"status": "OK",
+							"code": 200,
+							"body": "{\n    \"success\": true,\n    \"message\": \"Solicitud enviada correctamente\",\n    \"request\": {\n        \"id\": 789,\n        \"business\": {\n            \"id\": 1,\n            \"name\": \"Restaurante Demo\"\n        },\n        \"status\": \"pending\",\n        \"created_at\": \"2025-11-05T11:00:00Z\"\n    }\n}"
+						},
+						{
+							"name": "Error - Código inválido",
+							"status": "Unprocessable Entity",
+							"code": 422,
+							"body": "{\n    \"success\": false,\n    \"message\": \"Código de invitación inválido\"\n}"
+						}
+					]
+				},
+				{
+					"name": "Admin Aprueba Solicitud de Staff",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/admin/staff/{{staff_id}}/approve",
+							"host": ["{{base_url}}"],
+							"path": ["admin", "staff", "{{staff_id}}", "approve"]
+						},
+						"description": "El admin aprueba una solicitud de staff.\n\nActualiza status a 'confirmed' y notifica al mozo.\n\nUsa StaffNotificationService::handleConfirmedEvent()"
+					},
+					"response": []
+				},
+				{
+					"name": "Admin Rechaza Solicitud de Staff",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"reason\": \"No cumple con los requisitos del puesto\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/admin/staff/{{staff_id}}/reject",
+							"host": ["{{base_url}}"],
+							"path": ["admin", "staff", "{{staff_id}}", "reject"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Mis Solicitudes de Staff (Mozo)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/waiter/my-requests?status=pending",
+							"host": ["{{base_url}}"],
+							"path": ["waiter", "my-requests"],
+							"query": [
+								{
+									"key": "status",
+									"value": "pending",
+									"description": "pending|confirmed|rejected"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Lista de Staff del Negocio (Admin)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/admin/staff?status=confirmed",
+							"host": ["{{base_url}}"],
+							"path": ["admin", "staff"],
+							"query": [
+								{
+									"key": "status",
+									"value": "confirmed"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Admin Elimina Staff",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/admin/staff/{{staff_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["admin", "staff", "{{staff_id}}"]
+						},
+						"description": "Elimina un staff del negocio.\n\nLimpia datos de Firebase RTDB usando StaffNotificationService."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "🏢 Admin - Gestión de Negocio",
+			"item": [
+				{
+					"name": "Obtener Datos del Negocio",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/admin/business",
+							"host": ["{{base_url}}"],
+							"path": ["admin", "business"]
+						},
+						"description": "Obtiene información completa del negocio activo del admin.\n\nIncluye: datos básicos, configuración, estadísticas, plan activo."
+					},
+					"response": [
+						{
+							"name": "Success",
+							"status": "OK",
+							"code": 200,
+							"body": "{\n    \"success\": true,\n    \"business\": {\n        \"id\": 1,\n        \"name\": \"Restaurante Demo\",\n        \"invitation_code\": \"RESTO123\",\n        \"phone\": \"+541112345678\",\n        \"address\": \"Av. Corrientes 1234, CABA\",\n        \"cuisine_type\": \"Italiana\",\n        \"opening_hours\": \"Lun-Dom 12:00-00:00\",\n        \"notifications_enabled\": true,\n        \"active_staff_count\": 5,\n        \"active_tables_count\": 15,\n        \"pending_calls_count\": 2\n    }\n}"
+						}
+					]
+				},
+				{
+					"name": "Crear Nuevo Negocio",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Mi Nuevo Restaurante\",\n    \"phone\": \"+541198765432\",\n    \"address\": \"Calle Falsa 123, CABA\",\n    \"cuisine_type\": \"Mexicana\",\n    \"opening_hours\": \"Lun-Vie 18:00-01:00\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/admin/business/create",
+							"host": ["{{base_url}}"],
+							"path": ["admin", "business", "create"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Actualizar Configuración del Negocio",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Restaurante Demo Actualizado\",\n    \"phone\": \"+541112345678\",\n    \"notifications_enabled\": true,\n    \"opening_hours\": \"Lun-Dom 11:00-23:00\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/admin/business/settings",
+							"host": ["{{base_url}}"],
+							"path": ["admin", "business", "settings"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Regenerar Código de Invitación",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/admin/business/regenerate-code",
+							"host": ["{{base_url}}"],
+							"path": ["admin", "business", "regenerate-code"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Eliminar Negocio",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/admin/business",
+							"host": ["{{base_url}}"],
+							"path": ["admin", "business"]
+						},
+						"description": "Elimina el negocio y todos sus datos relacionados:\n- Mesas\n- Staff\n- Llamadas\n- QR Codes\n- Datos de Firebase"
+					},
+					"response": []
+				},
+				{
+					"name": "Estadísticas del Dashboard",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/admin/dashboard/statistics?period=today",
+							"host": ["{{base_url}}"],
+							"path": ["admin", "dashboard", "statistics"],
+							"query": [
+								{
+									"key": "period",
+									"value": "today",
+									"description": "today|week|month"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "🍽️ Mesas (Tables)",
+			"item": [
+				{
+					"name": "Lista de Mesas del Negocio",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/admin/tables",
+							"host": ["{{base_url}}"],
+							"path": ["admin", "tables"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Crear Mesa",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"number\": \"10\",\n    \"location\": \"Terraza\",\n    \"capacity\": 4,\n    \"active_waiter_id\": 123,\n    \"notifications_enabled\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/admin/tables",
+							"host": ["{{base_url}}"],
+							"path": ["admin", "tables"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Actualizar Mesa",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"number\": \"10A\",\n    \"location\": \"Terraza VIP\",\n    \"capacity\": 6,\n    \"active_waiter_id\": 124\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/admin/tables/{{table_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["admin", "tables", "{{table_id}}"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Eliminar Mesa",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/admin/tables/{{table_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["admin", "tables", "{{table_id}}"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Silenciar Mesa Temporalmente",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"duration_minutes\": 30,\n    \"reason\": \"spam\",\n    \"notes\": \"Cliente molesto, silenciar temporalmente\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/admin/tables/{{table_id}}/silence",
+							"host": ["{{base_url}}"],
+							"path": ["admin", "tables", "{{table_id}}", "silence"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "📲 QR Codes",
+			"item": [
+				{
+					"name": "Lista de QR Codes",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/admin/qr-codes",
+							"host": ["{{base_url}}"],
+							"path": ["admin", "qr-codes"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Generar QR Code para Mesa",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"table_id\": 10,\n    \"format\": \"png\",\n    \"size\": 300\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/admin/qr-codes/generate",
+							"host": ["{{base_url}}"],
+							"path": ["admin", "qr-codes", "generate"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Descargar QR Code",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/admin/qr-codes/{{qr_id}}/download",
+							"host": ["{{base_url}}"],
+							"path": ["admin", "qr-codes", "{{qr_id}}", "download"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "👤 Perfil de Usuario",
+			"item": [
+				{
+					"name": "Obtener Perfil Activo",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/user-profile/active",
+							"host": ["{{base_url}}"],
+							"path": ["user-profile", "active"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Actualizar Perfil de Mozo",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{auth_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"display_name\": \"Juan Pérez - Mozo Profesional\",\n    \"bio\": \"5 años de experiencia en el sector gastronómico\",\n    \"phone\": \"+541112345678\",\n    \"experience_years\": 5,\n    \"is_available_for_hire\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/waiter/profile",
+							"host": ["{{base_url}}"],
+							"path": ["waiter", "profile"]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost/api",
+			"type": "string"
+		},
+		{
+			"key": "auth_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "business_id",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "table_id",
+			"value": "10",
+			"type": "string"
+		},
+		{
+			"key": "waiter_id",
+			"value": "123",
+			"type": "string"
+		},
+		{
+			"key": "call_id",
+			"value": "456",
+			"type": "string"
+		},
+		{
+			"key": "staff_id",
+			"value": "789",
+			"type": "string"
+		},
+		{
+			"key": "qr_id",
+			"value": "1",
+			"type": "string"
+		}
+	]
+}
