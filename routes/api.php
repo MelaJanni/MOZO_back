@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminNotificationsController;
+use App\Http\Controllers\AdminProfileController;
 use App\Http\Controllers\AdminSettingsController;
 use App\Http\Controllers\ApiDocumentationController;
 use App\Http\Controllers\NotificationStreamController;
@@ -300,9 +301,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
         
         // Funcionalidades adicionales para el admin
         Route::post('/staff/bulk-process', [AdminController::class, 'bulkProcessRequests']);
-        Route::get('/staff/{userId}/whatsapp', [AdminController::class, 'getWhatsAppLink']); // 🔥 PUNTO 10: user_id
-        Route::get('/profile', [AdminController::class, 'getAdminProfile']);
-        Route::post('/profile/update', [AdminController::class, 'updateAdminProfile']);
+        Route::get('/staff/{userId}/whatsapp', [AdminProfileController::class, 'getWhatsAppLink']); // 🔥 PUNTO 10: user_id
+        Route::get('/profile', [AdminProfileController::class, 'getAdminProfile']);
+        Route::post('/profile/update', [AdminProfileController::class, 'updateAdminProfile']);
 
     // Aliases admin para listas (consistencia con FE y smoke-test)
     Route::get('/tables', [TableController::class, 'fetchTables']);
