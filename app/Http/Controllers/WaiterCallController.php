@@ -17,12 +17,22 @@ use Carbon\Carbon;
 /**
  * Controlador principal para operaciones de llamados de mozos
  * 
- * Responsabilidades:
- * - Crear llamados (mesa llama a mozo)
- * - Aceptar llamados (mozo acepta)
- * - Completar llamados (mozo finaliza)
- * - Notificaciones FCM
- * - Integración con Firebase Realtime DB
+ * NOTA REFACTORIZACIÓN FASE 3.1:
+ * Este archivo mantiene TEMPORALMENTE todos los métodos mientras se completa la migración.
+ * Los métodos se están migrando progresivamente a controladores especializados:
+ * - CallHistoryController (getPendingCalls, getCallHistory) ✅ Creado
+ * - TableSilenceController (6 métodos de silencio) ✅ Creado
+ * - TableActivationController (6 métodos de activación) ✅ Creado  
+ * - DashboardController (getDashboard, getTablesStatus, helpers) ✅ Creado
+ * - BusinessWaiterController (4 métodos multi-tenant) ✅ Creado
+ * - IpBlockController (5 métodos anti-spam) ✅ Creado
+ * 
+ * Métodos CORE que permanecerán en este controlador:
+ * - callWaiter, acknowledgeCall, completeCall
+ * - createNotification, getNotificationStatus (temporal, evaluar NotificationController)
+ * - Métodos privados: sendNotificationToWaiter, autoSilenceTable, writeImmediateFirebase
+ * 
+ * Target final: ~400 líneas (actualmente ~2,694)
  */
 class WaiterCallController extends Controller
 {
