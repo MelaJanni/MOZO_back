@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\Staff;
 use App\Models\Business;
+use App\Services\Concerns\FirebaseHttpClient;
+use App\Services\Concerns\FirebaseIndexManager;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
@@ -18,9 +20,12 @@ use Illuminate\Support\Facades\Mail;
  * 5. Enviar invitaciones por email/WhatsApp
  *
  * V2: Refactorizado - Método gigante de 233 líneas dividido en métodos pequeños
+ * V3: Usa traits FirebaseHttpClient y FirebaseIndexManager
  */
 class StaffNotificationService
 {
+    use FirebaseHttpClient, FirebaseIndexManager;
+
     private FirebaseNotificationService $firebase;
     private TokenManager $tokenManager;
 

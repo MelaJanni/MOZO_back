@@ -3,13 +3,15 @@
 namespace App\Services;
 
 use App\Models\WaiterCall;
+use App\Services\Concerns\FirebaseHttpClient;
+use App\Services\Concerns\FirebaseIndexManager;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 
 class UnifiedFirebaseService
 {
-    private $baseUrl = 'https://mozoqr-7d32c-default-rtdb.firebaseio.com';
+    use FirebaseHttpClient, FirebaseIndexManager;
     /**
      * Mapeo de eventType interno -> tipo de data en FCM
      */
@@ -291,43 +293,19 @@ class UnifiedFirebaseService
     }
 
     /**
-     * 🚀 ESCRITURA A FIREBASE
+     * 🚀 ESCRITURA A FIREBASE (usando trait)
      */
     private function writeToPath(string $path, array $data): string
     {
-        try {
-            $url = "{$this->baseUrl}/{$path}.json";
-            $response = Http::timeout(3)->put($url, $data);
-            
-            return $response->successful() ? "success" : "failed";
-
-        } catch (\Exception $e) {
-            Log::warning("Firebase write failed", [
-                'path' => $path,
-                'error' => $e->getMessage()
-            ]);
-            return "error";
-        }
+        return $this->writeToFirebase($path, $data) ? "success" : "failed";
     }
 
     /**
-     * 🗑️ ELIMINAR DE FIREBASE
+     * 🗑️ ELIMINAR DE FIREBASE (usando trait)
      */
     private function deleteFromPath(string $path): string
     {
-        try {
-            $url = "{$this->baseUrl}/{$path}.json";
-            $response = Http::timeout(3)->delete($url);
-            
-            return $response->successful() ? "success" : "failed";
-
-        } catch (\Exception $e) {
-            Log::warning("Firebase delete failed", [
-                'path' => $path,
-                'error' => $e->getMessage()
-            ]);
-            return "error";
-        }
+        return $this->deleteFromFirebase($path) ? "success" : "failed";
     }
 
     /**
