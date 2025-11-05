@@ -77,6 +77,7 @@ class StaffEndpointsTest extends TestCase
         $request = StaffRequest::create([
             'user_id' => $this->waiter->id,
             'business_id' => $this->business->id,
+            'name' => $this->waiter->name,
             'status' => 'pending'
         ]);
 
@@ -106,6 +107,7 @@ class StaffEndpointsTest extends TestCase
         $request = StaffRequest::create([
             'user_id' => $this->waiter->id,
             'business_id' => $this->business->id,
+            'name' => $this->waiter->name,
             'status' => 'pending'
         ]);
 
@@ -137,18 +139,21 @@ class StaffEndpointsTest extends TestCase
         StaffRequest::create([
             'user_id' => $this->waiter->id,
             'business_id' => $this->business->id,
+            'name' => $this->waiter->name,
             'status' => 'pending'
         ]);
 
         StaffRequest::create([
             'user_id' => $this->waiter->id,
             'business_id' => Business::factory()->create()->id,
+            'name' => $this->waiter->name,
             'status' => 'approved'
         ]);
 
         StaffRequest::create([
             'user_id' => $this->waiter->id,
             'business_id' => Business::factory()->create()->id,
+            'name' => $this->waiter->name,
             'status' => 'rejected'
         ]);
 
@@ -239,7 +244,7 @@ class StaffEndpointsTest extends TestCase
 
         $response->assertStatus(404);
 
-        $this->assertDatabaseMissing('staff_requests', [
+        $this->assertDatabaseMissing('staff', [
             'user_id' => $this->waiter->id
         ]);
     }

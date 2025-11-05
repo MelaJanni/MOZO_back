@@ -15,6 +15,9 @@ namespace App\Models;
  */
 class StaffRequest extends Staff
 {
+    // Usar la misma tabla que Staff
+    protected $table = 'staff';
+    
     // Hereda todo de Staff
     // Solo existe para compatibilidad con tests antiguos
     
