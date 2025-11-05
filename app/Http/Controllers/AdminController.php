@@ -116,8 +116,8 @@ class AdminController extends Controller
                         'is_active' => (int)$b->id === (int)$activeBusinessId,
                     ];
                 });
-            } elseif (!empty($user->business_id)) {
-                $b = Business::find($user->business_id);
+            } elseif (!empty($request->business_id)) {
+                $b = Business::find($request->business_id);
                 if ($b) {
                     $availableBusinesses = [[
                         'id' => $b->id,
@@ -377,8 +377,8 @@ class AdminController extends Controller
                 if ($active) { $activeBusinessId = $active->business_id; }
             }
         } catch (\Throwable $e) { /* noop */ }
-        if (!$activeBusinessId && !empty($user->business_id)) {
-            $activeBusinessId = $user->business_id;
+        if (!$activeBusinessId && !empty($request->business_id)) {
+            $activeBusinessId = $request->business_id;
         }
 
         // Obtener lista sin pluck del pivot ni columnas inexistentes
@@ -395,8 +395,8 @@ class AdminController extends Controller
                     'is_active' => (int)$b->id === (int)$activeBusinessId,
                 ];
             });
-        } elseif (!empty($user->business_id)) {
-            $b = Business::find($user->business_id);
+        } elseif (!empty($request->business_id)) {
+            $b = Business::find($request->business_id);
             if ($b) {
                 $businesses = [[
                     'id' => $b->id,
@@ -418,7 +418,8 @@ class AdminController extends Controller
     {
         $user = $request->user();
         
-        $menus = Menu::where('business_id', $user->business_id)
+        // ✨ Middleware EnsureActiveBusiness ya inyectó business_id
+        $menus = Menu::where('business_id', $request->business_id)
             ->orderBy('created_at', 'desc')
             ->get();
         
@@ -437,15 +438,16 @@ class AdminController extends Controller
         
         $user = $request->user();
         
-        $path = $request->file('file')->store('menus/' . $user->business_id, 'public');
+        // ✨ Middleware EnsureActiveBusiness ya inyectó business_id
+        $path = $request->file('file')->store('menus/' . $request->business_id, 'public');
         
         if ($request->is_default) {
-            Menu::where('business_id', $user->business_id)
+            Menu::where('business_id', $request->business_id)
                 ->update(['is_default' => false]);
         }
         
         $menu = Menu::create([
-            'business_id' => $user->business_id,
+            'business_id' => $request->business_id,
             'name' => $request->name,
             'file_path' => $path,
             'is_default' => $request->is_default ?? false,
@@ -463,13 +465,11 @@ class AdminController extends Controller
             'menu_id' => 'required|exists:menus,id',
         ]);
         
-        $user = $request->user();
-        
         $menu = Menu::where('id', $request->menu_id)
-            ->where('business_id', $user->business_id)
+            ->where('business_id', $request->business_id)
             ->firstOrFail();
         
-        Menu::where('business_id', $user->business_id)
+        Menu::where('business_id', $request->business_id)
             ->update(['is_default' => false]);
         
         $menu->is_default = true;
@@ -487,14 +487,12 @@ class AdminController extends Controller
             'table_id' => 'required|exists:tables,id',
         ]);
         
-        $user = $request->user();
-        
         $table = Table::where('id', $request->table_id)
-            ->where('business_id', $user->business_id)
+            ->where('business_id', $request->business_id)
             ->firstOrFail();
         
         $qrCode = QrCode::create([
-            'business_id' => $user->business_id,
+            'business_id' => $request->business_id,
             'table_id' => $table->id,
             'code' => uniqid('qr_', true),
         ]);
@@ -513,10 +511,8 @@ class AdminController extends Controller
             'format' => ['required', Rule::in(['pdf', 'png'])],
         ]);
         
-        $user = $request->user();
-        
         $qrCodes = QrCode::whereIn('id', $request->qr_ids)
-            ->where('business_id', $user->business_id)
+            ->where('business_id', $request->business_id)
             ->with('table')
             ->get();
         
@@ -721,7 +717,7 @@ class AdminController extends Controller
                         'email' => $staff->email,
                         'password' => Hash::make('temporal123'),
                         'role' => 'waiter',
-                        'business_id' => $user->business_id,
+                        'business_id' => $request->business_id,
                     ]);
                 }
 
@@ -1214,8 +1210,8 @@ class AdminController extends Controller
             }
             $activeBusinessId = $requestedBusinessId;
         } else {
-            // Resolver negocio activo con el trait (prioriza rol admin)
-            $activeBusinessId = $this->activeBusinessId($user, 'admin');
+            // ✨ Middleware EnsureActiveBusiness ya inyectó business_id
+            $activeBusinessId = $request->business_id;
         }
 
         if (!is_numeric($id)) {
@@ -1283,12 +1279,10 @@ class AdminController extends Controller
             'avatar' => 'sometimes',
         ]);
 
-        $user = $request->user();
-        $activeBusinessId = $this->activeBusinessId($user, 'admin');
-        
+        // ✨ Middleware EnsureActiveBusiness ya inyectó business_id
         // 🔥 CAMBIO: Buscar por user_id en vez de id
         $staff = Staff::where('user_id', $id)
-            ->where('business_id', $activeBusinessId)
+            ->where('business_id', $request->business_id)
             ->firstOrFail();
 
         $input = $request->only($staff->getFillable());
@@ -1337,8 +1331,8 @@ class AdminController extends Controller
             'avatar' => 'sometimes',
         ]);
 
-    $user = $request->user();
-    $activeBusinessId = $this->activeBusinessId($user, 'admin');
+    // ✨ Middleware EnsureActiveBusiness ya inyectó business_id
+    $activeBusinessId = $request->business_id;
 
         // Derivar nombre en caso de no ser provisto (obligatorio en DB)
         $name = trim((string) $request->input('name', ''));
@@ -1425,16 +1419,14 @@ class AdminController extends Controller
             'comment' => 'sometimes|string',
         ]);
 
-        $user = $request->user();
-        $activeBusinessId = $this->activeBusinessId($user, 'admin');
-        
+        // ✨ Middleware EnsureActiveBusiness ya inyectó business_id
         // 🔥 CAMBIO: Buscar por user_id
         $staff = Staff::where('user_id', $userId)
-            ->where('business_id', $activeBusinessId)
+            ->where('business_id', $request->business_id)
             ->firstOrFail();
 
         $review = Review::create([
-            'business_id' => $activeBusinessId,
+            'business_id' => $request->business_id,
             'staff_id' => $staff->id,
             'rating' => $request->rating,
             'comment' => $request->comment,
@@ -1451,17 +1443,15 @@ class AdminController extends Controller
      */
     public function deleteReview(Request $request, $userId, $id)
     {
-        $user = $request->user();
-        $activeBusinessId = $this->activeBusinessId($user, 'admin');
-        
+        // ✨ Middleware EnsureActiveBusiness ya inyectó business_id
         // 🔥 CAMBIO: Buscar por user_id
         $staff = Staff::where('user_id', $userId)
-            ->where('business_id', $activeBusinessId)
+            ->where('business_id', $request->business_id)
             ->firstOrFail();
 
         $review = Review::where('id', $id)
             ->where('staff_id', $staff->id)
-            ->where('business_id', $activeBusinessId)
+            ->where('business_id', $request->business_id)
             ->firstOrFail();
 
         $review->delete();
@@ -1473,9 +1463,8 @@ class AdminController extends Controller
 
     public function getSettings(Request $request)
     {
-        $user = $request->user();
-        $businessId = $this->activeBusinessId($user, 'admin');
-        $business = Business::findOrFail($businessId);
+        // ✨ Middleware EnsureActiveBusiness ya inyectó business_id
+        $business = Business::findOrFail($request->business_id);
         
         return response()->json([
             'business' => $business,
@@ -1525,9 +1514,8 @@ class AdminController extends Controller
             'settings.notification_preferences' => 'sometimes|array',
         ]);
 
-        $user = $request->user();
-        $businessId = $this->activeBusinessId($user, 'admin');
-        $business = Business::findOrFail($businessId);
+        // ✨ Middleware EnsureActiveBusiness ya inyectó business_id
+        $business = Business::findOrFail($request->business_id);
 
         // Helper para extraer valor desde raíz, business.* o settings.*
         $getVal = function (string $key) use ($request) {
@@ -1699,8 +1687,8 @@ class AdminController extends Controller
 
     public function getStatistics(Request $request)
     {
-        $user = $request->user();
-        $businessId = $this->activeBusinessId($user, 'admin');
+        // ✨ Middleware EnsureActiveBusiness ya inyectó business_id
+        $businessId = $request->business_id;
 
         $warnings = [];
 
@@ -1760,10 +1748,8 @@ class AdminController extends Controller
             'title' => 'sometimes|string|max:255',
             'body' => 'sometimes|string|max:500',
         ]);
-
-        $user = $request->user();
         
-        $users = User::where('business_id', $user->business_id)->get();
+        $users = User::where('business_id', $request->business_id)->get();
 
         if ($users->isEmpty()) {
             return response()->json([
@@ -1801,14 +1787,13 @@ class AdminController extends Controller
             'data' => 'sometimes|array',
         ]);
 
-        $currentUser = $request->user();
         $targetUser = User::find($request->user_id);
 
         if (!$targetUser) {
             return response()->json(['message' => 'Usuario no encontrado'], 404);
         }
 
-        if ($targetUser->business_id !== $currentUser->business_id) {
+        if ($targetUser->business_id !== $request->business_id) {
             return response()->json(['message' => 'No tienes permisos para enviar notificaciones a este usuario'], 403);
         }
 
@@ -1843,10 +1828,8 @@ class AdminController extends Controller
         $request->validate([
             'action' => ['required', Rule::in(['confirm_all', 'archive_all'])],
         ]);
-
-        $user = Auth::user();
         
-        $pendingRequests = Staff::where('business_id', $user->business_id)
+        $pendingRequests = Staff::where('business_id', $request->business_id)
             ->where('status', 'pending')
             ->get();
 
@@ -1897,11 +1880,9 @@ class AdminController extends Controller
      */
     public function getWhatsAppLink(Request $request, $userId)
     {
-        $user = Auth::user();
-        
         // 🔥 CAMBIO: Buscar por user_id
         $staff = Staff::where('user_id', $userId)
-            ->where('business_id', $user->business_id)
+            ->where('business_id', $request->business_id)
             ->firstOrFail();
 
         if (!$staff->phone) {
