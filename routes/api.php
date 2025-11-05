@@ -205,8 +205,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('/set-active-business', [BusinessWaiterController::class, 'setActiveBusiness']);
         Route::post('/leave-business', [BusinessWaiterController::class, 'leaveBusiness']);
         
-        // Diagnóstico de usuario
-        Route::get('/diagnose', [WaiterController::class, 'diagnoseUser']);
+        // Diagnóstico de usuario - DashboardController
+        Route::get('/diagnose', [DashboardController::class, 'diagnoseUser']);
         
         // Gestión de mesas - Individual - TableActivationController
         Route::get('/tables/assigned', [TableActivationController::class, 'getAssignedTables']);

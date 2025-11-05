@@ -402,4 +402,51 @@ class DashboardController extends Controller
         // Normalizar a escala 0-10
         return max(0, min(10, round($priority)));
     }
+
+    /**
+     * Diagnóstico de usuario (debug endpoint)
+     * Verifica y auto-corrige business_id si falta
+     * 
+     * Migrado desde WaiterController en FASE 3.2
+     */
+    public function diagnoseUser(Request $request): JsonResponse
+    {
+        $waiter = Auth::user();
+        
+        // Buscar registros de staff para este usuario
+        $staffRecords = Staff::where('user_id', $waiter->id)
+            ->with('business')
+            ->get();
+
+        // Si tiene registros staff pero no business_id, fijar el primero
+        $fixed = false;
+        if ($staffRecords->isNotEmpty() && !$waiter->business_id) {
+            $firstBusiness = $staffRecords->first()->business;
+            $waiter->update(['business_id' => $firstBusiness->id]);
+            $fixed = true;
+            
+            Log::info('Auto-fixed missing business_id', [
+                'waiter_id' => $waiter->id,
+                'business_id' => $firstBusiness->id,
+                'business_name' => $firstBusiness->name
+            ]);
+        }
+
+        return response()->json([
+            'user_id' => $waiter->id,
+            'user_name' => $waiter->name,
+            'current_business_id' => $waiter->business_id,
+            'staff_records' => $staffRecords->map(function($staff) {
+                return [
+                    'business_id' => $staff->business_id,
+                    'business_name' => $staff->business->name,
+                    'status' => $staff->status,
+                    'position' => $staff->position
+                ];
+            }),
+            'staff_count' => $staffRecords->count(),
+            'needs_business_assignment' => $staffRecords->isNotEmpty() && !$waiter->business_id,
+            'fixed_automatically' => $fixed
+        ]);
+    }
 }
