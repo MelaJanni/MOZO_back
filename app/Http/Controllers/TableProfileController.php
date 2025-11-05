@@ -14,29 +14,12 @@ use Illuminate\Support\Facades\Schema;
 
 class TableProfileController extends Controller
 {
-    private function ensureBusinessId($user)
-    {
-        // reusar lógica similar a WaiterController sin dependencia circular
-        if (!$user->business_id) {
-            $staffRecord = Staff::where('user_id', $user->id)
-                ->where('status', 'confirmed')
-                ->first();
-            if ($staffRecord) {
-                $user->update(['business_id' => $staffRecord->business_id]);
-                $user->refresh();
-                return $staffRecord->business_id;
-            }
-        }
-        return $user->business_id;
-    }
+    // ✨ Método eliminado: EnsureActiveBusiness middleware ya maneja la lógica de business_id
 
     public function index(Request $request): JsonResponse
     {
-        $user = Auth::user();
-        $businessId = $this->ensureBusinessId($user);
-        if (!$businessId) {
-            return response()->json(['success' => false, 'message' => 'No hay negocio activo'], 400);
-        }
+        // ✨ Middleware EnsureActiveBusiness ya inyectó business_id
+        $businessId = $request->business_id;
 
         // Parámetro opcional: include=tables o with_tables=1
         $include = $request->query('include');

@@ -104,10 +104,9 @@ class TableController extends Controller
         return response()->json(null, 204);
     }
 
-    public function fetchTables()
+    public function fetchTables(Request $request)
     {
-        $user = Auth::user();
-        $activeBusinessId = $this->activeBusinessId($user, 'admin');
+        // ✨ Middleware EnsureActiveBusiness ya inyectó business_id
         if (!\Schema::hasTable('tables')) {
             return response()->json([
                 'tables' => [],
@@ -115,7 +114,7 @@ class TableController extends Controller
                 'warning' => 'Tabla tables no encontrada. Aplique migraciones.'
             ]);
         }
-        $tables = Table::where('business_id', $activeBusinessId)
+        $tables = Table::where('business_id', $request->business_id)
             ->with('qrCode')
             ->orderBy('number', 'asc')
             ->get();
@@ -127,18 +126,15 @@ class TableController extends Controller
     
     public function createTable(Request $request)
     {
-        // Necesitamos el negocio activo para validar unicity por negocio
-        $user = Auth::user();
-        $activeBusinessId = $this->activeBusinessId($user, 'admin');
-
+        // ✨ Middleware EnsureActiveBusiness ya inyectó business_id
         $validator = Validator::make($request->all(), [
             'name' => 'sometimes|string|max:100',
             'number' => [
                 'required',
                 'integer',
                 'min:1',
-                Rule::unique('tables', 'number')->where(function ($q) use ($activeBusinessId) {
-                    return $q->where('business_id', $activeBusinessId);
+                Rule::unique('tables', 'number')->where(function ($q) use ($request) {
+                    return $q->where('business_id', $request->business_id);
                 }),
             ],
             'capacity' => 'sometimes|integer|min:1',
@@ -154,7 +150,7 @@ class TableController extends Controller
         }
 
         $table = Table::create([
-            'business_id' => $activeBusinessId,
+            'business_id' => $request->business_id,
             'name' => $request->name ?? null,
             'number' => $request->number,
             'capacity' => $request->capacity ?? 4,
@@ -184,11 +180,9 @@ class TableController extends Controller
     
     public function updateTable(Request $request, $tableId)
     {
-        // Identificar negocio y mesa antes de validar para construir la regla de unicity
-        $user = Auth::user();
-        $activeBusinessId = $this->activeBusinessId($user, 'admin');
+        // ✨ Middleware EnsureActiveBusiness ya inyectó business_id
         $table = Table::where('id', $tableId)
-            ->where('business_id', $activeBusinessId)
+            ->where('business_id', $request->business_id)
             ->firstOrFail();
 
         $validator = Validator::make($request->all(), [
@@ -198,7 +192,7 @@ class TableController extends Controller
                 'integer',
                 'min:1',
                 Rule::unique('tables', 'number')
-                    ->where(fn($q) => $q->where('business_id', $activeBusinessId))
+                    ->where(fn($q) => $q->where('business_id', $request->business_id))
                     ->ignore($tableId),
             ],
             'capacity' => 'sometimes|integer|min:1',
@@ -247,10 +241,9 @@ class TableController extends Controller
     
     public function deleteTable($tableId)
     {
-        $user = Auth::user();
-        $activeBusinessId = $this->activeBusinessId($user, 'admin');
+        // ✨ Middleware EnsureActiveBusiness ya inyectó business_id
         $table = Table::where('id', $tableId)
-            ->where('business_id', $activeBusinessId)
+            ->where('business_id', $request->business_id)
             ->firstOrFail();
         
         if ($table->qrCodes()->count() > 0) {
@@ -275,19 +268,17 @@ class TableController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $user = Auth::user();
-        $businessId = $this->activeBusinessId($user, 'admin');
-
+        // ✨ Middleware EnsureActiveBusiness ya inyectó business_id
         $sourceTable = Table::where('id', $tableId)
-            ->where('business_id', $businessId)
+            ->where('business_id', $request->business_id)
             ->firstOrFail();
 
-        if (Table::where('business_id', $businessId)->where('number', $request->number)->exists()) {
+        if (Table::where('business_id', $request->business_id)->where('number', $request->number)->exists()) {
             return response()->json(['message' => 'Ya existe una mesa con ese número'], 422);
         }
 
         $newTable = Table::create([
-            'business_id' => $businessId,
+            'business_id' => $request->business_id,
             'number' => $request->number,
             'capacity' => $request->capacity ?? $sourceTable->capacity,
             'location' => $request->location ?? $sourceTable->location,
