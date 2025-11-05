@@ -8,6 +8,7 @@ use App\Http\Controllers\BusinessController;
 use App\Http\Controllers\BusinessWaiterController;
 use App\Http\Controllers\CallHistoryController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\IpBlockController;
 use App\Http\Controllers\MenuController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\QrCodeController;
@@ -223,12 +224,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
         // Estado de mesas - TableSilenceController
         Route::get('/tables/silenced', [TableSilenceController::class, 'getSilencedTables']);
         
-        // Gestión de IPs bloqueadas (anti-spam)
-        Route::post('/ip/block', [WaiterCallController::class, 'blockIp']);
-        Route::post('/ip/unblock', [WaiterCallController::class, 'unblockIp']);
-        Route::get('/ip/blocked', [WaiterController::class, 'getBlockedIps']);
-        Route::get('/ip/debug', [WaiterCallController::class, 'debugIpStatus']);
-        Route::post('/ip/force-unblock', [WaiterCallController::class, 'forceUnblockIp']);
+        // Gestión de IPs bloqueadas (anti-spam) - IpBlockController
+        Route::post('/ip/block', [IpBlockController::class, 'blockIp']);
+        Route::post('/ip/unblock', [IpBlockController::class, 'unblockIp']);
+        Route::get('/ip/blocked', [IpBlockController::class, 'getBlockedIps']);
+        Route::get('/ip/debug', [IpBlockController::class, 'debugIpStatus']);
+        Route::post('/ip/force-unblock', [IpBlockController::class, 'forceUnblockIp']);
 
     // Perfiles de mesa - CRUD y acciones
     Route::get('/table-profiles', [TableProfileController::class, 'index']);
