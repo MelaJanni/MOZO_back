@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\AdminBusinessController;
-use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminNotificationsController;
 use App\Http\Controllers\AdminProfileController;
 use App\Http\Controllers\AdminSettingsController;
