@@ -16,10 +16,11 @@ use Hashids\Hashids;
 use App\Services\QrCodeService;
 use App\Services\QrGeneratorService;
 use App\Http\Controllers\Concerns\ResolvesActiveBusiness;
+use App\Http\Controllers\Concerns\JsonResponses;
 
 class QrCodeController extends Controller
 {
-    use ResolvesActiveBusiness;
+    use ResolvesActiveBusiness, JsonResponses;
     
     protected QrCodeService $service;
     protected QrGeneratorService $qrGenerator;

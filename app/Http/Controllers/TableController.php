@@ -10,12 +10,13 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\QrCodeController;
 use App\Http\Controllers\Concerns\ResolvesActiveBusiness;
+use App\Http\Controllers\Concerns\JsonResponses;
 use App\Services\QrCodeService;
 use Illuminate\Validation\Rule;
 
 class TableController extends Controller
 {
-    use ResolvesActiveBusiness;
+    use ResolvesActiveBusiness, JsonResponses;
     
     protected QrCodeService $qrCodeService;
 
