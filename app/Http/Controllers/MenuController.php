@@ -158,20 +158,22 @@ class MenuController extends Controller
     {
         // 🚀 MANEJO MEJORADO DE ERRORES 413
         if (!$request->hasFile('file') && empty($request->all())) {
-            return response()->json([
-                'success' => false,
-                'error' => 'REQUEST_TOO_LARGE',
-                'message' => 'El archivo es demasiado grande para el servidor.',
-                'details' => [
-                    'max_allowed' => '50MB',
-                    'common_causes' => [
-                        'Archivo mayor a 50MB',
-                        'Límites del servidor web',
-                        'Configuración PHP restrictiva'
-                    ]
-                ],
-                'diagnosis_url' => url('/api/menus/upload-limits')
-            ], 413);
+            return $this->error(
+                'El archivo es demasiado grande para el servidor.',
+                413,
+                [
+                    'error' => 'REQUEST_TOO_LARGE',
+                    'details' => [
+                        'max_allowed' => '50MB',
+                        'common_causes' => [
+                            'Archivo mayor a 50MB',
+                            'Límites del servidor web',
+                            'Configuración PHP restrictiva'
+                        ]
+                    ],
+                    'diagnosis_url' => url('/api/menus/upload-limits')
+                ]
+            );
         }
 
         $validator = Validator::make($request->all(), [
@@ -190,18 +192,20 @@ class MenuController extends Controller
                 $fileErrors = $errors->get('file');
                 foreach ($fileErrors as $error) {
                     if (strpos($error, 'may not be greater than') !== false) {
-                        return response()->json([
-                            'success' => false,
-                            'error' => 'FILE_TOO_LARGE',
-                            'message' => 'El archivo supera el límite de 50MB',
-                            'errors' => $errors,
-                            'diagnosis_url' => url('/api/menus/upload-limits')
-                        ], 413);
+                        return $this->error(
+                            'El archivo supera el límite de 50MB',
+                            413,
+                            [
+                                'error' => 'FILE_TOO_LARGE',
+                                'errors' => $errors->toArray(),
+                                'diagnosis_url' => url('/api/menus/upload-limits')
+                            ]
+                        );
                     }
                 }
             }
             
-            return response()->json(['errors' => $errors], 422);
+            return $this->validationError($errors->toArray());
         }
         
     // ✨ Middleware EnsureActiveBusiness ya inyectó business_id
@@ -226,10 +230,7 @@ class MenuController extends Controller
         
         $menu->view_url = url('storage/' . $menu->file_path);
         
-        return response()->json([
-            'message' => 'Menú subido exitosamente',
-            'menu' => $menu
-        ], 201);
+        return $this->created(['menu' => $menu], 'Menú subido exitosamente');
     }
     
     public function setDefaultMenu(Request $request)
@@ -239,7 +240,7 @@ class MenuController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
+            return $this->validationError($validator->errors()->toArray());
         }
         
         // ✨ Middleware EnsureActiveBusiness ya inyectó business_id
@@ -253,10 +254,7 @@ class MenuController extends Controller
         $menu->is_default = true;
         $menu->save();
         
-        return response()->json([
-            'message' => 'Menú establecido como predeterminado',
-            'menu' => $menu
-        ]);
+        return $this->updated(['menu' => $menu], 'Menú establecido como predeterminado');
     }
 
     public function renameMenu(Request $request, Menu $menu)
@@ -270,10 +268,7 @@ class MenuController extends Controller
         $menu->name = $request->name;
         $menu->save();
 
-        return response()->json([
-            'message' => 'Menú renombrado correctamente',
-            'menu' => $menu,
-        ]);
+        return $this->updated(['menu' => $menu], 'Menú renombrado correctamente');
     }
 
     public function reorderMenus(Request $request)
@@ -291,7 +286,7 @@ class MenuController extends Controller
                 ->update(['display_order' => $order++]);
         }
 
-        return response()->json(['message' => 'Orden guardado correctamente']);
+        return $this->success([], 'Orden guardado correctamente');
     }
 
     public function preview(Menu $menu)
@@ -389,7 +384,7 @@ class MenuController extends Controller
         $effectiveLimit = min($uploadMaxBytes, $postMaxBytes);
         $effectiveLimitMB = round($effectiveLimit / 1024 / 1024, 2);
 
-        return response()->json([
+        return $this->success([
             'php_limits' => [
                 'upload_max_filesize' => $uploadMaxFilesize,
                 'post_max_size' => $postMaxSize,
