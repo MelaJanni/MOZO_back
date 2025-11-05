@@ -102,14 +102,14 @@ class TableController extends Controller
     public function destroy(Table $table)
     {
         $table->delete();
-        return response()->json(null, 204);
+        return $this->noContent();
     }
 
     public function fetchTables(Request $request)
     {
         // ✨ Middleware EnsureActiveBusiness ya inyectó business_id
         if (!\Schema::hasTable('tables')) {
-            return response()->json([
+            return $this->success([
                 'tables' => [],
                 'count' => 0,
                 'warning' => 'Tabla tables no encontrada. Aplique migraciones.'
@@ -119,7 +119,7 @@ class TableController extends Controller
             ->with('qrCode')
             ->orderBy('number', 'asc')
             ->get();
-        return response()->json([
+        return $this->success([
             'tables' => $tables,
             'count' => $tables->count()
         ]);
@@ -147,7 +147,7 @@ class TableController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
+            return $this->validationError($validator->errors()->toArray());
         }
 
         $table = Table::create([
@@ -172,11 +172,10 @@ class TableController extends Controller
             ]);
         }
         
-        return response()->json([
-            'message' => 'Mesa creada exitosamente',
+        return $this->created([
             'table' => $table,
             'qr_generated' => isset($qrCode)
-        ], 201);
+        ], 'Mesa creada exitosamente');
     }
     
     public function updateTable(Request $request, $tableId)
@@ -205,7 +204,7 @@ class TableController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
+            return $this->validationError($validator->errors()->toArray());
         }
 
         if ($request->has('number')) {
@@ -234,10 +233,7 @@ class TableController extends Controller
         
         $table->save();
         
-        return response()->json([
-            'message' => 'Mesa actualizada exitosamente',
-            'table' => $table
-        ]);
+        return $this->updated(['table' => $table], 'Mesa actualizada exitosamente');
     }
     
     public function deleteTable($tableId)
@@ -253,10 +249,7 @@ class TableController extends Controller
         
         $table->delete();
         
-        return response()->json([
-            'message' => 'Mesa eliminada exitosamente',
-            'table_id' => $tableId
-        ]);
+        return $this->deleted('Mesa eliminada exitosamente');
     }
 
     public function cloneTable(Request $request, $tableId)
