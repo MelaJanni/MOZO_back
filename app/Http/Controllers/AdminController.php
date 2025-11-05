@@ -129,7 +129,7 @@ class AdminController extends Controller
             }
         } catch (\Throwable $e) { /* noop */ }
 
-        return response()->json([
+        return $this->success([
             'business' => $business,
             'active_business_id' => (int)$activeBusinessId,
             'tables_count' => Schema::hasTable('tables') ? $business->tables->count() : 0,
@@ -180,8 +180,7 @@ class AdminController extends Controller
             );
         }
 
-        return response()->json([
-            'message' => 'Negocio creado exitosamente',
+        return $this->created([
             'business' => [
                 'id' => $business->id,
                 'name' => $business->name,
@@ -198,7 +197,7 @@ class AdminController extends Controller
             'invitation_url' => config('app.frontend_url') . '/join-business?code=' . $business->invitation_code,
             'admin_assigned' => true,
             'active_business_set' => true,
-        ], 201);
+        ], 'Negocio creado exitosamente');
     }
 
     public function regenerateInvitationCode(Request $request)
@@ -210,11 +209,10 @@ class AdminController extends Controller
         
         $business->regenerateInvitationCode();
         
-        return response()->json([
-            'message' => 'Código de invitación regenerado exitosamente',
+        return $this->success([
             'invitation_code' => $business->invitation_code,
             'invitation_url' => config('app.frontend_url') . '/join-business?code=' . $business->invitation_code,
-        ]);
+        ], 'Código de invitación regenerado exitosamente');
     }
 
     /**
@@ -229,16 +227,12 @@ class AdminController extends Controller
             ? $user->businessesAsAdmin()->where('business_id', $businessId)->exists()
             : false;
         if (!$isAdmin) {
-            return response()->json([
-                'message' => 'No tienes permisos para eliminar este negocio'
-            ], 403);
+            return $this->forbidden('No tienes permisos para eliminar este negocio');
         }
 
         $business = Business::find($businessId);
         if (!$business) {
-            return response()->json([
-                'message' => 'Negocio no encontrado'
-            ], 404);
+            return $this->notFound('Negocio no encontrado');
         }
 
         \DB::beginTransaction();
@@ -332,16 +326,14 @@ class AdminController extends Controller
                 ];
             }
             
-            return response()->json($response);
+            return $this->success($response);
         } catch (\Throwable $e) {
             \DB::rollBack();
             \Log::error('Error eliminando negocio', [
                 'business_id' => $businessId,
                 'error' => $e->getMessage(),
             ]);
-            return response()->json([
-                'message' => 'Error interno al eliminar el negocio'
-            ], 500);
+            return $this->error('Error interno al eliminar el negocio', 500);
         }
     }
 
@@ -353,11 +345,10 @@ class AdminController extends Controller
 
         $user = $request->user();
         
-        return response()->json([
-            'message' => 'Vista cambiada exitosamente',
+        return $this->success([
             'view' => $request->view,
             'token' => $user->createToken('api-token', ['role:' . $request->view])->plainTextToken,
-        ]);
+        ], 'Vista cambiada exitosamente');
     }
 
     /**
@@ -407,7 +398,7 @@ class AdminController extends Controller
             }
         }
 
-        return response()->json([
+        return $this->success([
             'active_business_id' => $activeBusinessId ? (int)$activeBusinessId : null,
             'businesses' => $businesses,
             'count' => is_countable($businesses) ? count($businesses) : 0,
@@ -423,9 +414,7 @@ class AdminController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
         
-        return response()->json([
-            'menus' => $menus,
-        ]);
+        return $this->success(['menus' => $menus]);
     }
 
     public function uploadMenu(Request $request)
@@ -453,10 +442,7 @@ class AdminController extends Controller
             'is_default' => $request->is_default ?? false,
         ]);
         
-        return response()->json([
-            'message' => 'Menú subido exitosamente',
-            'menu' => $menu,
-        ], 201);
+        return $this->created(['menu' => $menu], 'Menú subido exitosamente');
     }
 
     public function setDefaultMenu(Request $request)
@@ -475,10 +461,7 @@ class AdminController extends Controller
         $menu->is_default = true;
         $menu->save();
         
-        return response()->json([
-            'message' => 'Menú establecido como predeterminado',
-            'menu' => $menu,
-        ]);
+        return $this->updated(['menu' => $menu], 'Menú establecido como predeterminado');
     }
 
     public function createQR(Request $request)
@@ -497,10 +480,7 @@ class AdminController extends Controller
             'code' => uniqid('qr_', true),
         ]);
         
-        return response()->json([
-            'message' => 'Código QR creado exitosamente',
-            'qr_code' => $qrCode,
-        ], 201);
+        return $this->created(['qr_code' => $qrCode], 'Código QR creado exitosamente');
     }
 
     public function exportQR(Request $request)
@@ -517,17 +497,14 @@ class AdminController extends Controller
             ->get();
         
         if ($qrCodes->count() !== count($request->qr_ids)) {
-            return response()->json([
-                'message' => 'Algunos códigos QR no pertenecen a tu negocio',
-            ], 403);
+            return $this->forbidden('Algunos códigos QR no pertenecen a tu negocio');
         }
         
-        return response()->json([
-            'message' => 'Códigos QR exportados exitosamente',
+        return $this->success([
             'format' => $request->format,
             'qr_codes' => $qrCodes,
             'download_url' => 'https://example.com/downloads/' . uniqid() . '.' . $request->format,
-        ]);
+        ], 'Códigos QR exportados exitosamente');
     }
 
     
