@@ -175,7 +175,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/user/notifications/{id}/read', [NotificationController::class, 'markNotificationAsRead']);
 
     // Llamadas de mozo - APIs para mozos autenticados
-    Route::prefix('waiter')->group(function () {
+    Route::prefix('waiter')->middleware('business:waiter')->group(function () {
         // 🔥 GESTIÓN DE LLAMADAS CON FIREBASE REAL-TIME
         Route::get('/calls/pending', [WaiterController::class, 'getPendingCalls']);
         Route::get('/calls/recent', [WaiterController::class, 'getRecentCalls']);
@@ -236,7 +236,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     });
 
     // Rutas de ADMIN: acceso completo sin restricciones de plan (temporal)
-    Route::prefix('admin')->group(function () {
+    Route::prefix('admin')->middleware('business:admin')->group(function () {
         // 🔥 PUNTO 10: Rutas de staff usan user_id (no staff.id)
         Route::delete('/staff/{userId}', [AdminController::class, 'removeStaff']);
         Route::post('/staff/request/{requestId}', [AdminController::class, 'handleStaffRequest']);
@@ -303,47 +303,58 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // 🔥 STAFF MANAGEMENT - Sistema de solicitudes de mozos con Firebase
     Route::prefix('staff')->group(function () {
-        Route::get('/', [StaffController::class, 'index']); // Listar solicitudes
-        Route::post('/', [StaffController::class, 'store']); // Crear solicitud
-        Route::get('/{id}', [StaffController::class, 'show']); // Ver detalles
-        Route::post('/{id}/approve', [StaffController::class, 'approve']); // Aprobar
-        Route::post('/{id}/reject', [StaffController::class, 'reject']); // Rechazar
-        Route::post('/{id}/invite', [StaffController::class, 'sendInvitation']); // Enviar invitación
-        Route::get('/{id}/whatsapp', [StaffController::class, 'getWhatsAppInvitation']); // Obtener WhatsApp
-        Route::delete('/{id}', [StaffController::class, 'destroy']); // Eliminar
-        Route::post('/test-notifications', [StaffController::class, 'testNotifications']); // Test
-    // 👤 Solicitudes del mozo autenticado
-    Route::get('/my-requests', [StaffController::class, 'myRequests']);
+        // Admin endpoints (requieren business:admin)
+        Route::middleware('business:admin')->group(function () {
+            Route::get('/', [StaffController::class, 'index']); // Listar solicitudes
+            Route::get('/{id}', [StaffController::class, 'show']); // Ver detalles
+            Route::post('/{id}/approve', [StaffController::class, 'approve']); // Aprobar
+            Route::post('/{id}/reject', [StaffController::class, 'reject']); // Rechazar
+            Route::post('/{id}/invite', [StaffController::class, 'sendInvitation']); // Enviar invitación
+            Route::get('/{id}/whatsapp', [StaffController::class, 'getWhatsAppInvitation']); // Obtener WhatsApp
+            Route::delete('/{id}', [StaffController::class, 'destroy']); // Eliminar
+            Route::post('/test-notifications', [StaffController::class, 'testNotifications']); // Test
+        });
+        
+        // Waiter endpoints (requieren business:waiter o pueden no requerir business específico)
+        Route::post('/', [StaffController::class, 'store']); // Crear solicitud (waiter se postula)
+        Route::get('/my-requests', [StaffController::class, 'myRequests']); // 👤 Solicitudes del mozo autenticado
     });
 
-    Route::get('/tables', [TableController::class, 'fetchTables']);
-    Route::post('/tables', [TableController::class, 'createTable']);
-    Route::put('/tables/{tableId}', [TableController::class, 'updateTable']);
-    Route::delete('/tables/{tableId}', [TableController::class, 'deleteTable']);
+    // Tables - Admin operations (require business:admin)
+    Route::middleware('business:admin')->group(function () {
+        Route::get('/tables', [TableController::class, 'fetchTables']);
+        Route::post('/tables', [TableController::class, 'createTable']);
+        Route::put('/tables/{tableId}', [TableController::class, 'updateTable']);
+        Route::delete('/tables/{tableId}', [TableController::class, 'deleteTable']);
+        Route::post('/tables/clone/{tableId}', [TableController::class, 'cloneTable']);
+    });
     
-    Route::get('/menus', [MenuController::class, 'fetchMenus']);
-    Route::post('/menus', [MenuController::class, 'uploadMenu']);
-    Route::post('/menus/default', [MenuController::class, 'setDefaultMenu']);
-    Route::put('/menus/{menu}', [MenuController::class, 'renameMenu']);
-    Route::delete('/menus/{menu}', [MenuController::class, 'destroy']);
-    Route::post('/menus/reorder', [MenuController::class, 'reorderMenus']);
-    Route::get('/menus/{menu}/preview', [MenuController::class, 'preview']);
-    Route::get('/menus/{menu}/download', [MenuController::class, 'download']);
-    Route::get('/menus/upload-limits', [MenuController::class, 'uploadLimits']);
+    // Menus - Admin operations (require business:admin)
+    Route::middleware('business:admin')->group(function () {
+        Route::get('/menus', [MenuController::class, 'fetchMenus']);
+        Route::post('/menus', [MenuController::class, 'uploadMenu']);
+        Route::post('/menus/default', [MenuController::class, 'setDefaultMenu']);
+        Route::put('/menus/{menu}', [MenuController::class, 'renameMenu']);
+        Route::delete('/menus/{menu}', [MenuController::class, 'destroy']);
+        Route::post('/menus/reorder', [MenuController::class, 'reorderMenus']);
+        Route::get('/menus/{menu}/preview', [MenuController::class, 'preview']);
+        Route::get('/menus/{menu}/download', [MenuController::class, 'download']);
+        Route::get('/menus/upload-limits', [MenuController::class, 'uploadLimits']);
+    });
     
-    Route::get('/notifications', [WaiterController::class, 'fetchWaiterNotifications']);
-    Route::post('/notifications/handle/{notificationId}', [WaiterController::class, 'handleNotification']);
-    // Alias de compatibilidad: aceptar también /notifications/{id}/handle
-    Route::post('/notifications/{notificationId}/handle', [WaiterController::class, 'handleNotification']);
-    Route::post('/notifications/{notificationId}/read', [WaiterController::class, 'markNotificationAsRead']);
-    Route::post('/notifications/mark-multiple-read', [WaiterController::class, 'markMultipleNotificationsAsRead']);
-    Route::post('/notifications/global', [WaiterController::class, 'globalNotifications']);
-    Route::post('/tables/toggle-notifications/{tableId}', [WaiterController::class, 'toggleTableNotifications']);
-    
+    // Notifications - Waiter operations (require business:waiter)
+    Route::middleware('business:waiter')->group(function () {
+        Route::get('/notifications', [WaiterController::class, 'fetchWaiterNotifications']);
+        Route::post('/notifications/handle/{notificationId}', [WaiterController::class, 'handleNotification']);
+        // Alias de compatibilidad: aceptar también /notifications/{id}/handle
+        Route::post('/notifications/{notificationId}/handle', [WaiterController::class, 'handleNotification']);
+        Route::post('/notifications/{notificationId}/read', [WaiterController::class, 'markNotificationAsRead']);
+        Route::post('/notifications/mark-multiple-read', [WaiterController::class, 'markMultipleNotificationsAsRead']);
+        Route::post('/notifications/global', [WaiterController::class, 'globalNotifications']);
+        Route::post('/tables/toggle-notifications/{tableId}', [WaiterController::class, 'toggleTableNotifications']);
+    });
 
-    Route::post('/tables/clone/{tableId}', [TableController::class, 'cloneTable']);
-
-    Route::prefix('waiter')->group(function () {
+    Route::prefix('waiter')->middleware('business:waiter')->group(function () {
         Route::post('/onboard', [WaiterController::class, 'onboardBusiness']);
 
         Route::get('/tables', [WaiterController::class, 'fetchWaiterTables']);
