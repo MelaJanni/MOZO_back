@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AdminBusinessController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminNotificationsController;
 use App\Http\Controllers\AdminProfileController;
@@ -255,12 +256,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/staff/archived-requests', [AdminController::class, 'fetchArchivedRequests']);
         Route::post('/staff/onboard', [BusinessWaiterController::class, 'onboardBusiness']);
 
-        Route::get('/business', [AdminController::class, 'getBusinessInfo']);
-        Route::post('/business/create', [AdminController::class, 'createBusiness']);
-        Route::post('/business/regenerate-invitation-code', [AdminController::class, 'regenerateInvitationCode']);
-    Route::delete('/business/{businessId}', [AdminController::class, 'deleteBusiness']);
-    Route::get('/businesses', [AdminController::class, 'getBusinesses']);
-        Route::post('/switch-view', [AdminController::class, 'switchView']);
+        Route::get('/business', [AdminBusinessController::class, 'getBusinessInfo']);
+        Route::post('/business/create', [AdminBusinessController::class, 'createBusiness']);
+        Route::post('/business/regenerate-invitation-code', [AdminBusinessController::class, 'regenerateInvitationCode']);
+    Route::delete('/business/{businessId}', [AdminBusinessController::class, 'deleteBusiness']);
+    Route::get('/businesses', [AdminBusinessController::class, 'getBusinesses']);
+        Route::post('/switch-view', [AdminBusinessController::class, 'switchView']);
     Route::get('/settings', [AdminSettingsController::class, 'getSettings']);
     Route::post('/settings', [AdminSettingsController::class, 'updateSettings']);
     // Aceptar también PUT/PATCH para compatibilidad con clientes RESTful
