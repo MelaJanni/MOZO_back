@@ -739,4 +739,248 @@ class WaiterCallController extends Controller
             Log::warning('Immediate Firebase write failed', ['error' => $e->getMessage()]);
         }
     }
+
+    /**
+     * ============================================================================
+     * QUERY OPERATIONS - Migrado desde WaiterController FASE 3.2
+     * ============================================================================
+     */
+
+    /**
+     * Obtener llamadas pendientes del mozo
+     * Filtradas por negocio activo
+     */
+    public function getPendingCalls(Request $request): JsonResponse
+    {
+        $waiter = Auth::user();
+        
+        try {
+            $businessId = $waiter->business_id ?? $waiter->active_business_id;
+
+            if (!$businessId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No tienes un negocio activo seleccionado'
+                ], 400);
+            }
+
+            $calls = WaiterCall::where('waiter_id', $waiter->id)
+                ->where('status', 'pending')
+                ->whereHas('table', function ($q) use ($businessId) {
+                    $q->where('business_id', $businessId);
+                })
+                ->with(['table'])
+                ->orderBy('called_at', 'desc')
+                ->get()
+                ->map(function ($call) {
+                    return [
+                        'id' => $call->id,
+                        'table' => [
+                            'id' => $call->table->id,
+                            'number' => $call->table->number,
+                            'name' => $call->table->name
+                        ],
+                        'message' => $call->message,
+                        'called_at' => $call->called_at,
+                        'minutes_ago' => $call->called_at->diffInMinutes(now()),
+                        'ip_address' => $call->ip_address
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'pending_calls' => $calls,
+                'count' => $calls->count()
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error getting pending calls', [
+                'waiter_id' => $waiter->id,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error obteniendo las llamadas pendientes'
+            ], 500);
+        }
+    }
+
+    /**
+     * Obtener llamadas recientes (últimas 50)
+     * Incluye todos los estados: pending, acknowledged, completed
+     */
+    public function getRecentCalls(Request $request): JsonResponse
+    {
+        $waiter = Auth::user();
+        
+        try {
+            $businessId = $waiter->business_id ?? $waiter->active_business_id;
+
+            if (!$businessId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No tienes un negocio activo seleccionado'
+                ], 400);
+            }
+
+            $calls = WaiterCall::where('waiter_id', $waiter->id)
+                ->whereHas('table', function ($q) use ($businessId) {
+                    $q->where('business_id', $businessId);
+                })
+                ->with(['table'])
+                ->orderBy('called_at', 'desc')
+                ->take(50)
+                ->get()
+                ->map(function ($call) {
+                    return [
+                        'id' => $call->id,
+                        'table' => [
+                            'id' => $call->table->id,
+                            'number' => $call->table->number,
+                            'name' => $call->table->name
+                        ],
+                        'message' => $call->message,
+                        'status' => $call->status,
+                        'called_at' => $call->called_at,
+                        'acknowledged_at' => $call->acknowledged_at,
+                        'completed_at' => $call->completed_at,
+                        'minutes_ago' => $call->called_at->diffInMinutes(now())
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'recent_calls' => $calls,
+                'count' => $calls->count()
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error getting recent calls', [
+                'waiter_id' => $waiter->id,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error obteniendo las llamadas recientes'
+            ], 500);
+        }
+    }
+
+    /**
+     * Resincronizar llamada con Firebase
+     * Reescribe el estado actual en Firebase (útil para debugging)
+     */
+    public function resyncCall(Request $request, $callId): JsonResponse
+    {
+        $waiter = Auth::user();
+        try {
+            $call = WaiterCall::with(['table','waiter'])->find($callId);
+            if (!$call) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Llamada no encontrada'
+                ], 404);
+            }
+
+            // Autorización: debe ser el mozo asignado o el mozo actual de la mesa
+            $isAssignedWaiter = ((int)$call->waiter_id === (int)$waiter->id);
+            $isCurrentTableWaiter = ((int)($call->table->active_waiter_id ?? 0) === (int)$waiter->id);
+            if (!($isAssignedWaiter || $isCurrentTableWaiter)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No autorizado para resincronizar esta llamada'
+                ], 403);
+            }
+
+            // Sincronizar con Firebase según estado
+            if ($call->status === 'completed') {
+                $this->unifiedFirebaseService->removeCall($call);
+            } else {
+                $event = $call->status === 'acknowledged' ? 'acknowledged' : 'created';
+                $this->unifiedFirebaseService->writeCall($call, $event);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Re-sincronizado con Firebase',
+                'status' => $call->status
+            ]);
+
+        } catch (\Throwable $t) {
+            Log::error('Error resyncing call', [
+                'call_id' => $callId,
+                'error' => $t->getMessage()
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error en resincronización'
+            ], 500);
+        }
+    }
+
+    /**
+     * Crear llamada manualmente desde admin/mozo
+     * Requiere que la mesa tenga mozo asignado
+     */
+    public function createManualCall(Request $request, Table $table): JsonResponse
+    {
+        try {
+            $request->validate([
+                'message' => 'sometimes|string|max:255'
+            ]);
+
+            if (!$table->active_waiter_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Esta mesa no tiene un mozo asignado actualmente'
+                ], 422);
+            }
+
+            // Crear la llamada
+            $call = WaiterCall::create([
+                'table_id' => $table->id,
+                'waiter_id' => $table->active_waiter_id,
+                'message' => $request->input('message', 'El cliente solicita atención'),
+                'called_at' => now(),
+                'status' => 'pending',
+                'ip_address' => $request->ip()
+            ]);
+
+            // Notificación inmediata en Firebase
+            try {
+                $this->unifiedFirebaseService->writeCall($call, $table, [
+                    'priority' => 'high',
+                    'immediate' => true
+                ]);
+            } catch (\Exception $e) {
+                Log::warning('Firebase notification failed', [
+                    'call_id' => $call->id,
+                    'error' => $e->getMessage()
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Llamada enviada exitosamente al mozo',
+                'call' => [
+                    'id' => $call->id,
+                    'message' => $call->message,
+                    'called_at' => $call->called_at
+                ]
+            ], 201);
+
+        } catch (\Exception $e) {
+            Log::error('Error creating call', [
+                'table_id' => $table->id,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error enviando la llamada'
+            ], 500);
+        }
+    }
 }

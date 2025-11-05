@@ -182,12 +182,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Llamadas de mozo - APIs para mozos autenticados
     Route::prefix('waiter')->middleware('business:waiter')->group(function () {
-        // 🔥 GESTIÓN DE LLAMADAS CON FIREBASE REAL-TIME
-        Route::get('/calls/pending', [WaiterController::class, 'getPendingCalls']);
-        Route::get('/calls/recent', [WaiterController::class, 'getRecentCalls']);
-        Route::post('/calls/{callId}/acknowledge', [WaiterController::class, 'acknowledgeCall']);
-        Route::post('/calls/{callId}/complete', [WaiterController::class, 'completeCall']);
-        Route::post('/calls/{callId}/resync', [WaiterController::class, 'resyncCall']);
+        // 🔥 GESTIÓN DE LLAMADAS CON FIREBASE REAL-TIME - WaiterCallController
+        Route::get('/calls/pending', [WaiterCallController::class, 'getPendingCalls']);
+        Route::get('/calls/recent', [WaiterCallController::class, 'getRecentCalls']);
+        Route::post('/calls/{callId}/acknowledge', [WaiterCallController::class, 'acknowledgeCall']);
+        Route::post('/calls/{callId}/complete', [WaiterCallController::class, 'completeCall']);
+        Route::post('/calls/{callId}/resync', [WaiterCallController::class, 'resyncCall']);
         
         // Historial (sin tiempo real) - CallHistoryController
         Route::get('/calls/history', [CallHistoryController::class, 'getCallHistory']);
@@ -395,7 +395,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 // Rutas públicas para QR codes y llamadas de mozo (sin autenticación)
 Route::middleware('public_api')->group(function () {
     // 🔥 FIREBASE REAL-TIME DESDE CERO (LIMPIO Y ORGANIZADO)
-    Route::post('/tables/{table}/call-waiter', [WaiterController::class, 'createCall']);
+    Route::post('/tables/{table}/call-waiter', [WaiterCallController::class, 'createManualCall']);
     
     // 🔥 TEST DIRECTO FIREBASE (ULTRA SIMPLE)
     Route::get('/firebase/write-test', function() {
@@ -514,7 +514,7 @@ Route::middleware('public_api')->group(function () {
     Route::post('/staff/join/{token}', [StaffController::class, 'joinWithToken']);
 
     // 🔍 DEBUG: Endpoint para ver llamadas recientes (para testing)
-    Route::get('/debug/recent-calls', [WaiterController::class, 'getRecentCalls']);
+    Route::get('/debug/recent-calls', [WaiterCallController::class, 'getRecentCalls']);
     
     // 🔥 FIREBASE DIRECT ROUTE - BYPASS CONTROLLER CACHE - TEMPORARILY DISABLED TO AVOID DUPLICATES
     /*
