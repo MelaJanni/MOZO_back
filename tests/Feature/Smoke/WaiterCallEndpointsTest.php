@@ -74,8 +74,17 @@ class WaiterCallEndpointsTest extends TestCase
         ]);
 
         // Configurar business_id activo para evitar 403 del middleware
-        app(BusinessResolver::class)->setActiveBusiness($this->waiter, $this->business->id);
-        app(BusinessResolver::class)->setActiveBusiness($this->admin, $this->business->id);
+        $this->waiter->activeRoles()->create([
+            'business_id' => $this->business->id,
+            'active_role' => 'waiter',
+            'switched_at' => now()
+        ]);
+        
+        $this->admin->activeRoles()->create([
+            'business_id' => $this->business->id,
+            'active_role' => 'admin',
+            'switched_at' => now()
+        ]);
     }
 
     /** @test */

@@ -46,7 +46,11 @@ class AdminEndpointsTest extends TestCase
         ]);
 
         // Configurar business_id activo para evitar 403 del middleware
-        app(BusinessResolver::class)->setActiveBusiness($this->admin, $this->business->id);
+        $this->admin->activeRoles()->create([
+            'business_id' => $this->business->id,
+            'active_role' => 'admin',
+            'switched_at' => now()
+        ]);
     }
 
     /** @test */
