@@ -369,10 +369,10 @@ class WaiterCallController extends Controller
     // Aplicar filtros según pertenencia real a roles
     if ($user->isWaiter()) {
             $query->forWaiter($user->id);
-    } elseif ($user->isAdmin($user->business_id ?? null)) {
+    } elseif ($user->isAdmin($request->business_id ?? null)) {
             // Los admins ven todas las llamadas de su business activo
-            $query->whereHas('table', function ($q) use ($user) {
-                $q->where('business_id', $user->business_id);
+            $query->whereHas('table', function ($q) use ($request) {
+                $q->where('business_id', $request->business_id);
             });
         }
 
@@ -520,15 +520,8 @@ class WaiterCallController extends Controller
      */
     public function getSilencedTables(Request $request): JsonResponse
     {
-        $user = Auth::user();
-
-        // Verificar si el usuario tiene negocio activo
-        if (!$user->business_id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No tienes un negocio activo seleccionado'
-            ], 400);
-        }
+        // ✨ Middleware EnsureActiveBusiness ya validó business_id
+        // Ya no es necesaria esta validación manual
 
         // Por ahora, retornar lista vacía ya que la tabla table_silences no está migrada
         // TODO: Implementar cuando se migre la tabla table_silences
