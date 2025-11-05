@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AdminNotificationsController;
 use App\Http\Controllers\AdminSettingsController;
 use App\Http\Controllers\ApiDocumentationController;
 use App\Http\Controllers\NotificationStreamController;
@@ -274,8 +275,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('/qr/email', [QrCodeController::class, 'emailQR']);
         Route::get('/qr/capabilities', [QrCodeController::class, 'getCapabilities']);
         
-        Route::post('/send-test-notification', [AdminController::class, 'sendTestNotification']);
-        Route::post('/send-notification-to-user', [AdminController::class, 'sendNotificationToUser']);
+        Route::post('/send-test-notification', [AdminNotificationsController::class, 'sendTestNotification']);
+        Route::post('/send-notification-to-user', [AdminNotificationsController::class, 'sendNotificationToUser']);
         
         // FCM Notifications
         Route::get('/notifications', [NotificationController::class, 'index']);
