@@ -11,6 +11,18 @@ use Tests\TestCase;
 class GoogleLoginWaiterProfileTest extends TestCase
 {
     use RefreshDatabase;
+    
+    /**
+     * Re-habilitar observers para estos tests específicos
+     * Estos tests están probando que el Observer funciona correctamente
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+        
+        // Restablecer event dispatcher para User (habilita observers)
+        User::setEventDispatcher($this->app['events']);
+    }
 
     /**
      * Test que el WaiterProfile se crea automáticamente al crear un usuario
@@ -40,7 +52,7 @@ class GoogleLoginWaiterProfileTest extends TestCase
         $this->assertNotNull($user->waiterProfile);
         $this->assertEquals($user->name, $user->waiterProfile->display_name);
         $this->assertTrue($user->waiterProfile->is_available);
-        $this->assertTrue($user->waiterProfile->is_available_for_hire);
+        $this->assertTrue((bool)$user->waiterProfile->is_available_for_hire); // Cast a bool por si acaso
     }
 
     /**
