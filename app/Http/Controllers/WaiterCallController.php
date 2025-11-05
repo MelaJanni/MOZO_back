@@ -5,18 +5,25 @@ namespace App\Http\Controllers;
 use App\Models\WaiterCall;
 use App\Models\Table;
 use App\Models\TableSilence;
-use App\Models\Business;
 use App\Models\IpBlock;
 use App\Services\FirebaseService;
 use App\Services\UnifiedFirebaseService;
-use App\Notifications\FcmDatabaseNotification;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
+/**
+ * Controlador principal para operaciones de llamados de mozos
+ * 
+ * Responsabilidades:
+ * - Crear llamados (mesa llama a mozo)
+ * - Aceptar llamados (mozo acepta)
+ * - Completar llamados (mozo finaliza)
+ * - Notificaciones FCM
+ * - Integración con Firebase Realtime DB
+ */
 class WaiterCallController extends Controller
 {
     private $firebaseService;
