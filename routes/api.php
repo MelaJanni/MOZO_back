@@ -10,6 +10,7 @@ use App\Http\Controllers\MenuController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\QrCodeController;
 use App\Http\Controllers\RoleController;
+use App\Http\Controllers\TableActivationController;
 use App\Http\Controllers\TableController;
 use App\Http\Controllers\TableSilenceController;
 use App\Http\Controllers\WaiterController;
@@ -203,17 +204,17 @@ Route::middleware(['auth:sanctum'])->group(function () {
         // Diagnóstico de usuario
         Route::get('/diagnose', [WaiterController::class, 'diagnoseUser']);
         
-        // Gestión de mesas - Individual
-        Route::get('/tables/assigned', [WaiterController::class, 'getAssignedTables']);
-        Route::get('/tables/available', [WaiterController::class, 'getAvailableTables']);
-        Route::post('/tables/{table}/activate', [WaiterController::class, 'activateTable']);
-        Route::delete('/tables/{table}/activate', [WaiterController::class, 'deactivateTable']);
+        // Gestión de mesas - Individual - TableActivationController
+        Route::get('/tables/assigned', [TableActivationController::class, 'getAssignedTables']);
+        Route::get('/tables/available', [TableActivationController::class, 'getAvailableTables']);
+        Route::post('/tables/{table}/activate', [TableActivationController::class, 'activateTable']);
+        Route::delete('/tables/{table}/activate', [TableActivationController::class, 'deactivateTable']);
         Route::post('/tables/{table}/silence', [TableSilenceController::class, 'silenceTable']);
         Route::delete('/tables/{table}/silence', [TableSilenceController::class, 'unsilenceTable']);
         
     // Gestión de mesas - Múltiples
-        Route::post('/tables/activate/multiple', [WaiterController::class, 'activateMultipleTables']);
-        Route::post('/tables/deactivate/multiple', [WaiterController::class, 'deactivateMultipleTables']);
+        Route::post('/tables/activate/multiple', [TableActivationController::class, 'activateMultipleTables']);
+        Route::post('/tables/deactivate/multiple', [TableActivationController::class, 'deactivateMultipleTables']);
         Route::post('/tables/silence/multiple', [TableSilenceController::class, 'silenceMultipleTables']);
         Route::post('/tables/unsilence/multiple', [TableSilenceController::class, 'unsilenceMultipleTables']);
         
